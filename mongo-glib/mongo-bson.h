@@ -26,6 +26,7 @@
 G_BEGIN_DECLS
 
 #define MONGO_TYPE_BSON (mongo_bson_get_type())
+#define MONGO_TYPE_BSON_TYPE (mongo_bson_type_get_type())
 
 typedef struct _MongoBson     MongoBson;
 typedef struct _MongoBsonIter MongoBsonIter;
