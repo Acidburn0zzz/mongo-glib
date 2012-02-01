@@ -71,6 +71,9 @@ const guint8  *mongo_bson_get_data                 (MongoBson      *bson,
 MongoBson     *mongo_bson_new                      (void);
 MongoBson     *mongo_bson_new_from_data            (const guint8   *buffer,
                                                     gsize           length);
+MongoBson     *mongo_bson_new_from_static_data     (guint8         *buffer,
+                                                    gsize           length,
+                                                    GDestroyNotify  notify);
 MongoBson     *mongo_bson_ref                      (MongoBson      *bson);
 void           mongo_bson_unref                    (MongoBson      *bson);
 void           mongo_bson_append_array             (MongoBson      *bson,
