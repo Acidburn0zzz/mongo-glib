@@ -1077,7 +1077,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    const guint8 *value1;
    const guint8 *value2;
    const gchar *end = NULL;
-   gint32 max_len;
+   guint32 max_len;
 
    g_return_val_if_fail(iter != NULL, FALSE);
 
