@@ -1136,7 +1136,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          memcpy(&max_len, value1, sizeof max_len);
          max_len = GUINT32_FROM_LE(max_len);
          if ((offset + max_len) < rawbuf_len) {
-            offset += max_len;
+            offset += max_len - 1;
             GOTO(success);
          }
       }
