@@ -70,7 +70,7 @@ mongo_bson_new_from_data (const guint8 *buffer,
     * containing said length.
     */
    memcpy(&bson_len, buffer, sizeof bson_len);
-   bson_len = GINT_FROM_LE(bson_len);
+   bson_len = GUINT32_FROM_LE(bson_len);
    if (bson_len != length) {
       return NULL;
    }
@@ -1134,7 +1134,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value1 = &rawbuf[offset];
          value2 = NULL;
          memcpy(&max_len, value1, sizeof max_len);
-         max_len = GINT_FROM_LE(max_len);
+         max_len = GUINT32_FROM_LE(max_len);
          if ((offset + max_len) < rawbuf_len) {
             offset += max_len;
             GOTO(success);
