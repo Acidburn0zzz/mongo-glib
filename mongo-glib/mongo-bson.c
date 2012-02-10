@@ -796,7 +796,7 @@ mongo_bson_iter_get_value_document (MongoBsonIter *iter,
       }
       memcpy(&array_len, iter->user_data6, sizeof array_len);
       array_len = GINT_FROM_LE(array_len);
-      if ((iter->user_data6 + array_len) < endbuf) {
+      if ((iter->user_data6 + array_len) > endbuf) {
          return NULL;
       }
       buffer = iter->user_data6;
