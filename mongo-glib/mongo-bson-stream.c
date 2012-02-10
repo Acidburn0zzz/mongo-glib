@@ -25,12 +25,55 @@ G_DEFINE_TYPE(MongoBsonStream, mongo_bson_stream, G_TYPE_OBJECT)
 struct _MongoBsonStreamPrivate
 {
    GInputStream *stream;
+   GIOChannel *channel;
 };
 
+/**
+ * mongo_bson_stream_new:
+ *
+ * Creates a new instance of #MongoBsonStream. This should be freed
+ * with g_object_unref() when you are finished with it.
+ *
+ * Returns: A newly created #MongoBsonStream.
+ */
 MongoBsonStream *
 mongo_bson_stream_new (void)
 {
    return g_object_new(MONGO_TYPE_BSON_STREAM, NULL);
+}
+
+/**
+ * mongo_bson_stream_load_from_channel:
+ * @stream: (in): A #MongoBsonStream.
+ * @channel: (in): A #GIOChannel.
+ *
+ * Enables #MongoBsonStream to use the content of @channel for the
+ * underlying BSON stream.
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
+gboolean
+mongo_bson_stream_load_from_channel (MongoBsonStream  *stream,
+                                     GIOChannel       *channel,
+                                     GError          **error)
+{
+   MongoBsonStreamPrivate *priv;
+
+   g_return_val_if_fail(MONGO_IS_BSON_STREAM(stream), FALSE);
+   g_return_val_if_fail(channel != NULL, FALSE);
+
+   priv = stream->priv;
+
+   if (priv->stream || priv->channel) {
+      g_set_error(error, MONGO_BSON_STREAM_ERROR,
+                  MONGO_BSON_STREAM_ERROR_ALREADY_LOADED,
+                  _("Cannot load stream, one is already loaded."));
+      return FALSE;
+   }
+
+   priv->channel = g_io_channel_ref(channel);
+
+   return TRUE;
 }
 
 /**
@@ -60,7 +103,7 @@ mongo_bson_stream_load_from_file (MongoBsonStream  *stream,
 
    priv = stream->priv;
 
-   if (priv->stream) {
+   if (priv->stream || priv->channel) {
       g_set_error(error, MONGO_BSON_STREAM_ERROR,
                   MONGO_BSON_STREAM_ERROR_ALREADY_LOADED,
                   _("Cannot load stream, one is already loaded."));
@@ -77,10 +120,62 @@ mongo_bson_stream_load_from_file (MongoBsonStream  *stream,
 }
 
 static gboolean
-mongo_bson_stream_read (MongoBsonStream *stream,
-                        guint8          *buffer,
-                        gsize            buffer_len,
-                        gsize            n_bytes)
+mongo_bson_stream_read_channel (MongoBsonStream *stream,
+                                guint8          *buffer,
+                                gsize            buffer_len,
+                                gsize            n_bytes)
+{
+   MongoBsonStreamPrivate *priv;
+   GIOStatus status;
+   guint32 offset = 0;
+   gsize bytes_written;
+
+   g_return_val_if_fail(MONGO_IS_BSON_STREAM(stream), FALSE);
+   g_return_val_if_fail(buffer != NULL, FALSE);
+
+   priv = stream->priv;
+
+   if (!priv->channel) {
+      return FALSE;
+   }
+
+   if (n_bytes > buffer_len) {
+      return FALSE;
+   }
+
+again:
+   status = g_io_channel_read_chars(priv->channel,
+                                    (gchar *)(buffer + offset),
+                                    n_bytes - offset,
+                                    &bytes_written,
+                                    NULL);
+
+   switch (status) {
+   case G_IO_STATUS_AGAIN:
+      goto again;
+   case G_IO_STATUS_NORMAL:
+      offset += bytes_written;
+      if (offset == n_bytes) {
+         return TRUE;
+      } else if (offset < n_bytes) {
+         goto again;
+      } else {
+         g_assert_not_reached();
+      }
+   case G_IO_STATUS_ERROR:
+   case G_IO_STATUS_EOF:
+   default:
+      break;
+   }
+
+   return FALSE;
+}
+
+static gboolean
+mongo_bson_stream_read_stream (MongoBsonStream *stream,
+                               guint8          *buffer,
+                               gsize            buffer_len,
+                               gsize            n_bytes)
 {
    MongoBsonStreamPrivate *priv;
    guint32 offset = 0;
@@ -125,6 +220,30 @@ again:
    return FALSE;
 }
 
+static gboolean
+mongo_bson_stream_read (MongoBsonStream *stream,
+                        guint8          *buffer,
+                        gsize            buffer_len,
+                        gsize            n_bytes)
+{
+   g_return_val_if_fail(MONGO_IS_BSON_STREAM(stream), FALSE);
+   g_return_val_if_fail(buffer, FALSE);
+   g_return_val_if_fail(buffer_len, FALSE);
+   g_return_val_if_fail(n_bytes, FALSE);
+
+   if (stream->priv->stream) {
+      return mongo_bson_stream_read_stream(stream,
+                                           buffer,
+                                           buffer_len,
+                                           n_bytes);
+   } else {
+      return mongo_bson_stream_read_channel(stream,
+                                            buffer,
+                                            buffer_len,
+                                            n_bytes);
+   }
+}
+
 /**
  * mongo_bson_stream_next:
  * @stream: (in): A #MongoBsonStream.
@@ -142,7 +261,9 @@ mongo_bson_stream_next (MongoBsonStream *stream)
    guint8 *buffer;
 
    g_return_val_if_fail(MONGO_IS_BSON_STREAM(stream), NULL);
-   g_return_val_if_fail(stream->priv->stream, NULL);
+   g_return_val_if_fail(stream->priv->stream ||
+                        stream->priv->channel,
+                        NULL);
 
    if (!mongo_bson_stream_read(stream,
                                (guint8 *)&doc_len_le,
@@ -193,7 +314,13 @@ static void
 mongo_bson_stream_finalize (GObject *object)
 {
    MongoBsonStream *stream = (MongoBsonStream *)object;
+
    g_clear_object(&stream->priv->stream);
+
+   if (stream->priv->channel) {
+      g_io_channel_unref(stream->priv->channel);
+   }
+
    G_OBJECT_CLASS(mongo_bson_stream_parent_class)->finalize(object);
 }
 

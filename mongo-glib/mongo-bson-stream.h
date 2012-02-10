@@ -57,13 +57,17 @@ struct _MongoBsonStreamClass
    GObjectClass parent_class;
 };
 
-GQuark     mongo_bson_stream_error_quark    (void) G_GNUC_CONST;
-GType      mongo_bson_stream_get_type       (void) G_GNUC_CONST;
-gboolean   mongo_bson_stream_load_from_file (MongoBsonStream  *stream,
-                                             GFile            *file,
-                                             GCancellable     *cancellable,
-                                             GError          **error);
-MongoBson *mongo_bson_stream_next           (MongoBsonStream  *stream);
+MongoBsonStream *mongo_bson_stream_new               (void);
+GQuark           mongo_bson_stream_error_quark       (void) G_GNUC_CONST;
+GType            mongo_bson_stream_get_type          (void) G_GNUC_CONST;
+gboolean         mongo_bson_stream_load_from_file    (MongoBsonStream  *stream,
+                                                      GFile            *file,
+                                                      GCancellable     *cancellable,
+                                                      GError          **error);
+gboolean         mongo_bson_stream_load_from_channel (MongoBsonStream  *stream,
+                                                      GIOChannel       *channel,
+                                                      GError          **error);
+MongoBson       *mongo_bson_stream_next              (MongoBsonStream  *stream);
 
 G_END_DECLS
 
