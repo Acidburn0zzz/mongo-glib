@@ -1399,7 +1399,8 @@ again:
                                 mongo_bson_iter_get_value_int64(&iter));
          break;
       case MONGO_BSON_UTF8:
-         g_string_append(str, mongo_bson_iter_get_value_string(&iter, NULL));
+         g_string_append_printf(str, "\"%s\"",
+                                mongo_bson_iter_get_value_string(&iter, NULL));
          break;
       case MONGO_BSON_ARRAY:
       case MONGO_BSON_DOCUMENT:
