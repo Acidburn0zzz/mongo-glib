@@ -84,6 +84,15 @@ mongo_object_id_free (MongoObjectId *object_id)
    }
 }
 
+void
+mongo_clear_object_id (MongoObjectId **object_id)
+{
+   if (object_id && *object_id) {
+      mongo_object_id_free(*object_id);
+      *object_id = NULL;
+   }
+}
+
 GType
 mongo_object_id_get_type (void)
 {
