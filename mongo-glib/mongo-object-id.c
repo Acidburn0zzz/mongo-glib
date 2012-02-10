@@ -39,6 +39,30 @@ mongo_object_id_new_from_data (const guint8 *bytes)
    return object_id;
 }
 
+/**
+ * mongo_object_id_to_string:
+ * @object_id: (in): A #MongoObjectId.
+ *
+ * Converts @id into a hex string.
+ *
+ * Returns: (transfer full): The ObjectId as a string.
+ */
+gchar *
+mongo_object_id_to_string (MongoObjectId *object_id)
+{
+   GString *str;
+   guint i;
+
+   g_return_val_if_fail(object_id, NULL);
+
+   str = g_string_sized_new(24);
+   for (i = 0; i < sizeof object_id->data; i++) {
+      g_string_append_printf(str, "%02x", object_id->data[i]);
+   }
+
+   return g_string_free(str, FALSE);
+}
+
 MongoObjectId *
 mongo_object_id_copy (const MongoObjectId *object_id)
 {
