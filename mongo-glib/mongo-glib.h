@@ -26,6 +26,7 @@ G_BEGIN_DECLS
 #define MONGO_INSIDE
 
 #include "mongo-bson.h"
+#include "mongo-bson-stream.h"
 #include "mongo-client.h"
 #include "mongo-object-id.h"
 
