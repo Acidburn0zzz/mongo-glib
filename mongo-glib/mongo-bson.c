@@ -245,8 +245,13 @@ mongo_bson_get_data (MongoBson *bson,
    g_return_val_if_fail(bson != NULL, NULL);
    g_return_val_if_fail(length != NULL, NULL);
 
-   *length = bson->buf->len;
-   return bson->buf->data;
+   if (bson->buf) {
+      *length = bson->buf->len;
+      return bson->buf->data;
+   }
+
+   *length = bson->static_len;
+   return bson->static_data;
 }
 
 /**
