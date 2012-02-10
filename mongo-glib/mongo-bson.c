@@ -714,6 +714,25 @@ mongo_bson_iter_init (MongoBsonIter *iter,
 }
 
 /**
+ * mongo_bson_iter_set_trust_utf8:
+ * @iter: (in): A #MongoBsonIter.
+ * @trust_utf8: (in): If we should trust UTF-8.
+ *
+ * If the BSON document is known to have valid UTF-8 because it came
+ * from a trusted source, then this may be used to disable UTF-8
+ * validation. This can improve performance dramatically.
+ *
+ * Returns: None.
+ */
+void
+mongo_bson_iter_set_trust_utf8 (MongoBsonIter *iter,
+                                gboolean       trust_utf8)
+{
+   g_return_if_fail(iter != NULL);
+   iter->user_data8 = GINT_TO_POINTER(trust_utf8);
+}
+
+/**
  * mongo_bson_iter_find:
  * @iter: (in): A #MongoBsonIter.
  * @key: (in): A key to find in the BSON document.
@@ -1203,8 +1222,10 @@ mongo_bson_iter_next (MongoBsonIter *iter)
     */
    key = (const gchar *)&rawbuf[++offset];
    max_len = first_nul(key, rawbuf_len - offset - 1);
-   if (!g_utf8_validate(key, max_len, &end)) {
-      GOTO(failure);
+   if (G_UNLIKELY(!iter->user_data8)) {
+      if (!g_utf8_validate(key, max_len, &end)) {
+         GOTO(failure);
+      }
    }
    offset += strlen(key) + 1;
 
@@ -1269,8 +1290,10 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    case MONGO_BSON_REGEX:
       value1 = &rawbuf[offset];
       max_len = first_nul((gchar *)value1, rawbuf_len - offset - 1);
-      if (!g_utf8_validate((gchar *)value1, max_len, &end)) {
-         GOTO(failure);
+      if (G_UNLIKELY(!iter->user_data8)) {
+         if (!g_utf8_validate((gchar *)value1, max_len, &end)) {
+            GOTO(failure);
+         }
       }
       offset += max_len + 1;
       if ((offset + 1) >= rawbuf_len) {
@@ -1278,8 +1301,10 @@ mongo_bson_iter_next (MongoBsonIter *iter)
       }
       value2 = &rawbuf[offset];
       max_len = first_nul((gchar *)value2, rawbuf_len - offset - 1);
-      if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
-         GOTO(failure);
+      if (G_UNLIKELY(!iter->user_data8)) {
+         if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
+            GOTO(failure);
+         }
       }
       offset += max_len + 1;
       GOTO(success);

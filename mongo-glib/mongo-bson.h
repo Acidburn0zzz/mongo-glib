@@ -139,6 +139,8 @@ MongoBsonType  mongo_bson_iter_get_value_type      (MongoBsonIter  *iter);
 gboolean       mongo_bson_iter_next                (MongoBsonIter  *iter);
 gboolean       mongo_bson_iter_recurse             (MongoBsonIter  *iter,
                                                     MongoBsonIter  *child);
+void           mongo_bson_iter_set_trust_utf8      (MongoBsonIter  *iter,
+                                                    gboolean        trust_utf8);
 
 
 G_END_DECLS
