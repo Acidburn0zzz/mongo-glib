@@ -444,13 +444,16 @@ mongo_bson_append_bson (MongoBson   *bson,
                         const gchar *key,
                         MongoBson   *value)
 {
+   const guint8 *data;
+   gsize data_len;
+
    g_return_if_fail(bson != NULL);
    g_return_if_fail(key != NULL);
    g_return_if_fail(value != NULL);
 
+   data = mongo_bson_get_data(value, &data_len);
    mongo_bson_append(bson, MONGO_BSON_DOCUMENT, key,
-                     value->buf->data, value->buf->len,
-                     NULL, 0);
+                     data, data_len, NULL, 0);
 }
 
 /**
