@@ -1338,3 +1338,18 @@ failure:
    memset(iter, 0, sizeof *iter);
    return FALSE;
 }
+
+/**
+ * mongo_clear_bson:
+ * @bson: (inout) (allow-none): A pointer to a #MongoBson or %NULL.
+ *
+ * If @bson is a pointer to a #MongoBson, it will be freed and zeroed.
+ */
+void
+mongo_clear_bson (MongoBson **bson)
+{
+   if (bson && *bson) {
+      mongo_bson_unref(*bson);
+      *bson = NULL;
+   }
+}

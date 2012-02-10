@@ -141,6 +141,7 @@ gboolean       mongo_bson_iter_recurse             (MongoBsonIter  *iter,
                                                     MongoBsonIter  *child);
 void           mongo_bson_iter_set_trust_utf8      (MongoBsonIter  *iter,
                                                     gboolean        trust_utf8);
+void           mongo_clear_bson                    (MongoBson     **bson);
 
 
 G_END_DECLS
