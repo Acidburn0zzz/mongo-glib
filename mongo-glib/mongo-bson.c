@@ -212,6 +212,24 @@ mongo_bson_unref (MongoBson *bson)
 }
 
 /**
+ * mongo_bson_get_empty:
+ * @bson: (in): A #MongoBson.
+ *
+ * Checks to see if the contents of MongoBson are empty.
+ *
+ * Returns: None.
+ * Side effects: None.
+ */
+gboolean
+mongo_bson_get_empty (MongoBson *bson)
+{
+   guint32 len;
+   g_return_val_if_fail(bson != NULL, FALSE);
+   len = bson->buf ? bson->buf->len : bson->static_len;
+   return (len <= 5);
+}
+
+/**
  * mongo_bson_get_data:
  * @bson: (in): A #MongoBson.
  * @length: (out): A location for the buffer length.

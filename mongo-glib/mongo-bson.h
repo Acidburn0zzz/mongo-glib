@@ -114,6 +114,7 @@ void           mongo_bson_append_timeval           (MongoBson      *bson,
                                                     GTimeVal       *value);
 void           mongo_bson_append_undefined         (MongoBson      *bson,
                                                     const gchar    *key);
+gboolean       mongo_bson_get_empty                (MongoBson      *bson);
 void           mongo_bson_iter_init                (MongoBsonIter  *iter,
                                                     MongoBson      *bson);
 gboolean       mongo_bson_iter_find                (MongoBsonIter  *iter,
