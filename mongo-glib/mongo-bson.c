@@ -1235,12 +1235,18 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value1 = &rawbuf[offset];
          offset += 4;
          value2 = &rawbuf[offset];
-         max_len = first_nul((gchar *)value2, rawbuf_len - offset - 1);
-         if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
-            GOTO(failure);
+         max_len = GUINT32_FROM_LE(*(guint32 *)value1);
+         if ((offset + max_len - 10) < rawbuf_len) {
+            if (G_UNLIKELY(!iter->user_data8)) {
+               if (!g_utf8_validate((gchar *)value2, max_len - 1, &end)) {
+                  GOTO(failure);
+               }
+            }
+            offset += max_len - 1;
+            if (value2[max_len - 1] == '\0') {
+               GOTO(success);
+            }
          }
-         offset += strlen((gchar *)value2);
-         GOTO(success);
       }
       GOTO(failure);
    case MONGO_BSON_DOCUMENT:
