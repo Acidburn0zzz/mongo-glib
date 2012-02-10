@@ -1353,3 +1353,106 @@ mongo_clear_bson (MongoBson **bson)
       *bson = NULL;
    }
 }
+
+/**
+ * mongo_bson_to_string:
+ * @bson: (in): A #MongoBson.
+ *
+ * Build a string representing the BSON document.
+ *
+ * Returns: (transfer full): A string representing the BSON document.
+ */
+gchar *
+mongo_bson_to_string (MongoBson *bson,
+                      gboolean   is_array)
+{
+   MongoBsonIter iter;
+   MongoBsonType type;
+   GString *str;
+
+   g_return_val_if_fail(bson, NULL);
+
+   str = g_string_new(is_array ? "[" : "{");
+
+   mongo_bson_iter_init(&iter, bson);
+   if (mongo_bson_iter_next(&iter)) {
+again:
+      if (!is_array) {
+         g_string_append_printf(str, "\"%s\": ",
+                                mongo_bson_iter_get_key(&iter));
+      }
+      type = mongo_bson_iter_get_value_type(&iter);
+      switch (type) {
+      case MONGO_BSON_DOUBLE:
+         g_string_append_printf(str, "%f",
+                                mongo_bson_iter_get_value_double(&iter));
+         break;
+      case MONGO_BSON_DATE_TIME:
+         g_string_append(str, "ISODate()");
+         break;
+      case MONGO_BSON_INT32:
+         g_string_append_printf(str, "NumberLong(%d)",
+                                mongo_bson_iter_get_value_int(&iter));
+         break;
+      case MONGO_BSON_INT64:
+         g_string_append_printf(str, "NumberLong(%"G_GINT64_FORMAT")",
+                                mongo_bson_iter_get_value_int64(&iter));
+         break;
+      case MONGO_BSON_UTF8:
+         g_string_append(str, mongo_bson_iter_get_value_string(&iter, NULL));
+         break;
+      case MONGO_BSON_ARRAY:
+      case MONGO_BSON_DOCUMENT:
+         {
+            MongoBson *child;
+            gchar *childstr;
+
+            if ((child = mongo_bson_iter_get_value_bson(&iter))) {
+               childstr = mongo_bson_to_string(child,
+                                               (type == MONGO_BSON_ARRAY));
+               g_string_append(str, childstr);
+               mongo_bson_unref(child);
+               g_free(childstr);
+            }
+         }
+         break;
+      case MONGO_BSON_BOOLEAN:
+         g_string_append_printf(str,
+            mongo_bson_iter_get_value_boolean(&iter) ? "true" : "false");
+         break;
+      case MONGO_BSON_OBJECT_ID:
+         {
+            MongoObjectId *id;
+            gchar *idstr;
+
+            id = mongo_bson_iter_get_value_object_id(&iter);
+            idstr = mongo_object_id_to_string(id);
+            g_string_append_printf(str, "ObjectId(\"%s\")", idstr);
+            mongo_object_id_free(id);
+            g_free(idstr);
+         }
+         break;
+      case MONGO_BSON_NULL:
+         g_string_append(str, "null");
+         break;
+      case MONGO_BSON_REGEX:
+         /* TODO: */
+         g_assert_not_reached();
+         break;
+      case MONGO_BSON_UNDEFINED:
+         g_string_append(str, "undefined");
+         break;
+      default:
+         g_assert_not_reached();
+      }
+
+      if (mongo_bson_iter_next(&iter)) {
+         g_string_append(str, ", ");
+         goto again;
+      }
+   }
+
+   g_string_append(str, is_array ? "]" : "}");
+
+   return g_string_free(str, FALSE);
+}
