@@ -1369,6 +1369,8 @@ mongo_bson_to_string (MongoBson *bson,
    MongoBsonIter iter;
    MongoBsonType type;
    GString *str;
+   gchar *esc;
+
 
    g_return_val_if_fail(bson, NULL);
 
@@ -1378,8 +1380,10 @@ mongo_bson_to_string (MongoBson *bson,
    if (mongo_bson_iter_next(&iter)) {
 again:
       if (!is_array) {
-         g_string_append_printf(str, "\"%s\": ",
-                                mongo_bson_iter_get_key(&iter));
+         esc = g_strescape(mongo_bson_iter_get_key(&iter), NULL);
+         g_string_append_printf(str, "\"%s\": ", esc);
+         g_free(esc);
+
       }
       type = mongo_bson_iter_get_value_type(&iter);
       switch (type) {
@@ -1399,8 +1403,13 @@ again:
                                 mongo_bson_iter_get_value_int64(&iter));
          break;
       case MONGO_BSON_UTF8:
-         g_string_append_printf(str, "\"%s\"",
-                                mongo_bson_iter_get_value_string(&iter, NULL));
+         {
+            esc = g_strescape(mongo_bson_iter_get_value_string(&iter, NULL),
+                              NULL);
+            g_string_append_printf(str, "\"%s\"", esc);
+            g_free(esc);
+         }
+
          break;
       case MONGO_BSON_ARRAY:
       case MONGO_BSON_DOCUMENT:
