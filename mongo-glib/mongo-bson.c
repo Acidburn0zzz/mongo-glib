@@ -1442,14 +1442,25 @@ again:
 
          break;
       case MONGO_BSON_ARRAY:
+         {
+            MongoBson *child;
+            gchar *childstr;
+
+            if ((child = mongo_bson_iter_get_value_array(&iter))) {
+               childstr = mongo_bson_to_string(child, TRUE);
+               g_string_append(str, childstr);
+               mongo_bson_unref(child);
+               g_free(childstr);
+            }
+         }
+         break;
       case MONGO_BSON_DOCUMENT:
          {
             MongoBson *child;
             gchar *childstr;
 
             if ((child = mongo_bson_iter_get_value_bson(&iter))) {
-               childstr = mongo_bson_to_string(child,
-                                               (type == MONGO_BSON_ARRAY));
+               childstr = mongo_bson_to_string(child, FALSE);
                g_string_append(str, childstr);
                mongo_bson_unref(child);
                g_free(childstr);
