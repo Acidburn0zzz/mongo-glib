@@ -1414,7 +1414,15 @@ again:
                                 mongo_bson_iter_get_value_double(&iter));
          break;
       case MONGO_BSON_DATE_TIME:
-         g_string_append(str, "ISODate()");
+         {
+            GTimeVal tv = { 0 };
+            gchar *dstr;
+
+            mongo_bson_iter_get_value_timeval(&iter, &tv);
+            dstr = g_time_val_to_iso8601(&tv);
+            g_string_append_printf(str, "ISODate(\"%s\")", dstr);
+            g_free(dstr);
+         }
          break;
       case MONGO_BSON_INT32:
          g_string_append_printf(str, "NumberLong(%d)",
