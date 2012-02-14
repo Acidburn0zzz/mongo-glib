@@ -1130,6 +1130,28 @@ mongo_bson_iter_get_value_type (MongoBsonIter *iter)
 }
 
 /**
+ * mongo_bson_iter_is_key:
+ * @iter: (in): A #MongoBsonIter.
+ * @key: (in): The key to check for.
+ *
+ * Checks to see if the iterator is on the given key.
+ *
+ * Returns: %TRUE if @iter is observing @key.
+ */
+gboolean
+mongo_bson_iter_is_key (MongoBsonIter *iter,
+                        const gchar   *key)
+{
+   const gchar *current_key;
+
+   g_return_val_if_fail(iter, FALSE);
+   g_return_val_if_fail(key, FALSE);
+
+   current_key = mongo_bson_iter_get_key(iter);
+   return !g_strcmp0(key, current_key);
+}
+
+/**
  * mongo_bson_iter_recurse:
  * @iter: (in): A #MongoBsonIter.
  * @child: (out): A #MongoBsonIter.

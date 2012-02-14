@@ -136,6 +136,8 @@ const gchar   *mongo_bson_iter_get_value_string    (MongoBsonIter  *iter,
 void           mongo_bson_iter_get_value_timeval   (MongoBsonIter  *iter,
                                                     GTimeVal       *value);
 MongoBsonType  mongo_bson_iter_get_value_type      (MongoBsonIter  *iter);
+gboolean       mongo_bson_iter_is_key              (MongoBsonIter  *iter,
+                                                    const gchar    *key);
 gboolean       mongo_bson_iter_next                (MongoBsonIter  *iter);
 gboolean       mongo_bson_iter_recurse             (MongoBsonIter  *iter,
                                                     MongoBsonIter  *child);
