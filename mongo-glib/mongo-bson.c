@@ -1433,13 +1433,9 @@ again:
                                 mongo_bson_iter_get_value_int64(&iter));
          break;
       case MONGO_BSON_UTF8:
-         {
-            esc = g_strescape(mongo_bson_iter_get_value_string(&iter, NULL),
-                              NULL);
-            g_string_append_printf(str, "\"%s\"", esc);
-            g_free(esc);
-         }
-
+         esc = g_strescape(mongo_bson_iter_get_value_string(&iter, NULL), NULL);
+         g_string_append_printf(str, "\"%s\"", esc);
+         g_free(esc);
          break;
       case MONGO_BSON_ARRAY:
          {
