@@ -1244,7 +1244,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
     */
    key = (const gchar *)&rawbuf[++offset];
    max_len = first_nul(key, rawbuf_len - offset - 1);
-   if (G_UNLIKELY(!iter->user_data8)) {
+   if (!iter->user_data8) {
       if (!g_utf8_validate(key, max_len, &end)) {
          GOTO(failure);
       }
@@ -1259,7 +1259,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value2 = &rawbuf[offset];
          max_len = GUINT32_FROM_LE(*(guint32 *)value1);
          if ((offset + max_len - 10) < rawbuf_len) {
-            if (G_UNLIKELY(!iter->user_data8)) {
+            if (!iter->user_data8) {
                if (!g_utf8_validate((gchar *)value2, max_len - 1, &end)) {
                   GOTO(failure);
                }
@@ -1318,7 +1318,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    case MONGO_BSON_REGEX:
       value1 = &rawbuf[offset];
       max_len = first_nul((gchar *)value1, rawbuf_len - offset - 1);
-      if (G_UNLIKELY(!iter->user_data8)) {
+      if (!iter->user_data8) {
          if (!g_utf8_validate((gchar *)value1, max_len, &end)) {
             GOTO(failure);
          }
@@ -1329,7 +1329,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
       }
       value2 = &rawbuf[offset];
       max_len = first_nul((gchar *)value2, rawbuf_len - offset - 1);
-      if (G_UNLIKELY(!iter->user_data8)) {
+      if (!iter->user_data8) {
          if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
             GOTO(failure);
          }
