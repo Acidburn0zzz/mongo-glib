@@ -1237,7 +1237,12 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    /*
     * Get the type of the next field.
     */
-   type = rawbuf[++offset];
+   if (!(type = rawbuf[++offset])) {
+      /*
+       * This is the end of the iterator.
+       */
+      GOTO(failure);
+   }
 
    /*
     * Get the key of the next field.
