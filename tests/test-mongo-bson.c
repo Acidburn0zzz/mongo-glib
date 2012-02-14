@@ -36,6 +36,8 @@ assert_bson (MongoBson   *bson,
 static void
 append_tests (void)
 {
+   MongoObjectId *id;
+   guint8 bytes[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0x23, 0x45 };
    MongoBson *bson;
    MongoBson *array;
    MongoBson *subdoc;
@@ -132,6 +134,37 @@ append_tests (void)
    assert_bson(bson, "test12.bson");
    mongo_bson_unref(bson);
    mongo_bson_unref(array);
+
+   bson = mongo_bson_new();
+   id = mongo_object_id_new_from_data(bytes);
+   mongo_bson_append_object_id(bson, "_id", id);
+   subdoc = mongo_bson_new();
+   mongo_bson_append_object_id(subdoc, "_id", id);
+   mongo_object_id_free(id);
+   array = mongo_bson_new();
+   mongo_bson_append_string(array, "0", "1");
+   mongo_bson_append_string(array, "1", "2");
+   mongo_bson_append_string(array, "2", "3");
+   mongo_bson_append_string(array, "3", "4");
+   mongo_bson_append_array(subdoc, "tags", array);
+   mongo_bson_unref(array);
+   mongo_bson_append_string(subdoc, "text", "asdfanother");
+   array = mongo_bson_new();
+   mongo_bson_append_string(array, "name", "blah");
+   mongo_bson_append_bson(subdoc, "source", array);
+   mongo_bson_unref(array);
+   mongo_bson_append_bson(bson, "document", subdoc);
+   mongo_bson_unref(subdoc);
+   array = mongo_bson_new();
+   mongo_bson_append_string(array, "0", "source");
+   mongo_bson_append_array(bson, "type", array);
+   mongo_bson_unref(array);
+   array = mongo_bson_new();
+   mongo_bson_append_string(array, "0", "server_created_at");
+   mongo_bson_append_array(bson, "missing", array);
+   mongo_bson_unref(array);
+   assert_bson(bson, "test17.bson");
+   mongo_bson_unref(bson);
 }
 
 static MongoBson *

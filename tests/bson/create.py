@@ -32,3 +32,14 @@ save('test13.bson', {'array[bool]': [True, False, True]})
 save('test14.bson', {'array[string]': ['hello', 'world']})
 save('test15.bson', {'array[datetime]': [datetime(1970, 1, 1, 0, 0, 0), datetime(2011, 10, 22, 12, 13, 14, 123000)]})
 save('test16.bson', {'array[null]': [None, None, None]})
+
+d = OrderedDict()
+d['_id'] = bson.ObjectId('12345'.zfill(24))
+d['document'] = OrderedDict()
+d['document']['_id'] = bson.ObjectId('12345'.zfill(24))
+d['document']['tags'] = ['1','2','3','4']
+d['document']['text'] = 'asdfanother'
+d['document']['source'] = {'name': 'blah'}
+d['type'] = ['source']
+d['missing'] = ['server_created_at']
+save('test17.bson', d)
