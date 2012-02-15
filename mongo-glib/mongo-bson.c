@@ -1270,10 +1270,11 @@ mongo_bson_iter_next (MongoBsonIter *iter)
                    * Well, we have quite the delima here. The UTF-8 string is
                    * invalid, but there was definitely a key here. Consumers
                    * might need to get at data after this too. So the best
-                   * we can do is probably set the value to empty string
-                   * and move on if GOTO(failure) is not an option.
+                   * we can do is probably set the value to as long of a valid
+                   * utf-8 string as we can. We will simply NULL the end of
+                   * the buffer at the given error offset.
                    */
-                  value2 = (guint8 *)"";
+                  *(gchar *)end = '\0';
                   offset += max_len - 1;
                   GOTO(success);
                }
