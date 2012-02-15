@@ -30,6 +30,12 @@ struct _MongoBson
    GDestroyNotify static_notify;
 };
 
+typedef enum
+{
+   ITER_TRUST_UTF8   = 1 << 0,
+   ITER_INVALID_UTF8 = 1 << 1,
+} IterFlags;
+
 #define ITER_IS_TYPE(iter, type) \
    (GPOINTER_TO_INT(iter->user_data5) == type)
 
@@ -729,7 +735,12 @@ mongo_bson_iter_set_trust_utf8 (MongoBsonIter *iter,
                                 gboolean       trust_utf8)
 {
    g_return_if_fail(iter != NULL);
-   iter->user_data8 = GINT_TO_POINTER(trust_utf8);
+
+   if (trust_utf8) {
+      iter->flags |= ITER_TRUST_UTF8;
+   } else {
+      iter->flags &= ~ITER_TRUST_UTF8;
+   }
 }
 
 /**
@@ -1053,7 +1064,12 @@ mongo_bson_iter_get_value_string (MongoBsonIter *iter,
    if (ITER_IS_TYPE(iter, MONGO_BSON_UTF8)) {
       if (length) {
          memcpy(&real_length, iter->user_data6, sizeof real_length);
-         *length = GINT_FROM_LE(real_length);
+         if ((iter->flags & ITER_INVALID_UTF8)) {
+            *length = strlen(iter->user_data7) + 1;
+         } else {
+            *length = GINT_FROM_LE(real_length);
+         }
+
       }
       return iter->user_data7;
    }
@@ -1226,6 +1242,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    type = GPOINTER_TO_INT(iter->user_data5);
    value1 = (const guint8 *)iter->user_data6;
    value2 = (const guint8 *)iter->user_data7;
+   iter->flags &= ~ITER_INVALID_UTF8;
 
    /*
     * Check for end of buffer.
@@ -1249,7 +1266,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
     */
    key = (const gchar *)&rawbuf[++offset];
    max_len = first_nul(key, rawbuf_len - offset - 1);
-   if (!iter->user_data8) {
+   if (!(iter->flags & ITER_TRUST_UTF8)) {
       if (!g_utf8_validate(key, max_len, &end)) {
          GOTO(failure);
       }
@@ -1264,7 +1281,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value2 = &rawbuf[offset];
          max_len = GUINT32_FROM_LE(*(guint32 *)value1);
          if ((offset + max_len - 10) < rawbuf_len) {
-            if (!iter->user_data8) {
+            if (!(iter->flags & ITER_TRUST_UTF8)) {
                if (!g_utf8_validate((gchar *)value2, max_len - 1, &end)) {
                   /*
                    * Well, we have quite the delima here. The UTF-8 string is
@@ -1276,6 +1293,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
                    */
                   *(gchar *)end = '\0';
                   offset += max_len - 1;
+                  iter->flags |= ITER_INVALID_UTF8;
                   GOTO(success);
                }
             }
@@ -1333,7 +1351,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    case MONGO_BSON_REGEX:
       value1 = &rawbuf[offset];
       max_len = first_nul((gchar *)value1, rawbuf_len - offset - 1);
-      if (!iter->user_data8) {
+      if (!(iter->flags & ITER_TRUST_UTF8)) {
          if (!g_utf8_validate((gchar *)value1, max_len, &end)) {
             GOTO(failure);
          }
@@ -1344,7 +1362,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
       }
       value2 = &rawbuf[offset];
       max_len = first_nul((gchar *)value2, rawbuf_len - offset - 1);
-      if (!iter->user_data8) {
+      if (!(iter->flags & ITER_TRUST_UTF8)) {
          if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
             GOTO(failure);
          }
