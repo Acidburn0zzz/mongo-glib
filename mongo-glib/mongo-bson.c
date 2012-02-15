@@ -1266,7 +1266,16 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          if ((offset + max_len - 10) < rawbuf_len) {
             if (!iter->user_data8) {
                if (!g_utf8_validate((gchar *)value2, max_len - 1, &end)) {
-                  GOTO(failure);
+                  /*
+                   * Well, we have quite the delima here. The UTF-8 string is
+                   * invalid, but there was definitely a key here. Consumers
+                   * might need to get at data after this too. So the best
+                   * we can do is probably set the value to empty string
+                   * and move on if GOTO(failure) is not an option.
+                   */
+                  value2 = (guint8 *)"";
+                  offset += max_len - 1;
+                  GOTO(success);
                }
             }
             offset += max_len - 1;
