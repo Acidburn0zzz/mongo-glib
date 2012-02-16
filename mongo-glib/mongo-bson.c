@@ -1242,6 +1242,10 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    type = GPOINTER_TO_INT(iter->user_data5);
    value1 = (const guint8 *)iter->user_data6;
    value2 = (const guint8 *)iter->user_data7;
+
+   /*
+    * Unset the invalid utf8 field.
+    */
    iter->flags &= ~ITER_INVALID_UTF8;
 
    /*
