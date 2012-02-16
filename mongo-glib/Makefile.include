@@ -30,6 +30,7 @@ libmongo_glib_1_0_la_CPPFLAGS += $(GOBJECT_CFLAGS)
 libmongo_glib_1_0_la_LIBADD =
 libmongo_glib_1_0_la_LIBADD += $(GIO_LIBS)
 libmongo_glib_1_0_la_LIBADD += $(GOBJECT_LIBS)
+libmongo_glib_1_0_la_LIBADD += -lunistring
 
 INTROSPECTION_GIRS =
 INTROSPECTION_SCANNER_ARGS = --add-include-path=$(top_srcdir)/mong-glib --warn-all

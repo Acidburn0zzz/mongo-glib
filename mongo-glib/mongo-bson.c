@@ -17,6 +17,7 @@
  */
 
 #include <string.h>
+#include <unistr.h>
 
 #include "mongo-bson.h"
 
@@ -1286,7 +1287,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          max_len = GUINT32_FROM_LE(*(guint32 *)value1);
          if ((offset + max_len - 10) < rawbuf_len) {
             if (!(iter->flags & ITER_TRUST_UTF8)) {
-               if (!g_utf8_validate((gchar *)value2, max_len - 1, &end)) {
+               if ((end = (char *)u8_check((guint8 *)value2, max_len - 1))) {
                   /*
                    * Well, we have quite the delima here. The UTF-8 string is
                    * invalid, but there was definitely a key here. Consumers
@@ -1382,6 +1383,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
       }
       GOTO(failure);
    default:
+      g_printerr("Unknown type: %d key: %s\n", type, key);
       GOTO(failure);
    }
 
