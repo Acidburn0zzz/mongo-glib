@@ -32,6 +32,8 @@ MongoObjectId *mongo_object_id_copy          (const MongoObjectId  *object_id);
 void           mongo_object_id_free          (MongoObjectId        *object_id);
 GType          mongo_object_id_get_type      (void) G_GNUC_CONST;
 gchar         *mongo_object_id_to_string     (MongoObjectId        *object_id);
+gint           mongo_object_id_compare       (const MongoObjectId  *object_id,
+                                              const MongoObjectId  *other);
 
 G_END_DECLS
 

@@ -76,6 +76,13 @@ mongo_object_id_copy (const MongoObjectId *object_id)
    return copy;
 }
 
+gint
+mongo_object_id_compare (const MongoObjectId *object_id,
+                         const MongoObjectId *other)
+{
+   return memcmp(object_id, other, sizeof object_id->data);
+}
+
 void
 mongo_object_id_free (MongoObjectId *object_id)
 {
