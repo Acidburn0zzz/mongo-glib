@@ -85,9 +85,11 @@ void           mongo_bson_append_boolean           (MongoBson      *bson,
 void           mongo_bson_append_bson              (MongoBson      *bson,
                                                     const gchar    *key,
                                                     MongoBson      *value);
+#if GLIB_CHECK_VERSION(2, 26, 0)
 void           mongo_bson_append_date_time         (MongoBson      *bson,
                                                     const gchar    *key,
                                                     GDateTime      *value);
+#endif
 void           mongo_bson_append_double            (MongoBson      *bson,
                                                     const gchar    *key,
                                                     gdouble         value);
@@ -123,7 +125,9 @@ const gchar   *mongo_bson_iter_get_key             (MongoBsonIter  *iter);
 MongoBson     *mongo_bson_iter_get_value_array     (MongoBsonIter  *iter);
 gboolean       mongo_bson_iter_get_value_boolean   (MongoBsonIter  *iter);
 MongoBson     *mongo_bson_iter_get_value_bson      (MongoBsonIter  *iter);
+#if GLIB_CHECK_VERSION(2, 26, 0)
 GDateTime     *mongo_bson_iter_get_value_date_time (MongoBsonIter  *iter);
+#endif
 gdouble        mongo_bson_iter_get_value_double    (MongoBsonIter  *iter);
 MongoObjectId *mongo_bson_iter_get_value_object_id (MongoBsonIter  *iter);
 gint32         mongo_bson_iter_get_value_int       (MongoBsonIter  *iter);

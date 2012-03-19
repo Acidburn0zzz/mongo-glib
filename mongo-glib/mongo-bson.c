@@ -463,6 +463,7 @@ mongo_bson_append_bson (MongoBson   *bson,
                      data, data_len, NULL, 0);
 }
 
+#if GLIB_CHECK_VERSION(2, 26, 0)
 /**
  * mongo_bson_append_date_time:
  * @bson: (in): A #MongoBson.
@@ -489,6 +490,7 @@ mongo_bson_append_date_time (MongoBson   *bson,
 
    mongo_bson_append_timeval(bson, key, &tv);
 }
+#endif
 
 /**
  * mongo_bson_append_double:
@@ -887,6 +889,7 @@ mongo_bson_iter_get_value_bson (MongoBsonIter *iter)
    return mongo_bson_iter_get_value_document(iter, MONGO_BSON_DOCUMENT);
 }
 
+#if GLIB_CHECK_VERSION(2, 26, 0)
 /**
  * mongo_bson_iter_get_value_date_time:
  * @iter: (in): A #MongoBsonIter.
@@ -905,6 +908,7 @@ mongo_bson_iter_get_value_date_time (MongoBsonIter *iter)
    mongo_bson_iter_get_value_timeval(iter, &tv);
    return g_date_time_new_from_timeval_utc(&tv);
 }
+#endif
 
 /**
  * mongo_bson_iter_get_value_double:
