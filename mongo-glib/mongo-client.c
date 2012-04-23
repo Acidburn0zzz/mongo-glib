@@ -189,8 +189,8 @@ again:
 
 static gboolean
 mongo_client_write_ready (GIOChannel   *channel,
-                        GIOCondition  condition,
-                        gpointer      user_data)
+                          GIOCondition  condition,
+                          gpointer      user_data)
 {
    MongoClientPrivate *priv;
    MongoClient *client = user_data;
@@ -279,8 +279,8 @@ mongo_client_disable_reading (MongoClient *client)
 
 static gboolean
 mongo_client_read_ready (GIOChannel   *channel,
-                       GIOCondition  condition,
-                       gpointer      user_data)
+                         GIOCondition  condition,
+                         gpointer      user_data)
 {
    MongoClientPrivate *priv;
    MongoClientClass *klass;
