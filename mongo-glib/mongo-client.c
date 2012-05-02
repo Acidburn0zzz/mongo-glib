@@ -339,7 +339,7 @@ mongo_client_command_async (MongoClient         *client,
    db_and_cmd = g_strdup_printf("%s.$cmd", db);
    mongo_protocol_query_async(priv->protocol,
                               db_and_cmd,
-                              MONGO_QUERY_NONE,
+                              MONGO_QUERY_EXHAUST,
                               0,
                               1,
                               command,
