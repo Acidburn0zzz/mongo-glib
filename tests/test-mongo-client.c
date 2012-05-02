@@ -3,27 +3,11 @@
 static GMainLoop *gMainLoop;
 
 static void
-query_cb (GObject *object,
-          GAsyncResult *result,
-          gpointer      user_data)
+test1_connect_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
 {
    MongoClient *client = (MongoClient *)object;
-   gboolean *success = user_data;
-   GError *error = NULL;
-
-   *success = mongo_client_query_finish(client, result, &error);
-   g_assert_no_error(error);
-   g_assert(*success);
-   g_main_loop_quit(gMainLoop);
-}
-
-static void
-connect_cb (GObject      *object,
-            GAsyncResult *result,
-            gpointer      user_data)
-{
-   MongoClient *client = (MongoClient *)object;
-   MongoBson *query;
    gboolean *success = user_data;
    GError *error = NULL;
 
@@ -31,30 +15,56 @@ connect_cb (GObject      *object,
    g_assert_no_error(error);
    g_assert(*success);
 
-   query = mongo_bson_new();
-   mongo_bson_append_string(query, "type", "source");
-   mongo_client_query_async(client, "errors", query, NULL, query_cb, user_data);
-   mongo_bson_unref(query);
+   g_main_loop_quit(gMainLoop);
 }
 
 static void
-test_mongo_client_connect_async (void)
+test1 (void)
 {
    MongoClient *client;
    gboolean success = FALSE;
-   GError *error = NULL;
-   GList *list;
 
-   list = g_resolver_lookup_by_name(g_resolver_get_default(),
-                                    "localhost", NULL, &error);
-   g_assert_no_error(error);
-   g_assert(list);
+   client = mongo_client_new();
+   mongo_client_add_seed(client, "localhost", 27017);
+   mongo_client_connect_async(client, NULL, test1_connect_cb, &success);
 
-   client = g_object_new(MONGO_TYPE_CLIENT, NULL);
-   mongo_client_connect_async(client, list->data, 27017, NULL, connect_cb, &success);
    g_main_loop_run(gMainLoop);
-   g_resolver_free_addresses(list);
-   g_assert(success);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
+static void
+test2_connect_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   gboolean *success = user_data;
+   GError *error = NULL;
+
+   *success = mongo_client_connect_finish(client, result, &error);
+   g_assert_error(error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+   g_assert(!*success);
+
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test2 (void)
+{
+   GCancellable *cancellable;
+   MongoClient *client;
+   gboolean success = FALSE;
+
+   cancellable = g_cancellable_new();
+   client = mongo_client_new();
+   mongo_client_add_seed(client, "localhost", 27017);
+   mongo_client_connect_async(client, cancellable, test2_connect_cb, &success);
+   g_cancellable_cancel(cancellable);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, FALSE);
 }
 
 gint
@@ -66,7 +76,8 @@ main (gint   argc,
    g_type_init();
    gMainLoop = g_main_loop_new(NULL, FALSE);
 
-   g_test_add_func("/MongoClient/connect_async", test_mongo_client_connect_async);
+   g_test_add_func("/MongoClient/connect_async", test1);
+   g_test_add_func("/MongoClient/connect_async_cancelled", test2);
 
    return g_test_run();
 }
