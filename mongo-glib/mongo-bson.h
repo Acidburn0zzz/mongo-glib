@@ -66,8 +66,8 @@ struct _MongoBsonIter
 
 GType          mongo_bson_get_type                 (void) G_GNUC_CONST;
 GType          mongo_bson_type_get_type            (void) G_GNUC_CONST;
-const guint8  *mongo_bson_get_data                 (MongoBson      *bson,
-                                                    gsize          *length);
+const guint8  *mongo_bson_get_data                 (const MongoBson *bson,
+                                                    gsize           *length);
 MongoBson     *mongo_bson_new                      (void);
 MongoBson     *mongo_bson_new_from_data            (const guint8   *buffer,
                                                     gsize           length);

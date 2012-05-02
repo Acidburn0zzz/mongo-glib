@@ -272,8 +272,8 @@ mongo_bson_get_empty (MongoBson *bson)
  * Returns: (transfer none): The #MongoBson buffer.
  */
 const guint8 *
-mongo_bson_get_data (MongoBson *bson,
-                     gsize     *length)
+mongo_bson_get_data (const MongoBson *bson,
+                     gsize           *length)
 {
    g_return_val_if_fail(bson != NULL, NULL);
    g_return_val_if_fail(length != NULL, NULL);
