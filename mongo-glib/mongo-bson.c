@@ -288,6 +288,21 @@ mongo_bson_get_data (const MongoBson *bson,
 }
 
 /**
+ * mongo_bson_get_size:
+ * @bson: (in): A #MongoBson.
+ *
+ * Retrieves the size of the #MongoBson buffer.
+ *
+ * Returns: A gsize.
+ */
+gsize
+mongo_bson_get_size (const MongoBson *bson)
+{
+   g_return_val_if_fail(bson, 0);
+   return bson->buf->len;
+}
+
+/**
  * mongo_bson_get_type:
  *
  * Retrieve the #GType for the #MongoBson boxed type.
