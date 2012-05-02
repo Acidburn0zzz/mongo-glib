@@ -843,6 +843,14 @@ mongo_protocol_msg_finish (MongoProtocol  *protocol,
    RETURN(ret);
 }
 
+/**
+ * mongo_protocol_get_io_stream:
+ * @protocol: (in): A #MongoProtocol.
+ *
+ * Fetch the #GIOStream used by @protocol.
+ *
+ * Returns: (transfer none): A #GIOStream.
+ */
 GIOStream *
 mongo_protocol_get_io_stream (MongoProtocol *protocol)
 {

@@ -42,6 +42,14 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * mongo_database_get_collection:
+ * @database: (in): A #MongoDatabase.
+ *
+ * Fetches the collection that is found in @database.
+ *
+ * Returns: (transfer none): A #MongoDatabase.
+ */
 MongoCollection *
 mongo_database_get_collection (MongoDatabase *database,
                                const gchar   *name)
@@ -68,6 +76,14 @@ mongo_database_get_collection (MongoDatabase *database,
    RETURN(collection);
 }
 
+/**
+ * mongo_database_get_client:
+ * @database: (in): A #MongoDatabase.
+ *
+ * Fetches the client that @database communicates over.
+ *
+ * Returns: (transfer none): A #MongoClient.
+ */
 MongoClient *
 mongo_database_get_client (MongoDatabase *database)
 {

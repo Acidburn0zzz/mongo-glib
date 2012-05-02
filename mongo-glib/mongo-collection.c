@@ -43,6 +43,28 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * mongo_collection_find:
+ * @collection: (in): A #MongoCollection.
+ *
+ * Find documents within the collection.
+ *
+ * Returns: (transfer full): A #MongoCursor.
+ */
+MongoCursor *
+mongo_collection_find (MongoCollection *collection /* TODO */)
+{
+   return NULL;
+}
+
+/**
+ * mongo_collection_get_client:
+ * @collection: (in): A #MongoCollection.
+ *
+ * Fetches the client the collection communicates over.
+ *
+ * Returns: (transfer none): A #MongoClient.
+ */
 MongoClient *
 mongo_collection_get_client (MongoCollection *collection)
 {
@@ -85,6 +107,14 @@ mongo_collection_update_name (MongoCollection *collection)
    }
 }
 
+/**
+ * mongo_collection_get_database:
+ * @collection: (in): A #MongoCollection.
+ *
+ * Fetches the database that this collection belongs to.
+ *
+ * Returns: (transfer none): A #MongoDatabase.
+ */
 MongoDatabase *
 mongo_collection_get_database (MongoCollection *collection)
 {

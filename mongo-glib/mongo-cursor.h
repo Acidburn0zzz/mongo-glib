@@ -55,7 +55,6 @@ struct _MongoCursorClass
    GObjectClass parent_class;
 };
 
-MongoCursor *mongo_cursor_clone          (MongoCursor          *cursor);
 void         mongo_cursor_close_async    (MongoCursor          *cursor,
                                           GCancellable         *cancellable,
                                           GAsyncReadyCallback   callback,

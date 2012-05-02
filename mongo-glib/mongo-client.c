@@ -196,6 +196,15 @@ mongo_client_connect_finish (MongoClient   *client,
    RETURN(ret);
 }
 
+/**
+ * mongo_client_get_database:
+ * @client: (in): A #MongoClient.
+ * @name: (in): The database name.
+ *
+ * Fetches a #MongoDatabase for the database available via @client.
+ *
+ * Returns: (transfer none): #MongoDatabase.
+ */
 MongoDatabase *
 mongo_client_get_database (MongoClient *client,
                            const gchar *name)
