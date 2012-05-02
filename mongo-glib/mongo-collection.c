@@ -408,10 +408,6 @@ mongo_collection_drop_cb (GObject      *object,
       g_simple_async_result_take_error(simple, error);
    }
 
-   /*
-    * TODO: handle reply flags.
-    */
-
    g_simple_async_result_set_op_res_gboolean(simple, !!reply);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
