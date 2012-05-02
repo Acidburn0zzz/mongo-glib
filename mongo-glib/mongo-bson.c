@@ -906,9 +906,15 @@ mongo_bson_iter_get_value_boolean (MongoBsonIter *iter)
    if (ITER_IS_TYPE(iter, MONGO_BSON_BOOLEAN)) {
       memcpy(&b, iter->user_data6, sizeof b);
       return !!b;
+   } else if (ITER_IS_TYPE(iter, MONGO_BSON_INT32)) {
+      return !!mongo_bson_iter_get_value_int(iter);
+   } else if (ITER_IS_TYPE(iter, MONGO_BSON_INT64)) {
+      return !!mongo_bson_iter_get_value_int64(iter);
+   } else if (ITER_IS_TYPE(iter, MONGO_BSON_DOUBLE)) {
+      return (mongo_bson_iter_get_value_double(iter) == 1.0);
    }
 
-   g_warning("Current key is not a boolean.");
+   g_warning("Current key cannot be coerced to boolean.");
 
    return FALSE;
 }
