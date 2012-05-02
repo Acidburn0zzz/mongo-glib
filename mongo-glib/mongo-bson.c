@@ -1428,7 +1428,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
       }
       GOTO(failure);
    default:
-      g_printerr("Unknown type: %d key: %s\n", type, key);
+      g_warning("Unknown type: %d key: %s", type, key);
       GOTO(failure);
    }
 
