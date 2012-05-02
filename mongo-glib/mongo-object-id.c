@@ -48,7 +48,7 @@ mongo_object_id_new_from_data (const guint8 *bytes)
  * Returns: (transfer full): The ObjectId as a string.
  */
 gchar *
-mongo_object_id_to_string (MongoObjectId *object_id)
+mongo_object_id_to_string (const MongoObjectId *object_id)
 {
    GString *str;
    guint i;
