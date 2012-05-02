@@ -19,14 +19,17 @@
 #ifndef MONGO_CLIENT_H
 #define MONGO_CLIENT_H
 
+#include <glib-object.h>
 #include <gio/gio.h>
 
-#include "mongo-bson.h"
+#include "mongo-client.h"
+#include "mongo-collection.h"
+#include "mongo-database.h"
+#include "mongo-protocol.h"
 
 G_BEGIN_DECLS
 
 #define MONGO_TYPE_CLIENT            (mongo_client_get_type())
-#define MONGO_TYPE_CLIENT_STATE      (mongo_client_state_get_type())
 #define MONGO_CLIENT_ERROR           (mongo_client_error_quark())
 #define MONGO_CLIENT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_CLIENT, MongoClient))
 #define MONGO_CLIENT_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_CLIENT, MongoClient const))
@@ -39,35 +42,13 @@ typedef struct _MongoClient        MongoClient;
 typedef struct _MongoClientClass   MongoClientClass;
 typedef enum   _MongoClientError   MongoClientError;
 typedef struct _MongoClientPrivate MongoClientPrivate;
-typedef enum   _MongoClientState   MongoClientState;
-typedef enum   _MongoOperation     MongoOperation;
 
 enum _MongoClientError
 {
-   MONGO_CLIENT_ERROR_INVALID_STATE = 1,
-   MONGO_CLIENT_ERROR_BAD_SOCKET,
-   MONGO_CLIENT_ERROR_ERRNO,
-};
-
-enum _MongoClientState
-{
-   MONGO_CLIENT_READY,
-   MONGO_CLIENT_CONNECTING,
-   MONGO_CLIENT_CONNECTED,
-   MONGO_CLIENT_DISCONNECTING,
-   MONGO_CLIENT_DISCONNECTED,
-   MONGO_CLIENT_FINISHED,
-   MONGO_CLIENT_FAILED,
-};
-
-enum _MongoOperation
-{
-   MONGO_OPERATION_UPDATE       = 2001,
-   MONGO_OPERATION_INSERT       = 2002,
-   MONGO_OPERATION_QUERY        = 2004,
-   MONGO_OPERATION_GET_MORE     = 2005,
-   MONGO_OPERATION_DELETE       = 2006,
-   MONGO_OPERATION_KILL_CURSORS = 2007,
+   MONGO_CLIENT_ERROR_NO_SEEDS = 1,
+   MONGO_CLIENT_ERROR_NOT_CONNECTED,
+   MONGO_CLIENT_ERROR_COMMAND_FAILED,
+   MONGO_CLIENT_ERROR_INVALID_REPLY,
 };
 
 struct _MongoClient
@@ -81,50 +62,73 @@ struct _MongoClient
 struct _MongoClientClass
 {
    GObjectClass parent_class;
-
-   void (*read) (MongoClient  *client,
-                 const guint8 *data,
-                 gsize         data_len);
 };
 
-GQuark   mongo_client_error_quark       (void) G_GNUC_CONST;
-GType    mongo_client_get_type          (void) G_GNUC_CONST;
-GType    mongo_client_state_get_type    (void) G_GNUC_CONST;
-void     mongo_client_connect_async     (MongoClient          *client,
-                                         GInetAddress         *address,
-                                         guint16               port,
-                                         GCancellable         *cancellable,
-                                         GAsyncReadyCallback   callback,
-                                         gpointer              user_data);
-gboolean mongo_client_connect_finish    (MongoClient          *client,
-                                         GAsyncResult         *result,
-                                         GError              **error);
-void     mongo_client_disconnect_async  (MongoClient          *client,
-                                         gboolean              flush,
-                                         GAsyncReadyCallback   callback,
-                                         gpointer              user_data);
-gboolean mongo_client_disconnect_finish (MongoClient          *client,
-                                         GAsyncResult         *result,
-                                         GError              **error);
-void     mongo_client_write_async       (MongoClient          *client,
-                                         const guint8         *buffer,
-                                         gsize                 buffer_length,
-                                         GAsyncReadyCallback   callback,
-                                         gpointer              user_data,
-                                         GDestroyNotify        notify);
-gboolean mongo_client_write_finish      (MongoClient          *client,
-                                         GAsyncResult         *result,
-                                         GError              **error);
-void     mongo_client_query_async       (MongoClient *client,
-                                         const gchar *collection,
-                                         MongoBson *query,
-                                         GCancellable *cancellable,
-                                         GAsyncReadyCallback callback,
-                                         gpointer user_data);
-gboolean mongo_client_query_finish (MongoClient *client,
-                                    GAsyncResult *result,
-                                    GError **error);
-GType    mongo_operation_get_type       (void) G_GNUC_CONST;
+void             mongo_client_add_seed          (MongoClient          *client,
+                                                 const gchar          *hostname,
+                                                 guint16               port);
+void             mongo_client_command_async     (MongoClient          *client,
+                                                 const gchar          *db,
+                                                 const MongoBson      *command,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+MongoReply      *mongo_client_command_finish    (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
+void             mongo_client_connect_async     (MongoClient          *client,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+gboolean         mongo_client_connect_finish    (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
+void             mongo_client_disconnect_async  (MongoClient          *client,
+                                                 gboolean              kill_cursors,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+gboolean         mongo_client_disconnect_finish (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
+void             mongo_client_insert_async      (MongoClient          *client,
+                                                 const gchar          *db_and_collection,
+                                                 MongoInsertFlags      flags,
+                                                 MongoBson           **documents,
+                                                 gsize                 n_documents,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+gboolean         mongo_client_insert_finish     (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
+void             mongo_client_remove_async      (MongoClient          *client,
+                                                 const gchar          *db_and_collection,
+                                                 MongoDeleteFlags      flags,
+                                                 const MongoBson      *selector,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+gboolean         mongo_client_remove_finish     (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
+void             mongo_client_update_async      (MongoClient          *client,
+                                                 const gchar          *db_and_collection,
+                                                 MongoUpdateFlags      flags,
+                                                 const MongoBson      *selector,
+                                                 const MongoBson      *update,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+gboolean         mongo_client_update_finish     (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
+MongoDatabase   *mongo_client_get_database      (MongoClient          *client,
+                                                 const gchar          *name);
+GType            mongo_client_get_type          (void) G_GNUC_CONST;
+GQuark           mongo_client_error_quark       (void) G_GNUC_CONST;
+MongoClient     *mongo_client_new               (void);
+MongoClient     *mongo_database_get_client      (MongoDatabase        *database);
+MongoClient     *mongo_collection_get_client    (MongoCollection      *collection);
 
 G_END_DECLS
 
