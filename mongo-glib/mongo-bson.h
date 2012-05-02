@@ -70,89 +70,89 @@ const guint8  *mongo_bson_get_data                 (const MongoBson *bson,
                                                     gsize           *length);
 gsize          mongo_bson_get_size                 (const MongoBson *bson);
 MongoBson     *mongo_bson_new                      (void);
-MongoBson     *mongo_bson_new_from_data            (const guint8   *buffer,
-                                                    gsize           length);
-MongoBson     *mongo_bson_new_from_static_data     (guint8         *buffer,
-                                                    gsize           length,
-                                                    GDestroyNotify  notify);
-MongoBson     *mongo_bson_ref                      (MongoBson      *bson);
-void           mongo_bson_unref                    (MongoBson      *bson);
-void           mongo_bson_append_array             (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    MongoBson      *value);
-void           mongo_bson_append_boolean           (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    gboolean       value);
-void           mongo_bson_append_bson              (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    MongoBson      *value);
+MongoBson     *mongo_bson_new_from_data            (const guint8    *buffer,
+                                                    gsize            length);
 MongoBson     *mongo_bson_new_take_data            (guint8          *buffer,
                                                     gsize            length);
+MongoBson     *mongo_bson_new_from_static_data     (guint8          *buffer,
+                                                    gsize            length,
+                                                    GDestroyNotify   notify);
+MongoBson     *mongo_bson_ref                      (MongoBson       *bson);
+void           mongo_bson_unref                    (MongoBson       *bson);
+void           mongo_bson_append_array             (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    MongoBson       *value);
+void           mongo_bson_append_boolean           (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    gboolean        value);
+void           mongo_bson_append_bson              (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    MongoBson       *value);
 #if GLIB_CHECK_VERSION(2, 26, 0)
-void           mongo_bson_append_date_time         (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    GDateTime      *value);
+void           mongo_bson_append_date_time         (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    GDateTime       *value);
 #endif
-void           mongo_bson_append_double            (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    gdouble         value);
-void           mongo_bson_append_int               (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    gint32          value);
-void           mongo_bson_append_int64             (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    gint64          value);
-void           mongo_bson_append_null              (MongoBson      *bson,
-                                                    const gchar    *key);
-void           mongo_bson_append_object_id         (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    MongoObjectId  *object_id);
-void           mongo_bson_append_regex             (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    const gchar    *regex,
-                                                    const gchar    *options);
-void           mongo_bson_append_string            (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    const gchar    *value);
-void           mongo_bson_append_timeval           (MongoBson      *bson,
-                                                    const gchar    *key,
-                                                    GTimeVal       *value);
-void           mongo_bson_append_undefined         (MongoBson      *bson,
-                                                    const gchar    *key);
-gboolean       mongo_bson_get_empty                (MongoBson      *bson);
-void           mongo_bson_iter_init                (MongoBsonIter  *iter,
-                                                    MongoBson      *bson);
-gboolean       mongo_bson_iter_find                (MongoBsonIter  *iter,
-                                                    const gchar    *key);
-const gchar   *mongo_bson_iter_get_key             (MongoBsonIter  *iter);
-MongoBson     *mongo_bson_iter_get_value_array     (MongoBsonIter  *iter);
-gboolean       mongo_bson_iter_get_value_boolean   (MongoBsonIter  *iter);
-MongoBson     *mongo_bson_iter_get_value_bson      (MongoBsonIter  *iter);
+void           mongo_bson_append_double            (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    gdouble          value);
+void           mongo_bson_append_int               (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    gint32           value);
+void           mongo_bson_append_int64             (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    gint64           value);
+void           mongo_bson_append_null              (MongoBson       *bson,
+                                                    const gchar     *key);
+void           mongo_bson_append_object_id         (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    MongoObjectId   *object_id);
+void           mongo_bson_append_regex             (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    const gchar     *regex,
+                                                    const gchar     *options);
+void           mongo_bson_append_string            (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    const gchar     *value);
+void           mongo_bson_append_timeval           (MongoBson       *bson,
+                                                    const gchar     *key,
+                                                    GTimeVal        *value);
+void           mongo_bson_append_undefined         (MongoBson       *bson,
+                                                    const gchar     *key);
+gboolean       mongo_bson_get_empty                (MongoBson       *bson);
+void           mongo_bson_iter_init                (MongoBsonIter   *iter,
+                                                    MongoBson       *bson);
+gboolean       mongo_bson_iter_find                (MongoBsonIter   *iter,
+                                                    const gchar     *key);
+const gchar   *mongo_bson_iter_get_key             (MongoBsonIter   *iter);
+MongoBson     *mongo_bson_iter_get_value_array     (MongoBsonIter   *iter);
+gboolean       mongo_bson_iter_get_value_boolean   (MongoBsonIter   *iter);
+MongoBson     *mongo_bson_iter_get_value_bson      (MongoBsonIter   *iter);
 #if GLIB_CHECK_VERSION(2, 26, 0)
-GDateTime     *mongo_bson_iter_get_value_date_time (MongoBsonIter  *iter);
+GDateTime     *mongo_bson_iter_get_value_date_time (MongoBsonIter   *iter);
 #endif
-gdouble        mongo_bson_iter_get_value_double    (MongoBsonIter  *iter);
-MongoObjectId *mongo_bson_iter_get_value_object_id (MongoBsonIter  *iter);
-gint32         mongo_bson_iter_get_value_int       (MongoBsonIter  *iter);
-gint64         mongo_bson_iter_get_value_int64     (MongoBsonIter  *iter);
-void           mongo_bson_iter_get_value_regex     (MongoBsonIter  *iter,
-                                                    const gchar   **regex,
-                                                    const gchar   **options);
-const gchar   *mongo_bson_iter_get_value_string    (MongoBsonIter  *iter,
-                                                    gsize          *length);
-void           mongo_bson_iter_get_value_timeval   (MongoBsonIter  *iter,
-                                                    GTimeVal       *value);
-MongoBsonType  mongo_bson_iter_get_value_type      (MongoBsonIter  *iter);
-gboolean       mongo_bson_iter_is_key              (MongoBsonIter  *iter,
-                                                    const gchar    *key);
-gboolean       mongo_bson_iter_next                (MongoBsonIter  *iter);
-gboolean       mongo_bson_iter_recurse             (MongoBsonIter  *iter,
-                                                    MongoBsonIter  *child);
-void           mongo_bson_iter_set_trust_utf8      (MongoBsonIter  *iter,
-                                                    gboolean        trust_utf8);
-gchar         *mongo_bson_to_string                (MongoBson      *bson,
-                                                    gboolean        is_array);
-void           mongo_clear_bson                    (MongoBson     **bson);
+gdouble        mongo_bson_iter_get_value_double    (MongoBsonIter   *iter);
+MongoObjectId *mongo_bson_iter_get_value_object_id (MongoBsonIter   *iter);
+gint32         mongo_bson_iter_get_value_int       (MongoBsonIter   *iter);
+gint64         mongo_bson_iter_get_value_int64     (MongoBsonIter   *iter);
+void           mongo_bson_iter_get_value_regex     (MongoBsonIter   *iter,
+                                                    const gchar    **regex,
+                                                    const gchar    **options);
+const gchar   *mongo_bson_iter_get_value_string    (MongoBsonIter   *iter,
+                                                    gsize           *length);
+void           mongo_bson_iter_get_value_timeval   (MongoBsonIter   *iter,
+                                                    GTimeVal        *value);
+MongoBsonType  mongo_bson_iter_get_value_type      (MongoBsonIter   *iter);
+gboolean       mongo_bson_iter_is_key              (MongoBsonIter   *iter,
+                                                    const gchar     *key);
+gboolean       mongo_bson_iter_next                (MongoBsonIter   *iter);
+gboolean       mongo_bson_iter_recurse             (MongoBsonIter   *iter,
+                                                    MongoBsonIter   *child);
+void           mongo_bson_iter_set_trust_utf8      (MongoBsonIter   *iter,
+                                                    gboolean         trust_utf8);
+gchar         *mongo_bson_to_string                (MongoBson       *bson,
+                                                    gboolean         is_array);
+void           mongo_clear_bson                    (MongoBson      **bson);
 
 
 G_END_DECLS
