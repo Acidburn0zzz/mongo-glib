@@ -85,6 +85,7 @@ gboolean         mongo_client_connect_finish    (MongoClient          *client,
                                                  GError              **error);
 void             mongo_client_disconnect_async  (MongoClient          *client,
                                                  gboolean              kill_cursors,
+                                                 GCancellable         *cancellable,
                                                  GAsyncReadyCallback   callback,
                                                  gpointer              user_data);
 gboolean         mongo_client_disconnect_finish (MongoClient          *client,

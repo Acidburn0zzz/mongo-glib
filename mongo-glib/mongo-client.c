@@ -659,6 +659,130 @@ mongo_client_insert_finish (MongoClient   *client,
 }
 
 static void
+mongo_client_disconnect_close_cb (GObject      *object,
+                                  GAsyncResult *result,
+                                  gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   GIOStream *io_stream = (GIOStream *)object;
+   gboolean ret;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_return_if_fail(G_IS_IO_STREAM(io_stream));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(ret = g_io_stream_close_finish(io_stream, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, ret);
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+mongo_client_disconnect_kill_cursors_cb (GObject      *object,
+                                         GAsyncResult *result,
+                                         gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   mongo_protocol_kill_cursors_finish(protocol, result, NULL);
+   g_io_stream_close_async(mongo_protocol_get_io_stream(protocol),
+                           G_PRIORITY_DEFAULT,
+                           NULL,
+                           mongo_client_disconnect_close_cb,
+                           simple);
+
+   EXIT;
+}
+
+void
+mongo_client_disconnect_async (MongoClient         *client,
+                               gboolean             kill_cursors,
+                               GCancellable        *cancellable,
+                               GAsyncReadyCallback  callback,
+                               gpointer             user_data)
+{
+   MongoClientPrivate *priv;
+   GSimpleAsyncResult *simple;
+   guint64 *cursors = NULL;
+   gsize n_cursors = 0;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(callback);
+
+   priv = client->priv;
+
+   if (!priv->protocol) {
+      g_simple_async_report_error_in_idle(G_OBJECT(client), callback, user_data,
+                                          MONGO_CLIENT_ERROR,
+                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          _("Not currently connected."));
+      EXIT;
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
+                                      mongo_client_disconnect_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+
+   /*
+    * TODO: Get the list of cursors that should be destroyed.
+    */
+
+   if (kill_cursors && cursors) {
+      mongo_protocol_kill_cursors_async(
+            priv->protocol,
+            cursors,
+            n_cursors,
+            cancellable,
+            mongo_client_disconnect_kill_cursors_cb,
+            simple);
+      EXIT;
+   } else {
+      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+      g_simple_async_result_complete_in_idle(simple);
+      g_object_unref(simple);
+      EXIT;
+   }
+
+   g_assert_not_reached();
+}
+
+gboolean
+mongo_client_disconnect_finish (MongoClient   *client,
+                                GAsyncResult  *result,
+                                GError       **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   gboolean ret;
+
+   ENTRY;
+
+   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+
+   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   }
+
+   RETURN(ret);
+}
+
+static void
 mongo_client_finalize (GObject *object)
 {
    MongoClientPrivate *priv;
