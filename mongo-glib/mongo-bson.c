@@ -98,6 +98,32 @@ mongo_bson_new_from_data (const guint8 *buffer,
    return bson;
 }
 
+MongoBson *
+mongo_bson_new_take_data (guint8 *buffer,
+                          gsize   length)
+{
+   MongoBson *bson;
+   guint32 bson_len;
+
+   g_return_val_if_fail(buffer != NULL, NULL);
+
+   /*
+    * The first 4 bytes of a BSON are the length, including the 4 bytes
+    * containing said length.
+    */
+   memcpy(&bson_len, buffer, sizeof bson_len);
+   bson_len = GUINT32_FROM_LE(bson_len);
+   if (bson_len != length) {
+      return NULL;
+   }
+
+   bson = g_slice_new0(MongoBson);
+   bson->ref_count = 1;
+   bson->buf = g_byte_array_new_take(buffer, length);
+
+   return bson;
+}
+
 /**
  * mongo_bson_new_from_static_data:
  * @buffer: (in) (transfer full): The static buffer to use.

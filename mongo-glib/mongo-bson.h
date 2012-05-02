@@ -85,6 +85,8 @@ void           mongo_bson_append_boolean           (MongoBson      *bson,
 void           mongo_bson_append_bson              (MongoBson      *bson,
                                                     const gchar    *key,
                                                     MongoBson      *value);
+MongoBson     *mongo_bson_new_take_data            (guint8          *buffer,
+                                                    gsize            length);
 #if GLIB_CHECK_VERSION(2, 26, 0)
 void           mongo_bson_append_date_time         (MongoBson      *bson,
                                                     const gchar    *key,
