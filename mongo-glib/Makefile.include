@@ -10,10 +10,26 @@ INST_H_FILES =
 INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-bson.h
 INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-bson-stream.h
 INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-client.h
+INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-collection.h
+INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-cursor.h
+INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-database.h
 INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-glib.h
 INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-object-id.h
+INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-protocol.h
 
 NOINST_H_FILES =
+NOINST_H_FILES += $(top_srcdir)/mongo-glib/mongo-debug.h
+
+GIR_FILES =
+GIR_FILES += $(INST_H_FILES)
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-bson.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-bson-stream.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-client.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-collection.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-cursor.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-database.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-object-id.c
+GIR_FILES += $(top_srcdir)/mongo-glib/mongo-protocol.c
 
 libmongo_glib_1_0_la_SOURCES =
 libmongo_glib_1_0_la_SOURCES += $(INST_H_FILES)
@@ -21,7 +37,11 @@ libmongo_glib_1_0_la_SOURCES += $(NOINST_H_FILES)
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-bson.c
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-bson-stream.c
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-client.c
+libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-collection.c
+libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-cursor.c
+libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-database.c
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-object-id.c
+libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-protocol.c
 
 libmongo_glib_1_0_la_CPPFLAGS =
 libmongo_glib_1_0_la_CPPFLAGS += $(GIO_CFLAGS)
@@ -40,7 +60,7 @@ Mongo-1.0.gir: libmongo-glib-1.0.la
 Mongo_1_0_gir_INCLUDES = Gio-2.0 GObject-2.0
 Mongo_1_0_gir_CFLAGS = 
 Mongo_1_0_gir_LIBS = libmongo-glib-1.0.la
-Mongo_1_0_gir_FILES = $(libmongo_glib_1_0_la_SOURCES)
+Mongo_1_0_gir_FILES = $(GIR_FILES)
 INTROSPECTION_GIRS += Mongo-1.0.gir
 
 girdir = $(datadir)/gir-1.0
