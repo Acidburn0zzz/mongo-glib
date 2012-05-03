@@ -61,7 +61,7 @@ GType        mongo_collection_get_type      (void) G_GNUC_CONST;
 MongoCursor *mongo_collection_find          (MongoCollection      *collection,
                                              const MongoBson      *query,
                                              const MongoBson      *field_selector,
-                                             guint                 offset,
+                                             guint                 skip,
                                              guint                 limit,
                                              MongoQueryFlags       flags);
 void         mongo_collection_drop_async    (MongoCollection      *collection,

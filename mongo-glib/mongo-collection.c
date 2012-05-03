@@ -55,7 +55,7 @@ MongoCursor *
 mongo_collection_find (MongoCollection *collection,
                        const MongoBson *query,
                        const MongoBson *field_selector,
-                       guint            offset,
+                       guint            skip,
                        guint            limit,
                        MongoQueryFlags  flags)
 {
@@ -73,7 +73,7 @@ mongo_collection_find (MongoCollection *collection,
                          "collection", priv->db_and_collection,
                          "query", mongo_bson_dup(query),
                          "fields", mongo_bson_dup(field_selector),
-                         "offset", offset,
+                         "skip", skip,
                          "limit", limit,
                          NULL);
 
