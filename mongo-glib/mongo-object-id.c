@@ -83,6 +83,13 @@ mongo_object_id_compare (const MongoObjectId *object_id,
    return memcmp(object_id, other, sizeof object_id->data);
 }
 
+gboolean
+mongo_object_id_equal (const MongoObjectId *object_id,
+                       const MongoObjectId *other)
+{
+   return !mongo_object_id_compare(object_id, other);
+}
+
 void
 mongo_object_id_free (MongoObjectId *object_id)
 {
