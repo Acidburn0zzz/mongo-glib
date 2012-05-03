@@ -64,6 +64,8 @@ Mongo_1_0_gir_LIBS = libmongo-glib-1.0.la
 Mongo_1_0_gir_FILES = $(GIR_FILES)
 INTROSPECTION_GIRS += Mongo-1.0.gir
 
+Mongo-1.0.typelib: Mongo-1.0.gir
+
 girdir = $(datadir)/gir-1.0
 gir_DATA = $(INTROSPECTION_GIRS)
 

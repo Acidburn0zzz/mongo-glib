@@ -12,7 +12,7 @@ assert_bson (MongoBson   *bson,
    gsize length = 0;
    guint i;
 
-   filename = g_build_filename("tests", "bson", name, NULL);
+   filename = g_build_filename(SRC_DIR, "tests", "bson", name, NULL);
 
    if (!g_file_get_contents(filename, (gchar **)&buffer, &length, &error)) {
       g_assert_no_error(error);

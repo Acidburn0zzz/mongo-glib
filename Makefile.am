@@ -5,7 +5,7 @@ include mongo-glib/Makefile.include
 include tests/Makefile.include
 
 ACLOCAL_AMFLAGS = -I build/m4 ${ACLOCAL_FLAGS}
-DISTCHECK_CONFIGURE_FLAGS = --enable-maintainer-flags --enable-gtk-doc --enable-introspection
+DISTCHECK_CONFIGURE_FLAGS = --enable-maintainer-flags --enable-gtk-doc --enable-introspection=yes --enable-silent-rules
 
 mongodocdir = ${prefix}/doc/mongo-glib-1.0
 mongodoc_DATA =

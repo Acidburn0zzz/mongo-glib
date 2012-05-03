@@ -18,7 +18,7 @@ dnl **************************************************************************
 dnl Initialize Automake
 dnl **************************************************************************
 AC_PREREQ([2.64])
-AC_INIT([mongo],[mongo_version])
+AC_INIT([mongo-glib],[mongo_version])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([build/m4])
