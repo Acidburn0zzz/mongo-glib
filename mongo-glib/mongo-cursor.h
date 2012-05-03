@@ -42,6 +42,20 @@ typedef struct _MongoCursor        MongoCursor;
 typedef struct _MongoCursorClass   MongoCursorClass;
 typedef struct _MongoCursorPrivate MongoCursorPrivate;
 
+/**
+ * MongoCursorCallback:
+ * @cursor: (in): A #MongoCursor.
+ * @bson: (in): A #MongoBson.
+ * @user_data: (in): User data provided to mongo_cursor_foreach_async().
+ *
+ * This function prototype is used by callbacks to
+ * mongo_cursor_foreach_async(). It allows you to iterate through all
+ * of the documents as they are received from the remote Mongo server.
+ * There may be delay between successive calls to this function while
+ * data is delivered from the Mongo server.
+ *
+ * Returns: %TRUE to continue processing, %FALSE to stop.
+ */
 typedef gboolean (*MongoCursorCallback) (MongoCursor     *cursor,
                                          const MongoBson *bson,
                                          gpointer         user_data);
