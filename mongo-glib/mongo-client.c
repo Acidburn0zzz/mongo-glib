@@ -30,15 +30,17 @@ struct _MongoClientPrivate
    GHashTable *databases;
    MongoProtocol *protocol;
    GSocketClient *socket_client;
+   gboolean slave_okay;
 };
 
 enum
 {
    PROP_0,
+   PROP_SLAVE_OKAY,
    LAST_PROP
 };
 
-//static GParamSpec *gParamSpecs[LAST_PROP];
+static GParamSpec *gParamSpecs[LAST_PROP];
 
 MongoClient *
 mongo_client_new (void)
@@ -842,6 +844,10 @@ mongo_client_query_async (MongoClient         *client,
       EXIT;
    }
 
+   if (priv->slave_okay) {
+      flags |= MONGO_QUERY_SLAVE_OK;
+   }
+
    simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
                                       mongo_client_query_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
@@ -882,6 +888,23 @@ mongo_client_query_finish (MongoClient   *client,
    RETURN(reply);
 }
 
+gboolean
+mongo_client_get_slave_okay (MongoClient *client)
+{
+   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   return client->priv->slave_okay;
+}
+
+void
+mongo_client_set_slave_okay (MongoClient *client,
+                             gboolean     slave_okay)
+{
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   client->priv->slave_okay = slave_okay;
+   g_object_notify_by_pspec(G_OBJECT(client),
+                            gParamSpecs[PROP_SLAVE_OKAY]);
+}
+
 static void
 mongo_client_finalize (GObject *object)
 {
@@ -912,6 +935,40 @@ mongo_client_finalize (GObject *object)
 }
 
 static void
+mongo_client_get_property (GObject    *object,
+                           guint       prop_id,
+                           GValue     *value,
+                           GParamSpec *pspec)
+{
+   MongoClient *client = MONGO_CLIENT(object);
+
+   switch (prop_id) {
+   case PROP_SLAVE_OKAY:
+      g_value_set_boolean(value, mongo_client_get_slave_okay(client));
+      break;
+   default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+   }
+}
+
+static void
+mongo_client_set_property (GObject      *object,
+                           guint         prop_id,
+                           const GValue *value,
+                           GParamSpec   *pspec)
+{
+   MongoClient *client = MONGO_CLIENT(object);
+
+   switch (prop_id) {
+   case PROP_SLAVE_OKAY:
+      mongo_client_set_slave_okay(client, g_value_get_boolean(value));
+      break;
+   default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+   }
+}
+
+static void
 mongo_client_class_init (MongoClientClass *klass)
 {
    GObjectClass *object_class;
@@ -920,7 +977,18 @@ mongo_client_class_init (MongoClientClass *klass)
 
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = mongo_client_finalize;
+   object_class->get_property = mongo_client_get_property;
+   object_class->set_property = mongo_client_set_property;
    g_type_class_add_private(object_class, sizeof(MongoClientPrivate));
+
+   gParamSpecs[PROP_SLAVE_OKAY] =
+      g_param_spec_boolean("slave-okay",
+                          _("Slave Okay"),
+                          _("If it is okay to query a Mongo slave."),
+                          FALSE,
+                          G_PARAM_READWRITE);
+   g_object_class_install_property(object_class, PROP_SLAVE_OKAY,
+                                   gParamSpecs[PROP_SLAVE_OKAY]);
 
    EXIT;
 }

@@ -141,6 +141,9 @@ MongoDatabase   *mongo_client_get_database      (MongoClient          *client,
 GType            mongo_client_get_type          (void) G_GNUC_CONST;
 GQuark           mongo_client_error_quark       (void) G_GNUC_CONST;
 MongoClient     *mongo_client_new               (void);
+gboolean         mongo_client_get_slave_okay    (MongoClient          *client);
+void             mongo_client_set_slave_okay    (MongoClient          *client,
+                                                 gboolean              slave_okay);
 MongoClient     *mongo_database_get_client      (MongoDatabase        *database);
 MongoClient     *mongo_collection_get_client    (MongoCollection      *collection);
 
