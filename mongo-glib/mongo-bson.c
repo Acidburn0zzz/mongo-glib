@@ -21,6 +21,29 @@
 
 #include "mongo-bson.h"
 
+/**
+ * SECTION:mongo-bson
+ * @title: MongoBson
+ * @short_description: BSON document structure.
+ *
+ * #MongoBson reprsents a BSON document that can be created, traversed,
+ * and used throughout the Mongo-GLib library. They are referenced counted
+ * structures that are referenced with mongo_bson_ref() and unreferenced
+ * with mongo_bson_unref(). Memory allocated by the #MongoBson structure
+ * is automatically released when the reference count reaches zero.
+ *
+ * You can iterate through the fields in a #MongoBson using the
+ * mongo_bson_iter_* functions. #MongoBsonIter contains the state of
+ * the iterator and is used to access the current value. You may jump
+ * to the next field matching a given name using mongo_bson_iter_find().
+ *
+ * Keep in mind that BSON documents do not use modified UTF-8 like most
+ * of GLib. Therefore, they may have %NULL characters within the target
+ * string instead of the two-byte sequenced used in modified UTF-8. This
+ * may change at some point to incur an extra cost for conversion to
+ * modified UTF-8.
+ */
+
 struct _MongoBson
 {
    volatile gint ref_count;
