@@ -52,9 +52,32 @@ static GParamSpec *gParamSpecs[LAST_PROP];
  * Returns: (transfer full): A #MongoCursor.
  */
 MongoCursor *
-mongo_collection_find (MongoCollection *collection /* TODO */)
+mongo_collection_find (MongoCollection *collection,
+                       const MongoBson *query,
+                       const MongoBson *field_selector,
+                       guint            offset,
+                       guint            limit,
+                       MongoQueryFlags  flags)
 {
-   return NULL;
+   MongoCollectionPrivate *priv;
+   MongoCursor *cursor;
+
+   ENTRY;
+
+   g_return_val_if_fail(MONGO_IS_COLLECTION(collection), NULL);
+
+   priv = collection->priv;
+
+   cursor = g_object_new(MONGO_TYPE_CURSOR,
+                         "client", priv->client,
+                         "collection", priv->db_and_collection,
+                         "query", mongo_bson_dup(query),
+                         "fields", mongo_bson_dup(field_selector),
+                         "offset", offset,
+                         "limit", limit,
+                         NULL);
+
+   RETURN(cursor);
 }
 
 /**
