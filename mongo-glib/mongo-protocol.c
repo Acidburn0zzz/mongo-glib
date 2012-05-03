@@ -276,8 +276,6 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    MongoProtocolPrivate *priv;
    MongoBson *bson;
    guint32 request_id;
-   gchar *db_cmd;
-   gchar *db;
    guint offset;
 
    ENTRY;
@@ -290,13 +288,6 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
 
    offset = array->len;
    request_id = ++protocol->priv->last_request_id;
-
-   /*
-    * Strip the collection name and replace it with $cmd.
-    */
-   db = g_strdup(db_and_collection);
-   g_strdelimit(db, ".", '\0');
-   db_cmd = g_strdup_printf("%s.$cmd", db);
 
    /*
     * Build getlasterror command spec.
@@ -318,19 +309,14 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    _g_byte_array_append_int32(array, 0);
    _g_byte_array_append_int32(array, GINT32_TO_LE(OP_QUERY));
    _g_byte_array_append_int32(array, GINT32_TO_LE(MONGO_QUERY_NONE));
-   _g_byte_array_append_cstring(array, db_cmd);
+   _g_byte_array_append_cstring(array, "admin.$cmd");
    _g_byte_array_append_int32(array, 0);
    _g_byte_array_append_int32(array, 0);
    _g_byte_array_append_bson(array, bson);
    _g_byte_array_overwrite_int32(array, offset,
                                  GINT32_TO_LE(array->len - offset));
 
-   /*
-    * Release resources.
-    */
    mongo_bson_unref(bson);
-   g_free(db);
-   g_free(db_cmd);
 
    EXIT;
 }
