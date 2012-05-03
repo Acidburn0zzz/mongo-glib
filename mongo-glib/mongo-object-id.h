@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#if !defined (MONGO_INSIDE) && !defined (MONGO_COMPILATION)
+#error "Only <mongo-glib/mongo-glib.h> can be included directly."
+#endif
+
 #ifndef MONGO_OBJECT_ID_H
 #define MONGO_OBJECT_ID_H
 

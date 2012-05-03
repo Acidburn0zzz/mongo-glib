@@ -46,6 +46,7 @@ libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-protocol.c
 libmongo_glib_1_0_la_CPPFLAGS =
 libmongo_glib_1_0_la_CPPFLAGS += $(GIO_CFLAGS)
 libmongo_glib_1_0_la_CPPFLAGS += $(GOBJECT_CFLAGS)
+libmongo_glib_1_0_la_CPPFLAGS += -DMONGO_COMPILATION
 
 libmongo_glib_1_0_la_LIBADD =
 libmongo_glib_1_0_la_LIBADD += $(GIO_LIBS)
@@ -58,7 +59,7 @@ INTROSPECTION_COMPILER_ARGS = --includedir=$(top_srcdir)/mongo-glib
 
 Mongo-1.0.gir: libmongo-glib-1.0.la
 Mongo_1_0_gir_INCLUDES = Gio-2.0 GObject-2.0
-Mongo_1_0_gir_CFLAGS = 
+Mongo_1_0_gir_CFLAGS = -DMONGO_COMPILATION
 Mongo_1_0_gir_LIBS = libmongo-glib-1.0.la
 Mongo_1_0_gir_FILES = $(GIR_FILES)
 INTROSPECTION_GIRS += Mongo-1.0.gir
