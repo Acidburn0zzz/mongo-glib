@@ -228,6 +228,22 @@ mongo_bson_new (void)
    return bson;
 }
 
+MongoBson *
+mongo_bson_dup (const MongoBson *bson)
+{
+   MongoBson *ret = NULL;
+
+   if (bson) {
+      if (bson->static_data) {
+         ret = mongo_bson_new_from_data(bson->static_data, bson->static_len);
+      } else {
+         ret = mongo_bson_new_from_data(bson->buf->data, bson->buf->len);
+      }
+   }
+
+   return ret;
+}
+
 /**
  * mongo_bson_ref:
  * @bson: (in): A #MongoBson.
