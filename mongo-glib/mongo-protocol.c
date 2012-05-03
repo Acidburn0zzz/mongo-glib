@@ -924,10 +924,6 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       GOTO(failure);
    }
 
-   /*
-    * TODO: Read each of the following MongoBson documents.
-    */
-
    buffer += sizeof reply;
    avail = reply.len - sizeof reply;
    docs = g_ptr_array_new();
