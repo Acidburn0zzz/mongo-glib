@@ -19,12 +19,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef __linux__
-#include <sys/utsname.h>
-#include <sys/types.h>
-#include <sys/syscall.h>
-#endif /* __linux__ */
-
 #include "mongo-object-id.h"
 
 struct _MongoObjectId
@@ -39,20 +33,13 @@ static gint32  gIncrement;
 static void
 mongo_object_id_init (void)
 {
-   gchar hostname[64] = { 0 };
+   gchar hostname[HOST_NAME_MAX] = { 0 };
    char *md5;
+   int ret;
 
-#ifdef __linux__
-	struct utsname u;
-   uname(&u);
-   memcpy(hostname, u.nodename, sizeof(hostname));
-#else
-#ifdef __APPLE__
-   gethostname(hostname, sizeof (hostname));
-#else
-#error "Target platform not supported"
-#endif /* __APPLE__ */
-#endif /* __linux__ */
+   if (0 != (ret = gethostname(hostname, sizeof hostname - 1))) {
+      g_error("Failed to get hostname, cannot generate MongoObjectId");
+   }
 
    md5 = g_compute_checksum_for_string(G_CHECKSUM_MD5, hostname,
                                        sizeof hostname);
