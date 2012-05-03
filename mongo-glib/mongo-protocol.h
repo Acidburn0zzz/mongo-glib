@@ -184,6 +184,7 @@ void        mongo_protocol_msg_async           (MongoProtocol        *protocol,
 gboolean    mongo_protocol_msg_finish          (MongoProtocol        *protocol,
                                                 GAsyncResult         *result,
                                                 GError              **error);
+void        mongo_protocol_flush_sync          (MongoProtocol        *protocol);
 
 G_END_DECLS
 

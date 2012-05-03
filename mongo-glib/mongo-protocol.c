@@ -188,6 +188,13 @@ mongo_protocol_flush_cb (GObject      *object,
    EXIT;
 }
 
+void
+mongo_protocol_flush_sync (MongoProtocol *protocol)
+{
+   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
+   g_output_stream_flush(protocol->priv->output_stream, NULL, NULL);
+}
+
 static gboolean
 mongo_protocol_flush (MongoProtocol *protocol)
 {
