@@ -32,11 +32,13 @@ struct _MongoCursorPrivate
    gchar *collection;
    guint limit;
    guint skip;
+   guint batch_size;
 };
 
 enum
 {
    PROP_0,
+   PROP_BATCH_SIZE,
    PROP_CLIENT,
    PROP_COLLECTION,
    PROP_FIELDS,
@@ -47,6 +49,13 @@ enum
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
+
+guint
+mongo_cursor_get_batch_size (MongoCursor *cursor)
+{
+   g_return_val_if_fail(MONGO_IS_CURSOR(cursor), NULL);
+   return cursor->priv->batch_size;
+}
 
 /**
  * mongo_cursor_get_client:
@@ -112,6 +121,16 @@ mongo_cursor_get_skip (MongoCursor *cursor)
 {
    g_return_val_if_fail(MONGO_IS_CURSOR(cursor), 0);
    return cursor->priv->skip;
+}
+
+static void
+mongo_cursor_set_batch_size (MongoCursor *cursor,
+                             guint        batch_size)
+{
+   g_return_if_fail(MONGO_IS_CURSOR(cursor));
+   cursor->priv->batch_size = batch_size;
+   g_object_notify_by_pspec(G_OBJECT(cursor),
+                            gParamSpecs[PROP_BATCH_SIZE]);
 }
 
 static void
@@ -211,6 +230,9 @@ mongo_cursor_get_property (GObject    *object,
    MongoCursor *cursor = MONGO_CURSOR(object);
 
    switch (prop_id) {
+   case PROP_BATCH_SIZE:
+      g_value_set_uint(value, mongo_cursor_get_batch_size(cursor));
+      break;
    case PROP_CLIENT:
       g_value_set_object(value, mongo_cursor_get_client(cursor));
       break;
@@ -243,6 +265,9 @@ mongo_cursor_set_property (GObject      *object,
    MongoCursor *cursor = MONGO_CURSOR(object);
 
    switch (prop_id) {
+   case PROP_BATCH_SIZE:
+      mongo_cursor_set_batch_size(cursor, g_value_get_uint(value));
+      break;
    case PROP_CLIENT:
       mongo_cursor_set_client(cursor, g_value_get_object(value));
       break;
@@ -278,6 +303,17 @@ mongo_cursor_class_init (MongoCursorClass *klass)
    object_class->get_property = mongo_cursor_get_property;
    object_class->set_property = mongo_cursor_set_property;
    g_type_class_add_private(object_class, sizeof(MongoCursorPrivate));
+
+   gParamSpecs[PROP_BATCH_SIZE] =
+      g_param_spec_uint("batch-size",
+                        _("Batch Size"),
+                        _("The requested number of items in the batch."),
+                        0,
+                        G_MAXUINT32,
+                        0,
+                        G_PARAM_READWRITE);
+   g_object_class_install_property(object_class, PROP_BATCH_SIZE,
+                                   gParamSpecs[PROP_BATCH_SIZE]);
 
    gParamSpecs[PROP_CLIENT] =
       g_param_spec_object("client",
