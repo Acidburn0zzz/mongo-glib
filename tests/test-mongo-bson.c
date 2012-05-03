@@ -170,7 +170,7 @@ append_tests (void)
 static MongoBson *
 get_bson (const gchar *name)
 {
-   const gchar *filename = g_build_filename("tests", "bson", name, NULL);
+   const gchar *filename = g_build_filename(SRC_DIR, "tests", "bson", name, NULL);
    GError *error = NULL;
    gchar *buffer;
    gsize length;
