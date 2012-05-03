@@ -1194,7 +1194,7 @@ mongo_protocol_init (MongoProtocol *protocol)
                                                 MONGO_TYPE_PROTOCOL,
                                                 MongoProtocolPrivate);
    protocol->priv->last_request_id = g_random_int();
-   protocol->priv->getlasterror_w = -1;
+   protocol->priv->getlasterror_w = 0;
    protocol->priv->getlasterror_j = TRUE;
    protocol->priv->shutdown = g_cancellable_new();
    protocol->priv->requests = g_hash_table_new_full(g_direct_hash,
