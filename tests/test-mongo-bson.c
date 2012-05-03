@@ -45,29 +45,29 @@ append_tests (void)
    GTimeZone *tz;
    GTimeVal tv;
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_int(bson, "int", 1);
    assert_bson(bson, "test1.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_int64(bson, "int64", 1);
    assert_bson(bson, "test2.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_double(bson, "double", 1.123);
    assert_bson(bson, "test3.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    tz = g_time_zone_new("Z");
    dt = g_date_time_new(tz, 2011, 10, 22, 12, 13, 14.123);
    mongo_bson_append_date_time(bson, "utc", dt);
    assert_bson(bson, "test4.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    g_date_time_to_timeval(dt, &tv);
    mongo_bson_append_timeval(bson, "utc", &tv);
    assert_bson(bson, "test4.bson");
@@ -75,13 +75,13 @@ append_tests (void)
    g_date_time_unref(dt);
    g_time_zone_unref(tz);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_string(bson, "string", "some string");
    assert_bson(bson, "test5.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
-   array = mongo_bson_new();
+   bson = mongo_bson_new_empty();
+   array = mongo_bson_new_empty();
    mongo_bson_append_int(array, "0", 1);
    mongo_bson_append_int(array, "1", 2);
    mongo_bson_append_int(array, "2", 3);
@@ -93,8 +93,8 @@ append_tests (void)
    mongo_bson_unref(array);
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
-   array = mongo_bson_new();
+   bson = mongo_bson_new_empty();
+   array = mongo_bson_new_empty();
    mongo_bson_append_double(array, "0", 1.123);
    mongo_bson_append_double(array, "1", 2.123);
    mongo_bson_append_array(bson, "array[double]", array);
@@ -102,31 +102,31 @@ append_tests (void)
    mongo_bson_unref(array);
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
-   subdoc = mongo_bson_new();
+   bson = mongo_bson_new_empty();
+   subdoc = mongo_bson_new_empty();
    mongo_bson_append_int(subdoc, "int", 1);
    mongo_bson_append_bson(bson, "document", subdoc);
    assert_bson(bson, "test8.bson");
    mongo_bson_unref(subdoc);
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_null(bson, "null");
    assert_bson(bson, "test9.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_regex(bson, "regex", "1234", "i");
    assert_bson(bson, "test10.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_string(bson, "hello", "world");
    assert_bson(bson, "test11.bson");
    mongo_bson_unref(bson);
 
-   bson = mongo_bson_new();
-   array = mongo_bson_new();
+   bson = mongo_bson_new_empty();
+   array = mongo_bson_new_empty();
    mongo_bson_append_string(array, "0", "awesome");
    mongo_bson_append_double(array, "1", 5.05);
    mongo_bson_append_int(array, "2", 1986);
@@ -135,13 +135,13 @@ append_tests (void)
    mongo_bson_unref(bson);
    mongo_bson_unref(array);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    id = mongo_object_id_new_from_data(bytes);
    mongo_bson_append_object_id(bson, "_id", id);
-   subdoc = mongo_bson_new();
+   subdoc = mongo_bson_new_empty();
    mongo_bson_append_object_id(subdoc, "_id", id);
    mongo_object_id_free(id);
-   array = mongo_bson_new();
+   array = mongo_bson_new_empty();
    mongo_bson_append_string(array, "0", "1");
    mongo_bson_append_string(array, "1", "2");
    mongo_bson_append_string(array, "2", "3");
@@ -149,17 +149,17 @@ append_tests (void)
    mongo_bson_append_array(subdoc, "tags", array);
    mongo_bson_unref(array);
    mongo_bson_append_string(subdoc, "text", "asdfanother");
-   array = mongo_bson_new();
+   array = mongo_bson_new_empty();
    mongo_bson_append_string(array, "name", "blah");
    mongo_bson_append_bson(subdoc, "source", array);
    mongo_bson_unref(array);
    mongo_bson_append_bson(bson, "document", subdoc);
    mongo_bson_unref(subdoc);
-   array = mongo_bson_new();
+   array = mongo_bson_new_empty();
    mongo_bson_append_string(array, "0", "source");
    mongo_bson_append_array(bson, "type", array);
    mongo_bson_unref(array);
-   array = mongo_bson_new();
+   array = mongo_bson_new_empty();
    mongo_bson_append_string(array, "0", "server_created_at");
    mongo_bson_append_array(bson, "missing", array);
    mongo_bson_unref(array);

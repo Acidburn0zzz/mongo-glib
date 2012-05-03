@@ -175,14 +175,16 @@ mongo_bson_new_from_static_data (guint8         *buffer,
 }
 
 /**
- * mongo_bson_new:
+ * mongo_bson_new_empty:
  *
- * Creates a new instance of #MongoBson.
+ * Creates a new instance of #MongoBson. This function is similar to
+ * mongo_bson_new() except that it does not pre-populate the newly created
+ * #MongoBson instance with an _id field.
  *
- * Returns: A #MongoBson that should be freed with mongo_bson_unref().
+ * Returns: An empty #MongoBson that should be freed with mongo_bson_unref().
  */
 MongoBson *
-mongo_bson_new (void)
+mongo_bson_new_empty (void)
 {
    MongoBson *bson;
    gint32 len = GINT_TO_LE(5);
@@ -198,6 +200,30 @@ mongo_bson_new (void)
    g_assert(bson);
    g_assert(bson->buf);
    g_assert_cmpint(bson->buf->len, ==, 5);
+
+   return bson;
+}
+
+/**
+ * mongo_bson_new:
+ *
+ * Creates a new instance of #MongoBson. The #MongoBson instance is
+ * pre-populated with an _id field and #MongoObjectId value. This value
+ * is generated on the local machine and follows the guidelines suggested
+ * by the BSON ObjectID specificiation.
+ *
+ * Returns: A #MongoBson that should be freed with mongo_bson_unref().
+ */
+MongoBson *
+mongo_bson_new (void)
+{
+   MongoObjectId *oid;
+   MongoBson *bson;
+
+   bson = mongo_bson_new_empty();
+   oid = mongo_object_id_new();
+   mongo_bson_append_object_id(bson, "_id", oid);
+   mongo_object_id_free(oid);
 
    return bson;
 }
