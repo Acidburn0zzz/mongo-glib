@@ -25,3 +25,4 @@ stamp-h1
 *.typelib
 test-mongo-bson
 test-mongo-client
+test-mongo-object-id
