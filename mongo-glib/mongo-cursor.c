@@ -48,6 +48,14 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * mongo_cursor_get_client:
+ * @cursor: (in): A #MongoCursor.
+ *
+ * Fetches the client the cursor is using.
+ *
+ * Returns: (transfer none): A #MongoClient.
+ */
 MongoClient *
 mongo_cursor_get_client (MongoCursor *cursor)
 {
@@ -62,6 +70,14 @@ mongo_cursor_get_collection (MongoCursor *cursor)
    return cursor->priv->collection;
 }
 
+/**
+ * mongo_cursor_get_fields:
+ * @cursor: (in): A #MongoCursor.
+ *
+ * Fetches the field selector used by the cursor.
+ *
+ * Returns: (transfer none): A #MongoBson or %NULL.
+ */
 MongoBson *
 mongo_cursor_get_fields (MongoCursor *cursor)
 {
@@ -76,6 +92,14 @@ mongo_cursor_get_limit (MongoCursor *cursor)
    return cursor->priv->limit;
 }
 
+/**
+ * mongo_cursor_get_query:
+ * @cursor: (in): A #MongoCursor.
+ *
+ * Fetches the query performed by the cursor.
+ *
+ * Returns: (transfer none): A #MongoBson.
+ */
 MongoBson *
 mongo_cursor_get_query (MongoCursor *cursor)
 {
