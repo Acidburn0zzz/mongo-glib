@@ -303,13 +303,6 @@ mongo_bson_stream_next (MongoBsonStream *stream)
    return bson;
 }
 
-/**
- * mongo_bson_stream_finalize:
- * @object: (in): A #MongoBsonStream.
- *
- * Finalizer for a #MongoBsonStream instance. Frees any resources held by
- * the instance.
- */
 static void
 mongo_bson_stream_finalize (GObject *object)
 {
@@ -324,12 +317,6 @@ mongo_bson_stream_finalize (GObject *object)
    G_OBJECT_CLASS(mongo_bson_stream_parent_class)->finalize(object);
 }
 
-/**
- * mongo_bson_stream_class_init:
- * @klass: (in): A #MongoBsonStreamClass.
- *
- * Initializes the #MongoBsonStreamClass and prepares the vtable.
- */
 static void
 mongo_bson_stream_class_init (MongoBsonStreamClass *klass)
 {
@@ -340,12 +327,6 @@ mongo_bson_stream_class_init (MongoBsonStreamClass *klass)
    g_type_class_add_private(object_class, sizeof(MongoBsonStreamPrivate));
 }
 
-/**
- * mongo_bson_stream_init:
- * @: (in): A #MongoBsonStream.
- *
- * Initializes the newly created #MongoBsonStream instance.
- */
 static void
 mongo_bson_stream_init (MongoBsonStream *stream)
 {

@@ -4,6 +4,8 @@ include data/Makefile.include
 include mongo-glib/Makefile.include
 include tests/Makefile.include
 
+SUBDIRS = . doc
+
 ACLOCAL_AMFLAGS = -I build/m4 ${ACLOCAL_FLAGS}
 DISTCHECK_CONFIGURE_FLAGS = --enable-maintainer-flags --enable-gtk-doc --enable-introspection=yes --enable-silent-rules
 

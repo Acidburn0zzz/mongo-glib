@@ -1,0 +1,7 @@
+*.stamp
+html
+xml
+tmpl
+mongo-glib.*
+*.txt
+version.xml
