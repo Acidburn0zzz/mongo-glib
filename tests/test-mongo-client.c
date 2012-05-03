@@ -116,6 +116,60 @@ test3 (void)
    g_assert_cmpint(success, ==, TRUE);
 }
 
+static void
+test4_insert_cb (GObject      *object,
+                 GAsyncResult *result,
+                 gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   gboolean *success = user_data;
+   GError *error = NULL;
+
+   *success = mongo_client_insert_finish(client, result, &error);
+   g_assert_no_error(error);
+   g_assert(*success);
+
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test4_connect_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   MongoBson *bson;
+   gboolean ret;
+   GError *error = NULL;
+
+   ret = mongo_client_connect_finish(client, result, &error);
+   g_assert_no_error(error);
+   g_assert(ret);
+
+   bson = mongo_bson_new();
+   mongo_bson_append_int(bson, "key1", 1234);
+   mongo_bson_append_string(bson, "key2", "Some test string");
+   mongo_client_insert_async(client, "dbtest1.dbcollection1",
+                             MONGO_INSERT_NONE, &bson, 1, NULL,
+                             test4_insert_cb, user_data);
+   mongo_bson_unref(bson);
+}
+
+static void
+test4 (void)
+{
+   MongoClient *client;
+   gboolean success = FALSE;
+
+   client = mongo_client_new();
+   mongo_client_add_seed(client, "localhost", 27017);
+   mongo_client_connect_async(client, NULL, test4_connect_cb, &success);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -128,6 +182,7 @@ main (gint   argc,
    g_test_add_func("/MongoClient/connect_async", test1);
    g_test_add_func("/MongoClient/connect_async_cancelled", test2);
    g_test_add_func("/MongoClient/disconnect_async", test3);
+   g_test_add_func("/MongoClient/insert_async", test4);
 
    return g_test_run();
 }
