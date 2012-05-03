@@ -17,6 +17,13 @@
  */
 
 #include <string.h>
+#include <unistd.h>
+
+#ifdef __linux__
+#include <sys/utsname.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
+#endif /* __linux__ */
 
 #include "mongo-object-id.h"
 
@@ -24,6 +31,64 @@ struct _MongoObjectId
 {
    guint8 data[12];
 };
+
+static guint8  gMachineId[3];
+static gushort gPid;
+static gint32  gIncrement;
+
+static void
+mongo_object_id_init (void)
+{
+   gchar hostname[64] = { 0 };
+   char *md5;
+
+#ifdef __linux__
+	struct utsname u;
+   uname(&u);
+   memcpy(hostname, u.nodename, sizeof(hostname));
+#else
+#ifdef __APPLE__
+   gethostname(hostname, sizeof (hostname));
+#else
+#error "Target platform not supported"
+#endif /* __APPLE__ */
+#endif /* __linux__ */
+
+   md5 = g_compute_checksum_for_string(G_CHECKSUM_MD5, hostname,
+                                       sizeof hostname);
+   memcpy(gMachineId, md5, sizeof gMachineId);
+   g_free(md5);
+
+   gPid = (gushort)getpid();
+}
+
+MongoObjectId *
+mongo_object_id_new (void)
+{
+   static gsize initialized = FALSE;
+   GTimeVal val = { 0 };
+   guint32 t;
+   guint8 bytes[12];
+   gint32 inc;
+
+   if (g_once_init_enter(&initialized)) {
+      mongo_object_id_init();
+      g_once_init_leave(&initialized, TRUE);
+   }
+
+   g_get_current_time(&val);
+   t = GUINT32_TO_BE(val.tv_sec);
+   inc = GUINT32_TO_BE(g_atomic_int_add(&gIncrement, 1));
+
+   memcpy(&bytes[0], &t, sizeof t);
+   memcpy(&bytes[4], &gMachineId, sizeof gMachineId);
+   memcpy(&bytes[7], &gPid, sizeof gPid);
+   bytes[9] = ((guint8 *)&inc)[1];
+   bytes[10] = ((guint8 *)&inc)[2];
+   bytes[11] = ((guint8 *)&inc)[3];
+
+   return mongo_object_id_new_from_data(bytes);
+}
 
 MongoObjectId *
 mongo_object_id_new_from_data (const guint8 *bytes)
