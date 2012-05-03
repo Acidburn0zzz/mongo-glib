@@ -123,6 +123,19 @@ void             mongo_client_update_async      (MongoClient          *client,
 gboolean         mongo_client_update_finish     (MongoClient          *client,
                                                  GAsyncResult         *result,
                                                  GError              **error);
+void             mongo_client_query_async       (MongoClient          *client,
+                                                 const gchar          *db_and_collection,
+                                                 MongoQueryFlags       flags,
+                                                 guint32               skip,
+                                                 guint32               limit,
+                                                 const MongoBson      *query,
+                                                 const MongoBson      *field_selector,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+MongoReply      *mongo_client_query_finish      (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
 MongoDatabase   *mongo_client_get_database      (MongoClient          *client,
                                                  const gchar          *name);
 GType            mongo_client_get_type          (void) G_GNUC_CONST;
