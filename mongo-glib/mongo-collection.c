@@ -58,8 +58,8 @@ static GParamSpec *gParamSpecs[LAST_PROP];
  */
 MongoCursor *
 mongo_collection_find (MongoCollection *collection,
-                       const MongoBson *query,
-                       const MongoBson *field_selector,
+                       MongoBson       *query,
+                       MongoBson       *field_selector,
                        guint            skip,
                        guint            limit,
                        MongoQueryFlags  flags)
@@ -76,8 +76,8 @@ mongo_collection_find (MongoCollection *collection,
    cursor = g_object_new(MONGO_TYPE_CURSOR,
                          "client", priv->client,
                          "collection", priv->db_and_collection,
-                         "query", mongo_bson_dup(query),
-                         "fields", mongo_bson_dup(field_selector),
+                         "query", query,
+                         "fields", field_selector,
                          "skip", skip,
                          "limit", limit,
                          NULL);

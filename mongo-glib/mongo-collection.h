@@ -59,8 +59,8 @@ struct _MongoCollectionClass
 
 GType        mongo_collection_get_type      (void) G_GNUC_CONST;
 MongoCursor *mongo_collection_find          (MongoCollection      *collection,
-                                             const MongoBson      *query,
-                                             const MongoBson      *field_selector,
+                                             MongoBson            *query,
+                                             MongoBson            *field_selector,
                                              guint                 skip,
                                              guint                 limit,
                                              MongoQueryFlags       flags);
