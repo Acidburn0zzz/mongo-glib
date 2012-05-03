@@ -129,7 +129,7 @@ dnl **************************************************************************
 dnl Miscellaneous
 dnl **************************************************************************
 GTK_DOC_CHECK([1.11])
-GOBJECT_INTROSPECTION_CHECK([0.6.7])
+GOBJECT_INTROSPECTION_CHECK([1.30.0])
 SHAMROCK_EXPAND_LIBDIR
 SHAMROCK_EXPAND_BINDIR
 SHAMROCK_EXPAND_DATADIR
@@ -148,8 +148,9 @@ echo ""
 echo "Mongo-GLib $VERSION"
 echo ""
 echo "  Prefix.....................: ${prefix}"
-echo "  Debug Level................: ${enable_debug}"
-echo "  Compiler Flags.............: ${CFLAGS}"
+echo "  Enable Introspection.......: ${found_introspection}"
 echo "  Enable API Reference.......: ${enable_gtk_doc}"
 echo "  Enable Test Suite..........: ${enable_glibtest}"
+echo "  Debug Level................: ${enable_debug}"
+echo "  Compiler Flags.............: ${CFLAGS}"
 echo ""

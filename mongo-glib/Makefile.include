@@ -1,4 +1,4 @@
--include $(top_srcdir)/Makefile.introspection
+-include $(INTROSPECTION_MAKEFILE)
 
 headerdir = $(prefix)/include/mongo-glib-1.0/mongo-glib
 header_DATA = $(INST_H_FILES)
@@ -57,14 +57,14 @@ INTROSPECTION_GIRS =
 INTROSPECTION_SCANNER_ARGS = --add-include-path=$(top_srcdir)/mongo-glib --warn-all
 INTROSPECTION_COMPILER_ARGS = --includedir=$(top_srcdir)/mongo-glib
 
+if HAVE_INTROSPECTION
+
 Mongo-1.0.gir: libmongo-glib-1.0.la
 Mongo_1_0_gir_INCLUDES = Gio-2.0 GObject-2.0
 Mongo_1_0_gir_CFLAGS = -DMONGO_COMPILATION
 Mongo_1_0_gir_LIBS = libmongo-glib-1.0.la
 Mongo_1_0_gir_FILES = $(GIR_FILES)
 INTROSPECTION_GIRS += Mongo-1.0.gir
-
-Mongo-1.0.typelib: Mongo-1.0.gir
 
 girdir = $(datadir)/gir-1.0
 gir_DATA = $(INTROSPECTION_GIRS)
@@ -73,3 +73,5 @@ typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 
 CLEANFILES = $(gir_DATA) $(typelib_DATA)
+
+endif
