@@ -5,3 +5,4 @@ tmpl
 mongo-glib.*
 *.txt
 version.xml
+*.bak
