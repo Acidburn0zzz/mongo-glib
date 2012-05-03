@@ -480,7 +480,7 @@ mongo_collection_drop_async (MongoCollection     *collection,
    simple = g_simple_async_result_new(G_OBJECT(collection), callback, user_data,
                                       mongo_collection_drop_async);
 
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_string(bson, "drop", priv->name);
    mongo_client_command_async(priv->client,
                               mongo_database_get_name(priv->database),

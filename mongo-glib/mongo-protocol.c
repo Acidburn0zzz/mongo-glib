@@ -292,7 +292,7 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    /*
     * Build getlasterror command spec.
     */
-   bson = mongo_bson_new();
+   bson = mongo_bson_new_empty();
    mongo_bson_append_int(bson, "getlasterror", 1);
    mongo_bson_append_boolean(bson, "j", priv->getlasterror_j);
    if (priv->getlasterror_w < 0) {
