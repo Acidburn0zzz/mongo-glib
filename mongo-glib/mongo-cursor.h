@@ -59,6 +59,11 @@ struct _MongoCursorClass
    GObjectClass parent_class;
 };
 
+const gchar *mongo_cursor_get_collection (MongoCursor          *cursor);
+guint        mongo_cursor_get_skip       (MongoCursor          *cursor);
+guint        mongo_cursor_get_limit      (MongoCursor          *cursor);
+MongoBson   *mongo_cursor_get_fields     (MongoCursor          *cursor);
+MongoBson   *mongo_cursor_get_query      (MongoCursor          *cursor);
 void         mongo_cursor_close_async    (MongoCursor          *cursor,
                                           GCancellable         *cancellable,
                                           GAsyncReadyCallback   callback,
