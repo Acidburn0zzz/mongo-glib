@@ -170,6 +170,67 @@ test4 (void)
    g_assert_cmpint(success, ==, TRUE);
 }
 
+static void
+test5_query_cb (GObject      *object,
+                GAsyncResult *result,
+                gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   gboolean *success = user_data;
+   GError *error = NULL;
+   guint i;
+
+   reply = mongo_client_query_finish(client, result, &error);
+   g_assert_no_error(error);
+   g_assert(reply);
+
+   for (i = 0; i < reply->n_returned; i++) {
+      g_assert(reply->documents[i]);
+   }
+
+   mongo_reply_unref(reply);
+
+   *success = TRUE;
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test5_connect_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   MongoBson *bson;
+   gboolean ret;
+   GError *error = NULL;
+
+   ret = mongo_client_connect_finish(client, result, &error);
+   g_assert_no_error(error);
+   g_assert(ret);
+
+   bson = mongo_bson_new_empty();
+   mongo_bson_append_int(bson, "key1", 1234);
+   mongo_client_query_async(client, "dbtest1.dbcollection1", MONGO_QUERY_NONE,
+                            0, 0, bson, NULL, NULL, test5_query_cb, user_data);
+   mongo_bson_unref(bson);
+}
+
+static void
+test5 (void)
+{
+   MongoClient *client;
+   gboolean success = FALSE;
+
+   client = mongo_client_new();
+   mongo_client_add_seed(client, "localhost", 27017);
+   mongo_client_connect_async(client, NULL, test5_connect_cb, &success);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -183,6 +244,7 @@ main (gint   argc,
    g_test_add_func("/MongoClient/connect_async_cancelled", test2);
    g_test_add_func("/MongoClient/disconnect_async", test3);
    g_test_add_func("/MongoClient/insert_async", test4);
+   g_test_add_func("/MongoClient/query_async", test5);
 
    return g_test_run();
 }
