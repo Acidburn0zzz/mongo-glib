@@ -1,7 +1,5 @@
 ## Process this file with automake to produce Makefile.in
 
-NULL = 
-
 AUTOMAKE_OPTIONS = 1.6
 
 # The name of the module.
@@ -32,9 +30,8 @@ IGNORE_HFILES=					\
 # CFLAGS and LDFLAGS for compiling scan program. Only needed
 # if $(DOC_MODULE).types is non-empty.
 INCLUDES = \
-	-I$(top_srcdir) 	\
-	-I$(top_builddir) 	\
-	-I$(top_builddir)/mongo-glib \
+	-I$(top_srcdir) \
+	-I$(top_builddir) \
 	$(GOBJECT_CFLAGS)
 
 GTKDOC_LIBS = \
@@ -62,3 +59,4 @@ include $(top_srcdir)/gtk-doc.make
 # Other files to distribute
 EXTRA_DIST += version.xml.in
 
+test:
