@@ -29,6 +29,7 @@ struct _MongoCursorPrivate
    MongoClient *client;
    MongoBson *fields;
    MongoBson *query;
+   gchar *database;
    gchar *collection;
    guint limit;
    guint skip;
@@ -41,6 +42,7 @@ enum
    PROP_BATCH_SIZE,
    PROP_CLIENT,
    PROP_COLLECTION,
+   PROP_DATABASE,
    PROP_FIELDS,
    PROP_LIMIT,
    PROP_QUERY,
@@ -53,7 +55,7 @@ static GParamSpec *gParamSpecs[LAST_PROP];
 guint
 mongo_cursor_get_batch_size (MongoCursor *cursor)
 {
-   g_return_val_if_fail(MONGO_IS_CURSOR(cursor), NULL);
+   g_return_val_if_fail(MONGO_IS_CURSOR(cursor), 0);
    return cursor->priv->batch_size;
 }
 
@@ -94,6 +96,13 @@ mongo_cursor_get_fields (MongoCursor *cursor)
    return cursor->priv->fields;
 }
 
+const gchar *
+mongo_cursor_get_database (MongoCursor *cursor)
+{
+   g_return_val_if_fail(MONGO_IS_CURSOR(cursor), NULL);
+   return cursor->priv->database;
+}
+
 guint
 mongo_cursor_get_limit (MongoCursor *cursor)
 {
@@ -123,7 +132,7 @@ mongo_cursor_get_skip (MongoCursor *cursor)
    return cursor->priv->skip;
 }
 
-static void
+void
 mongo_cursor_set_batch_size (MongoCursor *cursor,
                              guint        batch_size)
 {
@@ -154,6 +163,14 @@ mongo_cursor_set_collection (MongoCursor *cursor,
 }
 
 static void
+mongo_cursor_set_database (MongoCursor *cursor,
+                           const gchar *database)
+{
+   g_return_if_fail(MONGO_IS_CURSOR(cursor));
+   cursor->priv->database = g_strdup(database);
+}
+
+static void
 mongo_cursor_set_fields (MongoCursor *cursor,
                          MongoBson   *fields)
 {
@@ -176,8 +193,9 @@ mongo_cursor_set_query (MongoCursor *cursor,
                         MongoBson   *query)
 {
    g_return_if_fail(MONGO_IS_CURSOR(cursor));
-   g_return_if_fail(query);
-   cursor->priv->query = mongo_bson_ref(query);
+   if (query) {
+      cursor->priv->query = mongo_bson_ref(query);
+   }
 }
 
 static void
@@ -186,6 +204,120 @@ mongo_cursor_set_skip (MongoCursor *cursor,
 {
    g_return_if_fail(MONGO_IS_CURSOR(cursor));
    cursor->priv->skip = skip;
+}
+
+static void
+mongo_cursor_count_cb (GObject      *object,
+                       GAsyncResult *result,
+                       gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   } else {
+      g_simple_async_result_set_op_res_gpointer(
+            simple, reply, (GDestroyNotify)mongo_reply_unref);
+   }
+
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+void
+mongo_cursor_count_async (MongoCursor         *cursor,
+                          GCancellable        *cancellable,
+                          GAsyncReadyCallback  callback,
+                          gpointer             user_data)
+{
+   MongoCursorPrivate *priv;
+   GSimpleAsyncResult *simple;
+   MongoBson *command;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_CURSOR(cursor));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(callback);
+
+   priv = cursor->priv;
+
+   if (!priv->client) {
+      g_simple_async_report_error_in_idle(G_OBJECT(cursor),
+                                          callback,
+                                          user_data,
+                                          MONGO_CLIENT_ERROR,
+                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          _("Cursor is missing MongoClient."));
+      EXIT;
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(cursor), callback, user_data,
+                                      mongo_cursor_count_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+
+   command = mongo_bson_new_empty();
+   mongo_bson_append_string(command, "count", priv->collection);
+   if (priv->query) {
+      mongo_bson_append_bson(command, "query", priv->query);
+   }
+   mongo_client_command_async(priv->client,
+                              priv->database,
+                              command,
+                              cancellable,
+                              mongo_cursor_count_cb,
+                              simple);
+   mongo_bson_unref(command);
+
+   EXIT;
+}
+
+gboolean
+mongo_cursor_count_finish (MongoCursor   *cursor,
+                           GAsyncResult  *result,
+                           guint64       *count,
+                           GError       **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   MongoBsonIter iter;
+   MongoReply *reply;
+   gboolean ret = FALSE;
+
+   g_return_val_if_fail(MONGO_IS_CURSOR(cursor), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+   g_return_val_if_fail(count, FALSE);
+
+   if (!(reply = g_simple_async_result_get_op_res_gpointer(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+      GOTO(failure);
+   }
+
+   if (!reply->n_returned) {
+      GOTO(failure);
+   }
+
+   mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (!mongo_bson_iter_find(&iter, "n") ||
+       (mongo_bson_iter_get_value_type(&iter) != MONGO_BSON_DOUBLE)) {
+      GOTO(failure);
+   }
+
+   *count = mongo_bson_iter_get_value_double(&iter);
+   ret = TRUE;
+
+failure:
+   if (reply) {
+      mongo_reply_unref(reply);
+   }
+   RETURN(ret);
 }
 
 static void
@@ -239,6 +371,9 @@ mongo_cursor_get_property (GObject    *object,
    case PROP_COLLECTION:
       g_value_set_string(value, mongo_cursor_get_collection(cursor));
       break;
+   case PROP_DATABASE:
+      g_value_set_string(value, mongo_cursor_get_database(cursor));
+      break;
    case PROP_FIELDS:
       g_value_set_boxed(value, mongo_cursor_get_fields(cursor));
       break;
@@ -273,6 +408,9 @@ mongo_cursor_set_property (GObject      *object,
       break;
    case PROP_COLLECTION:
       mongo_cursor_set_collection(cursor, g_value_get_string(value));
+      break;
+   case PROP_DATABASE:
+      mongo_cursor_set_database(cursor, g_value_get_string(value));
       break;
    case PROP_FIELDS:
       mongo_cursor_set_fields(cursor, g_value_get_boxed(value));
@@ -332,6 +470,15 @@ mongo_cursor_class_init (MongoCursorClass *klass)
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
    g_object_class_install_property(object_class, PROP_COLLECTION,
                                    gParamSpecs[PROP_COLLECTION]);
+
+   gParamSpecs[PROP_DATABASE] =
+      g_param_spec_string("database",
+                          _("Database"),
+                          _("The name of the database."),
+                          NULL,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_DATABASE,
+                                   gParamSpecs[PROP_DATABASE]);
 
    gParamSpecs[PROP_FIELDS] =
       g_param_spec_boxed("fields",

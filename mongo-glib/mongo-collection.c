@@ -66,16 +66,20 @@ mongo_collection_find (MongoCollection *collection,
 {
    MongoCollectionPrivate *priv;
    MongoCursor *cursor;
+   const gchar *db_name;
 
    ENTRY;
 
    g_return_val_if_fail(MONGO_IS_COLLECTION(collection), NULL);
+   g_return_val_if_fail(collection->priv->database, NULL);
 
    priv = collection->priv;
 
+   db_name = mongo_database_get_name(priv->database);
    cursor = g_object_new(MONGO_TYPE_CURSOR,
                          "client", priv->client,
-                         "collection", priv->db_and_collection,
+                         "collection", priv->name,
+                         "database", db_name,
                          "query", query,
                          "fields", field_selector,
                          "skip", skip,
