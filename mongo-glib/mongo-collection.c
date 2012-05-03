@@ -46,6 +46,11 @@ static GParamSpec *gParamSpecs[LAST_PROP];
 /**
  * mongo_collection_find:
  * @collection: (in): A #MongoCollection.
+ * @query: (in): A #MongoBson containing the query.
+ * @field_selector: (in) (allow-none): A #MongoBson or %NULL for all fields.
+ * @skip: (in): The number of documents to skip.
+ * @limit: (in): The maximum number of documents to return.
+ * @flags: (in): A bitwise-or of #MongoQueryFlags.
  *
  * Find documents within the collection.
  *
