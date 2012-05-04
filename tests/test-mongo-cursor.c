@@ -70,6 +70,10 @@ test2_foreach_func (MongoCursor     *cursor,
                     const MongoBson *bson,
                     gpointer         user_data)
 {
+   guint *count = user_data;
+
+   (*count)++;
+
    return TRUE;
 }
 
@@ -116,7 +120,7 @@ test2_connect_cb (GObject      *object,
 
    mongo_cursor_foreach_async(cursor,
                               test2_foreach_func,
-                              NULL,
+                              user_data,
                               NULL,
                               NULL,
                               test2_foreach_cb,
@@ -126,15 +130,15 @@ test2_connect_cb (GObject      *object,
 static void
 test2 (void)
 {
-   gboolean success = FALSE;
+   guint count = 0;
 
    gClient = mongo_client_new();
    mongo_client_add_seed(gClient, "localhost", 27017);
-   mongo_client_connect_async(gClient, NULL, test2_connect_cb, &success);
+   mongo_client_connect_async(gClient, NULL, test2_connect_cb, &count);
 
    g_main_loop_run(gMainLoop);
 
-   g_assert_cmpint(success, ==, TRUE);
+   g_assert_cmpint(count, >, 1);
 }
 
 gint
