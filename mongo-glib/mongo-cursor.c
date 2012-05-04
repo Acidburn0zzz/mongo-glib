@@ -359,9 +359,9 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
       }
    }
 
-   /*
-    * TODO: If we have reached our limit, we need to finish.
-    */
+   if (!reply->cursor_id) {
+      GOTO(stop);
+   }
 
    /*
     * TODO: How do we know if we are finished if EXHAUST is set?
@@ -387,10 +387,11 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
    EXIT;
 
 stop:
-
-   /*
-    * TODO: Send OP_KILL_CURSORS.
-    */
+   if (reply->cursor_id) {
+      /*
+       * TODO: Send OP_KILL_CURSORS.
+       */
+   }
 
    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
    g_simple_async_result_complete_in_idle(simple);
