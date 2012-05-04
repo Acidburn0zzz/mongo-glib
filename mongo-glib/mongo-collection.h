@@ -64,6 +64,15 @@ MongoCursor *mongo_collection_find          (MongoCollection      *collection,
                                              guint                 skip,
                                              guint                 limit,
                                              MongoQueryFlags       flags);
+void         mongo_collection_count_async   (MongoCollection      *collection,
+                                             const MongoBson      *query,
+                                             GCancellable         *cancellable,
+                                             GAsyncReadyCallback   callback,
+                                             gpointer              user_data);
+gboolean     mongo_collection_count_finish  (MongoCollection      *collection,
+                                             GAsyncResult         *result,
+                                             guint64              *count,
+                                             GError              **error);
 void         mongo_collection_drop_async    (MongoCollection      *collection,
                                              GCancellable         *cancellable,
                                              GAsyncReadyCallback   callback,

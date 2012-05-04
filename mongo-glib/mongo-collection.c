@@ -89,6 +89,125 @@ mongo_collection_find (MongoCollection *collection,
    RETURN(cursor);
 }
 
+static void
+mongo_collection_count_cb (GObject      *object,
+                           GAsyncResult *result,
+                           gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   } else {
+      g_simple_async_result_set_op_res_gpointer(
+            simple, reply, (GDestroyNotify)mongo_reply_unref);
+   }
+
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+void
+mongo_collection_count_async (MongoCollection     *collection,
+                              const MongoBson     *query,
+                              GCancellable        *cancellable,
+                              GAsyncReadyCallback  callback,
+                              gpointer             user_data)
+{
+   MongoCollectionPrivate *priv;
+   GSimpleAsyncResult *simple;
+   MongoBson *command;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_COLLECTION(collection));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(callback);
+
+   priv = collection->priv;
+
+   if (!priv->client || !priv->database) {
+      g_simple_async_report_error_in_idle(G_OBJECT(collection),
+                                          callback,
+                                          user_data,
+                                          MONGO_CLIENT_ERROR,
+                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          _("Not currently connected."));
+      EXIT;
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(collection), callback, user_data,
+                                      mongo_collection_count_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+
+   command = mongo_bson_new_empty();
+   mongo_bson_append_string(command, "count", priv->name);
+   if (query) {
+      mongo_bson_append_bson(command, "query", query);
+   }
+   mongo_client_command_async(priv->client,
+                              mongo_database_get_name(priv->database),
+                              command,
+                              cancellable,
+                              mongo_collection_count_cb,
+                              simple);
+   mongo_bson_unref(command);
+
+   EXIT;
+}
+
+gboolean
+mongo_collection_count_finish (MongoCollection  *collection,
+                               GAsyncResult     *result,
+                               guint64          *count,
+                               GError          **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   MongoBsonIter iter;
+   MongoReply *reply;
+   gboolean ret = FALSE;
+
+   ENTRY;
+
+   g_return_val_if_fail(MONGO_IS_COLLECTION(collection), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+
+   if (!(reply = g_simple_async_result_get_op_res_gpointer(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+      GOTO(failure);
+   }
+
+   if (!reply->n_returned) {
+      GOTO(failure);
+   }
+
+   mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (!mongo_bson_iter_find(&iter, "n") ||
+       (mongo_bson_iter_get_value_type(&iter) != MONGO_BSON_DOUBLE)) {
+      GOTO(failure);
+   }
+
+   *count = mongo_bson_iter_get_value_double(&iter);
+   ret = TRUE;
+
+failure:
+   if (reply) {
+      mongo_reply_unref(reply);
+   }
+
+   RETURN(ret);
+}
+
 /**
  * mongo_collection_get_client:
  * @collection: (in): A #MongoCollection.
