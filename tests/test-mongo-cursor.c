@@ -70,7 +70,12 @@ test2_foreach_func (MongoCursor     *cursor,
                     const MongoBson *bson,
                     gpointer         user_data)
 {
+   gchar *str;
    guint *count = user_data;
+
+   str = mongo_bson_to_string(bson, FALSE);
+   g_print("%s\n", str);
+   g_free(str);
 
    (*count)++;
 
