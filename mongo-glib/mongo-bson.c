@@ -553,9 +553,9 @@ mongo_bson_append_boolean (MongoBson   *bson,
  * Stores the #MongoBson in the document under @key.
  */
 void
-mongo_bson_append_bson (MongoBson   *bson,
-                        const gchar *key,
-                        MongoBson   *value)
+mongo_bson_append_bson (MongoBson       *bson,
+                        const gchar     *key,
+                        const MongoBson *value)
 {
    const guint8 *data;
    gsize data_len;
