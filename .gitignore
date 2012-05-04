@@ -25,5 +25,6 @@ stamp-h1
 *.typelib
 test-mongo-bson
 test-mongo-client
+test-mongo-collection
 test-mongo-cursor
 test-mongo-object-id
