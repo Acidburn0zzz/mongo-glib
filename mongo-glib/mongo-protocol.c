@@ -578,8 +578,6 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
 
    g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
    g_return_if_fail(db_and_collection);
-   g_return_if_fail(limit);
-   g_return_if_fail(cursor_id);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
