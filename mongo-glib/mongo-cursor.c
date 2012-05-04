@@ -34,6 +34,8 @@ struct _MongoCursorPrivate
    guint limit;
    guint skip;
    guint batch_size;
+
+   MongoQueryFlags flags; /* TODO: Add property */
 };
 
 enum
@@ -316,6 +318,135 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
 failure:
 
    RETURN(ret);
+}
+
+static void
+mongo_cursor_foreach_cb (GObject      *object,
+                         GAsyncResult *result,
+                         gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoCursorCallback func;
+   MongoCursor *cursor;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   gpointer func_data;
+   GError *error = NULL;
+   guint i;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   cursor = MONGO_CURSOR(g_async_result_get_source_object(user_data));
+
+   if (!(reply = mongo_client_query_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+      GOTO(failure);
+   }
+
+   func = g_object_get_data(G_OBJECT(simple), "foreach-func");
+   func_data = g_object_get_data(G_OBJECT(simple), "foreach-data");
+   g_assert(func);
+
+   for (i = 0; i < reply->n_returned; i++) {
+      g_assert(reply->documents[i]);
+      if (!func(cursor, reply->documents[i], func_data)) {
+         GOTO(stop);
+      }
+   }
+
+   /*
+    * TODO: OP_GETMORE.
+    */
+
+stop:
+   /*
+    * TODO: Stop processing responses.
+    */
+
+failure:
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+   g_object_unref(cursor);
+
+   EXIT;
+}
+
+void
+mongo_cursor_foreach_async (MongoCursor         *cursor,
+                            MongoCursorCallback  foreach_func,
+                            gpointer             foreach_data,
+                            GDestroyNotify       foreach_notify,
+                            GCancellable        *cancellable,
+                            GAsyncReadyCallback  callback,
+                            gpointer             user_data)
+{
+   MongoCursorPrivate *priv;
+   GSimpleAsyncResult *simple;
+   gchar *db_and_collection;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_CURSOR(cursor));
+   g_return_if_fail(foreach_func);
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+   g_return_if_fail(callback);
+
+   priv = cursor->priv;
+
+   if (!priv->client) {
+      g_simple_async_report_error_in_idle(G_OBJECT(cursor),
+                                          callback,
+                                          user_data,
+                                          MONGO_CLIENT_ERROR,
+                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          _("Not currently connected."));
+      GOTO(failure);
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(cursor),
+                                      callback,
+                                      user_data,
+                                      mongo_cursor_foreach_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+   g_object_set_data(G_OBJECT(simple), "foreach-func", foreach_func);
+   if (foreach_notify) {
+      g_object_set_data_full(G_OBJECT(simple), "foreach-data",
+                             foreach_data, foreach_notify);
+   } else {
+      g_object_set_data(G_OBJECT(simple), "foreach-data", foreach_data);
+   }
+
+   db_and_collection = g_strdup_printf("%s.%s",
+                                       priv->database,
+                                       priv->collection);
+
+   mongo_client_query_async(priv->client,
+                            db_and_collection,
+                            priv->flags,
+                            priv->skip,
+                            priv->limit,
+                            priv->query,
+                            priv->fields,
+                            cancellable,
+                            mongo_cursor_foreach_cb,
+                            simple);
+
+   g_free(db_and_collection);
+
+failure:
+
+   EXIT;
+}
+
+gboolean
+mongo_cursor_foreach_finish (MongoCursor   *cursor,
+                             GAsyncResult  *result,
+                             GError       **error)
+{
+   return TRUE;
 }
 
 static void

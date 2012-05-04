@@ -65,6 +65,78 @@ test1 (void)
    g_assert_cmpint(success, ==, TRUE);
 }
 
+static gboolean
+test2_foreach_func (MongoCursor     *cursor,
+                    const MongoBson *bson,
+                    gpointer         user_data)
+{
+   return TRUE;
+}
+
+static void
+test2_foreach_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
+{
+   gboolean ret;
+   GError *error = NULL;
+
+   ret = mongo_cursor_foreach_finish(MONGO_CURSOR(object), result, &error);
+   g_assert_no_error(error);
+   g_assert(ret);
+
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test2_connect_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
+{
+   MongoCollection *col;
+   MongoDatabase *db;
+   MongoCursor *cursor;
+   MongoBson *query = NULL;
+   MongoBson *fields = NULL;
+   gboolean ret;
+   GError *error = NULL;
+
+   ret = mongo_client_connect_finish(gClient, result, &error);
+   g_assert_no_error(error);
+   g_assert(ret);
+
+   db = mongo_client_get_database(gClient, "dbtest1");
+   g_assert(db);
+
+   col = mongo_database_get_collection(db, "dbcollection1");
+   g_assert(col);
+
+   cursor = mongo_collection_find(col, query, fields, 0, 100, MONGO_QUERY_NONE);
+   g_assert(cursor);
+
+   mongo_cursor_foreach_async(cursor,
+                              test2_foreach_func,
+                              NULL,
+                              NULL,
+                              NULL,
+                              test2_foreach_cb,
+                              user_data);
+}
+
+static void
+test2 (void)
+{
+   gboolean success = FALSE;
+
+   gClient = mongo_client_new();
+   mongo_client_add_seed(gClient, "localhost", 27017);
+   mongo_client_connect_async(gClient, NULL, test2_connect_cb, &success);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -75,6 +147,7 @@ main (gint   argc,
    gMainLoop = g_main_loop_new(NULL, FALSE);
 
    g_test_add_func("/MongoCursor/count", test1);
+   g_test_add_func("/MongoCursor/foreach", test2);
 
    return g_test_run();
 }
