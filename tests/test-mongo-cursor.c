@@ -144,6 +144,7 @@ test2 (void)
    g_main_loop_run(gMainLoop);
 
    g_assert_cmpint(count, >, 1);
+   g_assert_cmpint(count, <=, 100);
 }
 
 gint
