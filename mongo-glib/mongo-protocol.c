@@ -967,7 +967,6 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    docs = g_ptr_array_new();
    reader_init(&reader, buffer + sizeof reply, count - sizeof reply);
    while ((bson = reader_next(&reader))) {
-      g_print("Got a bson: %p\n", bson);
       g_ptr_array_add(docs, bson);
    }
 
