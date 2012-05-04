@@ -52,6 +52,10 @@ enum
    LAST_PROP
 };
 
+static void mongo_cursor_foreach_getmore_cb (GObject      *object,
+                                             GAsyncResult *result,
+                                             gpointer      user_data);
+
 static GParamSpec *gParamSpecs[LAST_PROP];
 
 guint
@@ -321,55 +325,129 @@ failure:
 }
 
 static void
-mongo_cursor_foreach_cb (GObject      *object,
-                         GAsyncResult *result,
-                         gpointer      user_data)
+mongo_cursor_foreach_dispatch (MongoClient        *client,
+                               MongoReply         *reply,
+                               GSimpleAsyncResult *simple)
 {
-   GSimpleAsyncResult *simple = user_data;
    MongoCursorCallback func;
+   GCancellable *cancellable;
    MongoCursor *cursor;
-   MongoClient *client = (MongoClient *)object;
-   MongoReply *reply;
    gpointer func_data;
-   GError *error = NULL;
+   gchar *db_and_collection;
    guint i;
 
    ENTRY;
 
    g_assert(MONGO_IS_CLIENT(client));
+   g_assert(reply);
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   cursor = MONGO_CURSOR(g_async_result_get_source_object(user_data));
-
-   if (!(reply = mongo_client_query_finish(client, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-      GOTO(failure);
-   }
 
    func = g_object_get_data(G_OBJECT(simple), "foreach-func");
    func_data = g_object_get_data(G_OBJECT(simple), "foreach-data");
    g_assert(func);
 
+   cursor = MONGO_CURSOR(g_async_result_get_source_object(G_ASYNC_RESULT(simple)));
+   g_assert(MONGO_IS_CURSOR(cursor));
+
+   if (!reply->n_returned) {
+      GOTO(stop);
+   }
+
    for (i = 0; i < reply->n_returned; i++) {
-      g_assert(reply->documents[i]);
       if (!func(cursor, reply->documents[i], func_data)) {
          GOTO(stop);
       }
    }
 
    /*
-    * TODO: OP_GETMORE.
+    * TODO: How do we know if we are finished if EXHAUST is set?
     */
+
+   if (!(cursor->priv->flags & MONGO_QUERY_EXHAUST)) {
+      cancellable = g_object_get_data(G_OBJECT(simple), "cancellable");
+      db_and_collection = g_strdup_printf("%s.%s",
+                                          cursor->priv->database,
+                                          cursor->priv->collection);
+      mongo_client_getmore_async(client,
+                                 db_and_collection,
+                                 cursor->priv->batch_size,
+                                 reply->cursor_id,
+                                 cancellable,
+                                 mongo_cursor_foreach_getmore_cb,
+                                 simple);
+      g_free(db_and_collection);
+   }
+
+   g_object_unref(cursor);
+
+   EXIT;
 
 stop:
+
    /*
-    * TODO: Stop processing responses.
+    * TODO: Send OP_KILL_CURSORS.
     */
 
-failure:
+   g_simple_async_result_set_op_res_gboolean(simple, TRUE);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
    g_object_unref(cursor);
+
+   EXIT;
+}
+
+static void
+mongo_cursor_foreach_getmore_cb (GObject      *object,
+                                 GAsyncResult *result,
+                                 gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_client_getmore_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+      g_simple_async_result_complete_in_idle(simple);
+      g_object_unref(simple);
+      EXIT;
+   }
+
+   mongo_cursor_foreach_dispatch(client, reply, simple);
+   mongo_reply_unref(reply);
+
+   EXIT;
+}
+
+static void
+mongo_cursor_foreach_query_cb (GObject      *object,
+                               GAsyncResult *result,
+                               gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_client_query_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+      g_simple_async_result_complete_in_idle(simple);
+      g_object_unref(simple);
+      EXIT;
+   }
+
+   mongo_cursor_foreach_dispatch(client, reply, simple);
+   mongo_reply_unref(reply);
 
    EXIT;
 }
@@ -411,6 +489,10 @@ mongo_cursor_foreach_async (MongoCursor         *cursor,
                                       user_data,
                                       mongo_cursor_foreach_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
+   if (cancellable) {
+      g_object_set_data_full(G_OBJECT(simple), "cancellable",
+                             cancellable, (GDestroyNotify)g_object_unref);
+   }
    g_object_set_data(G_OBJECT(simple), "foreach-func", foreach_func);
    if (foreach_notify) {
       g_object_set_data_full(G_OBJECT(simple), "foreach-data",
@@ -431,7 +513,7 @@ mongo_cursor_foreach_async (MongoCursor         *cursor,
                             priv->query,
                             priv->fields,
                             cancellable,
-                            mongo_cursor_foreach_cb,
+                            mongo_cursor_foreach_query_cb,
                             simple);
 
    g_free(db_and_collection);
@@ -577,7 +659,7 @@ mongo_cursor_class_init (MongoCursorClass *klass)
                         _("The requested number of items in the batch."),
                         0,
                         G_MAXUINT32,
-                        0,
+                        100,
                         G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_BATCH_SIZE,
                                    gParamSpecs[PROP_BATCH_SIZE]);
@@ -659,5 +741,6 @@ mongo_cursor_init (MongoCursor *cursor)
    cursor->priv = G_TYPE_INSTANCE_GET_PRIVATE(cursor,
                                               MONGO_TYPE_CURSOR,
                                               MongoCursorPrivate);
+   cursor->priv->batch_size = 100;
    EXIT;
 }
