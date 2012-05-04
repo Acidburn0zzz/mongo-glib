@@ -330,9 +330,6 @@ mongo_collection_count_finish (MongoCollection  *collection,
    ret = TRUE;
 
 failure:
-   if (reply) {
-      mongo_reply_unref(reply);
-   }
 
    RETURN(ret);
 }
