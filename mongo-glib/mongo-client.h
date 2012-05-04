@@ -95,6 +95,16 @@ void             mongo_client_disconnect_async  (MongoClient          *client,
 gboolean         mongo_client_disconnect_finish (MongoClient          *client,
                                                  GAsyncResult         *result,
                                                  GError              **error);
+void             mongo_client_getmore_async     (MongoClient          *client,
+                                                 const gchar          *db_and_collection,
+                                                 guint32               limit,
+                                                 guint64               cursor_id,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+MongoReply      *mongo_client_getmore_finish    (MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
 void             mongo_client_insert_async      (MongoClient          *client,
                                                  const gchar          *db_and_collection,
                                                  MongoInsertFlags      flags,
