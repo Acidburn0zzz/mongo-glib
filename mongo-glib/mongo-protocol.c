@@ -28,6 +28,13 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
                                GAsyncResult         *result,
                                MongoProtocol        *protocol);
 
+typedef struct
+{
+   const guint8 *buffer;
+   gssize count;
+   gsize offset;
+} Reader;
+
 struct _MongoProtocolPrivate
 {
    GIOStream *io_stream;
@@ -850,6 +857,42 @@ mongo_protocol_get_io_stream (MongoProtocol *protocol)
 }
 
 static void
+reader_init (Reader       *reader,
+             const guint8 *buffer,
+             gssize        count)
+{
+   ENTRY;
+   reader->buffer = buffer;
+   reader->count = count;
+   reader->offset = 0;
+   EXIT;
+}
+
+static MongoBson *
+reader_next (Reader *reader)
+{
+   MongoBson *bson;
+   guint32 bson_size;
+
+   ENTRY;
+
+   if (reader->count < 0) {
+      RETURN(NULL);
+   }
+
+   if ((reader->offset + sizeof bson_size) <= reader->count) {
+      bson_size = GUINT32_FROM_LE(*(const guint32 *)(reader->buffer + reader->offset));
+      if ((reader->offset + bson_size) <= reader->count) {
+         bson = mongo_bson_new_from_data(reader->buffer + reader->offset, bson_size);
+         reader->offset += bson_size;
+         RETURN(bson);
+      }
+   }
+
+   RETURN(NULL);
+}
+
+static void
 mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
                                 GAsyncResult         *result,
                                 MongoProtocol        *protocol)
@@ -858,6 +901,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    GSimpleAsyncResult *request;
    const guint8 *buffer;
    MongoReply *r;
+   Reader reader;
 #pragma pack(1)
    struct {
       guint32 len;
@@ -872,11 +916,8 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
 #pragma pack()
    GPtrArray *docs;
    MongoBson *bson;
-   guint32 avail;
-   guint32 doc_len;
    GError *error = NULL;
    gsize count;
-   guint i;
 
    ENTRY;
 
@@ -922,20 +963,11 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       GOTO(failure);
    }
 
-   buffer += sizeof reply;
-   avail = reply.len - sizeof reply;
    docs = g_ptr_array_new();
-
-   for (i = 0; i < reply.n_returned; i++) {
-      doc_len = GUINT32_FROM_LE(*(const guint32 *)buffer);
-      if (doc_len > avail) {
-         GOTO(failure);
-      }
-      if (!(bson = mongo_bson_new_from_data(buffer, doc_len))) {
-         GOTO(failure);
-      }
+   reader_init(&reader, buffer + sizeof reply, count - sizeof reply);
+   while ((bson = reader_next(&reader))) {
+      g_print("Got a bson: %p\n", bson);
       g_ptr_array_add(docs, bson);
-      buffer += doc_len;
    }
 
    /*
