@@ -314,9 +314,7 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
    ret = TRUE;
 
 failure:
-   if (reply) {
-      mongo_reply_unref(reply);
-   }
+
    RETURN(ret);
 }
 
