@@ -360,6 +360,10 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
    }
 
    /*
+    * TODO: If we have reached our limit, we need to finish.
+    */
+
+   /*
     * TODO: How do we know if we are finished if EXHAUST is set?
     */
 
