@@ -57,58 +57,68 @@ struct _MongoCollectionClass
    GObjectClass parent_class;
 };
 
-GType        mongo_collection_get_type      (void) G_GNUC_CONST;
-MongoCursor *mongo_collection_find          (MongoCollection      *collection,
-                                             MongoBson            *query,
-                                             MongoBson            *field_selector,
-                                             guint                 skip,
-                                             guint                 limit,
-                                             MongoQueryFlags       flags);
-void         mongo_collection_count_async   (MongoCollection      *collection,
-                                             const MongoBson      *query,
-                                             GCancellable         *cancellable,
-                                             GAsyncReadyCallback   callback,
-                                             gpointer              user_data);
-gboolean     mongo_collection_count_finish  (MongoCollection      *collection,
-                                             GAsyncResult         *result,
-                                             guint64              *count,
-                                             GError              **error);
-void         mongo_collection_drop_async    (MongoCollection      *collection,
-                                             GCancellable         *cancellable,
-                                             GAsyncReadyCallback   callback,
-                                             gpointer              user_data);
-gboolean     mongo_collection_drop_finish   (MongoCollection      *collection,
-                                             GAsyncResult         *result,
-                                             GError              **error);
-void         mongo_collection_insert_async  (MongoCollection      *collection,
-                                             MongoBson           **documents,
-                                             gsize                 n_documents,
-                                             MongoInsertFlags      flags,
-                                             GCancellable         *cancellable,
-                                             GAsyncReadyCallback   callback,
-                                             gpointer              user_data);
-gboolean     mongo_collection_insert_finish (MongoCollection      *collection,
-                                             GAsyncResult         *result,
-                                             GError              **error);
-void         mongo_collection_remove_async  (MongoCollection      *collection,
-                                             const MongoBson      *selector,
-                                             MongoDeleteFlags      flags,
-                                             GCancellable         *cancellable,
-                                             GAsyncReadyCallback   callback,
-                                             gpointer              user_data);
-gboolean     mongo_collection_remove_finish (MongoCollection      *collection,
-                                             GAsyncResult         *result,
-                                             GError              **error);
-void         mongo_collection_update_async  (MongoCollection      *collection,
-                                             const MongoBson      *selector,
-                                             const MongoBson      *update,
-                                             MongoUpdateFlags      flags,
-                                             GCancellable         *cancellable,
-                                             GAsyncReadyCallback   callback,
-                                             gpointer              user_data);
-gboolean     mongo_collection_update_finish (MongoCollection      *collection,
-                                             GAsyncResult         *result,
-                                             GError              **error);
+GType        mongo_collection_get_type        (void) G_GNUC_CONST;
+MongoCursor *mongo_collection_find            (MongoCollection      *collection,
+                                               MongoBson            *query,
+                                               MongoBson            *field_selector,
+                                               guint                 skip,
+                                               guint                 limit,
+                                               MongoQueryFlags       flags);
+void         mongo_collection_find_one_async  (MongoCollection      *collection,
+                                               const MongoBson      *query,
+                                               const MongoBson      *field_selector,
+                                               MongoQueryFlags       flags,
+                                               GCancellable         *cancellable,
+                                               GAsyncReadyCallback   callback,
+                                               gpointer              user_data);
+MongoBson   *mongo_collection_find_one_finish (MongoCollection      *collection,
+                                               GAsyncResult         *result,
+                                               GError              **error);
+void         mongo_collection_count_async     (MongoCollection      *collection,
+                                               const MongoBson      *query,
+                                               GCancellable         *cancellable,
+                                               GAsyncReadyCallback   callback,
+                                               gpointer              user_data);
+gboolean     mongo_collection_count_finish    (MongoCollection      *collection,
+                                               GAsyncResult         *result,
+                                               guint64              *count,
+                                               GError              **error);
+void         mongo_collection_drop_async      (MongoCollection      *collection,
+                                               GCancellable         *cancellable,
+                                               GAsyncReadyCallback   callback,
+                                               gpointer              user_data);
+gboolean     mongo_collection_drop_finish     (MongoCollection      *collection,
+                                               GAsyncResult         *result,
+                                               GError              **error);
+void         mongo_collection_insert_async    (MongoCollection      *collection,
+                                               MongoBson           **documents,
+                                               gsize                 n_documents,
+                                               MongoInsertFlags      flags,
+                                               GCancellable         *cancellable,
+                                               GAsyncReadyCallback   callback,
+                                               gpointer              user_data);
+gboolean     mongo_collection_insert_finish   (MongoCollection      *collection,
+                                               GAsyncResult         *result,
+                                               GError              **error);
+void         mongo_collection_remove_async    (MongoCollection      *collection,
+                                               const MongoBson      *selector,
+                                               MongoDeleteFlags      flags,
+                                               GCancellable         *cancellable,
+                                               GAsyncReadyCallback   callback,
+                                               gpointer              user_data);
+gboolean     mongo_collection_remove_finish   (MongoCollection      *collection,
+                                               GAsyncResult         *result,
+                                               GError              **error);
+void         mongo_collection_update_async    (MongoCollection      *collection,
+                                               const MongoBson      *selector,
+                                               const MongoBson      *update,
+                                               MongoUpdateFlags      flags,
+                                               GCancellable         *cancellable,
+                                               GAsyncReadyCallback   callback,
+                                               gpointer              user_data);
+gboolean     mongo_collection_update_finish   (MongoCollection      *collection,
+                                               GAsyncResult         *result,
+                                               GError              **error);
 
 
 G_END_DECLS

@@ -89,6 +89,112 @@ mongo_collection_find (MongoCollection *collection,
    RETURN(cursor);
 }
 
+void
+mongo_collection_find_one_cb (GObject      *object,
+                              GAsyncResult *result,
+                              gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_client_query_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   } else {
+      g_simple_async_result_set_op_res_gpointer(
+            simple, reply, (GDestroyNotify)mongo_reply_unref);
+   }
+
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+void
+mongo_collection_find_one_async (MongoCollection     *collection,
+                                 const MongoBson     *query,
+                                 const MongoBson     *field_selector,
+                                 MongoQueryFlags      flags,
+                                 GCancellable        *cancellable,
+                                 GAsyncReadyCallback  callback,
+                                 gpointer             user_data)
+{
+   MongoCollectionPrivate *priv;
+   GSimpleAsyncResult *simple;
+   MongoBson *q = NULL;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_COLLECTION(collection));
+
+   priv = collection->priv;
+
+   if (!priv->client) {
+      g_simple_async_report_error_in_idle(G_OBJECT(collection),
+                                          callback,
+                                          user_data,
+                                          MONGO_CLIENT_ERROR,
+                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          _("Not currently connected."));
+      EXIT;
+   }
+
+   simple = g_simple_async_result_new(G_OBJECT(collection), callback, user_data,
+                                      mongo_collection_find_one_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+
+   if (!query) {
+      query = q = mongo_bson_new_empty();
+   }
+
+   mongo_client_query_async(priv->client,
+                            priv->db_and_collection,
+                            flags | MONGO_QUERY_EXHAUST,
+                            0,
+                            1,
+                            query,
+                            field_selector,
+                            cancellable,
+                            mongo_collection_find_one_cb,
+                            simple);
+
+   if (q) {
+      mongo_bson_unref(q);
+   }
+
+   EXIT;
+}
+
+MongoBson *
+mongo_collection_find_one_finish (MongoCollection  *collection,
+                                  GAsyncResult     *result,
+                                  GError          **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   MongoReply *reply;
+   MongoBson *ret = NULL;
+
+   ENTRY;
+
+   g_return_val_if_fail(MONGO_IS_COLLECTION(collection), NULL);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), NULL);
+
+   if (!(reply = g_simple_async_result_get_op_res_gpointer(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+      GOTO(failure);
+   }
+
+   ret = reply->n_returned ? mongo_bson_ref(reply->documents[0]) : NULL;
+
+failure:
+   RETURN(ret);
+}
+
 static void
 mongo_collection_count_cb (GObject      *object,
                            GAsyncResult *result,
