@@ -117,6 +117,17 @@ mongo_collection_count_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_collection_count_async:
+ * @collection: (in): A #MongoCollection.
+ * @query: (in) (allow-none): A #MongoBson or %NULL.
+ * @cancellable: (in): A #GCancellable or %NULL.
+ * @callback: (in): A callback to execute upon completion.
+ * @user_data: (in): User data for @callback.
+ *
+ * Asynchronously count the number of items in the collection matching
+ * the query if specified.
+ */
 void
 mongo_collection_count_async (MongoCollection     *collection,
                               const MongoBson     *query,
@@ -166,6 +177,18 @@ mongo_collection_count_async (MongoCollection     *collection,
    EXIT;
 }
 
+/**
+ * mongo_collection_count_finish:
+ * @collection: (in): A #MongoCollection.
+ * @result: (in): A #GAsyncResult.
+ * @count: (out): A location for the number of documents matching.
+ * @error: (out): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchonrous request to mongo_collection_count_async().
+ * If successful; %TRUE is returned and @count is set.
+ *
+ * Returns: %TRUE if successful.
+ */
 gboolean
 mongo_collection_count_finish (MongoCollection  *collection,
                                GAsyncResult     *result,
