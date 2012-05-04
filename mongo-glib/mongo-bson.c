@@ -811,8 +811,8 @@ mongo_bson_append_undefined (MongoBson   *bson,
  * Initializes a #MongoBsonIter for iterating through a #MongoBson document.
  */
 void
-mongo_bson_iter_init (MongoBsonIter *iter,
-                      MongoBson     *bson)
+mongo_bson_iter_init (MongoBsonIter   *iter,
+                      const MongoBson *bson)
 {
    g_return_if_fail(iter != NULL);
    g_return_if_fail(bson != NULL);
@@ -1540,8 +1540,8 @@ mongo_clear_bson (MongoBson **bson)
  * Returns: (transfer full): A string representing the BSON document.
  */
 gchar *
-mongo_bson_to_string (MongoBson *bson,
-                      gboolean   is_array)
+mongo_bson_to_string (const MongoBson *bson,
+                      gboolean         is_array)
 {
    MongoBsonIter iter;
    MongoBsonType type;

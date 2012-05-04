@@ -127,7 +127,7 @@ void           mongo_bson_append_undefined         (MongoBson       *bson,
                                                     const gchar     *key);
 gboolean       mongo_bson_get_empty                (MongoBson       *bson);
 void           mongo_bson_iter_init                (MongoBsonIter   *iter,
-                                                    MongoBson       *bson);
+                                                    const MongoBson *bson);
 gboolean       mongo_bson_iter_find                (MongoBsonIter   *iter,
                                                     const gchar     *key);
 const gchar   *mongo_bson_iter_get_key             (MongoBsonIter   *iter);
@@ -156,7 +156,7 @@ gboolean       mongo_bson_iter_recurse             (MongoBsonIter   *iter,
                                                     MongoBsonIter   *child);
 void           mongo_bson_iter_set_trust_utf8      (MongoBsonIter   *iter,
                                                     gboolean         trust_utf8);
-gchar         *mongo_bson_to_string                (MongoBson       *bson,
+gchar         *mongo_bson_to_string                (const MongoBson *bson,
                                                     gboolean         is_array);
 void           mongo_clear_bson                    (MongoBson      **bson);
 
