@@ -823,12 +823,12 @@ mongo_client_query_async (MongoClient         *client,
 {
    MongoClientPrivate *priv;
    GSimpleAsyncResult *simple;
+   MongoBson *q = NULL;
 
    ENTRY;
 
    g_return_if_fail(MONGO_IS_CLIENT(client));
    g_return_if_fail(db_and_collection);
-   g_return_if_fail(query);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
@@ -852,6 +852,10 @@ mongo_client_query_async (MongoClient         *client,
                                       mongo_client_query_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
 
+   if (!query) {
+      query = q = mongo_bson_new_empty();
+   }
+
    mongo_protocol_query_async(priv->protocol,
                               db_and_collection,
                               flags,
@@ -862,6 +866,10 @@ mongo_client_query_async (MongoClient         *client,
                               cancellable,
                               mongo_client_query_cb,
                               simple);
+
+   if (q) {
+      mongo_bson_unref(q);
+   }
 
    EXIT;
 }
