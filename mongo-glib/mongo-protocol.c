@@ -600,9 +600,10 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_GETMORE));
+   _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_cstring(buffer, db_and_collection);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(limit));
-   _g_byte_array_append_int32(buffer, GINT64_TO_LE(cursor_id));
+   _g_byte_array_append_int64(buffer, GINT64_TO_LE(cursor_id));
    _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
 
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
