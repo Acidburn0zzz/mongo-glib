@@ -325,6 +325,16 @@ failure:
 }
 
 static void
+mongo_cursor_kill_cursors_cb (GObject      *object,
+                              GAsyncResult *result,
+                              gpointer      user_data)
+{
+   ENTRY;
+   mongo_client_kill_cursors_finish(MONGO_CLIENT(object), result, NULL);
+   EXIT;
+}
+
+static void
 mongo_cursor_foreach_dispatch (MongoClient        *client,
                                MongoReply         *reply,
                                GSimpleAsyncResult *simple)
@@ -350,6 +360,9 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
    cursor = MONGO_CURSOR(g_async_result_get_source_object(G_ASYNC_RESULT(simple)));
    g_assert(MONGO_IS_CURSOR(cursor));
 
+   cancellable = g_object_get_data(G_OBJECT(simple), "cancellable");
+   g_assert(!cancellable || G_IS_CANCELLABLE(cancellable));
+
    priv = cursor->priv;
 
    if (!reply->n_returned) {
@@ -373,7 +386,6 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
     */
 
    if (!(cursor->priv->flags & MONGO_QUERY_EXHAUST)) {
-      cancellable = g_object_get_data(G_OBJECT(simple), "cancellable");
       db_and_collection = g_strdup_printf("%s.%s",
                                           cursor->priv->database,
                                           cursor->priv->collection);
@@ -393,9 +405,12 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
 
 stop:
    if (reply->cursor_id) {
-      /*
-       * TODO: Send OP_KILL_CURSORS.
-       */
+      mongo_client_kill_cursors_async(client,
+                                      &reply->cursor_id,
+                                      1,
+                                      cancellable,
+                                      mongo_cursor_kill_cursors_cb,
+                                      NULL);
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
