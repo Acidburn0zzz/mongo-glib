@@ -34,8 +34,7 @@ struct _MongoCursorPrivate
    guint limit;
    guint skip;
    guint batch_size;
-
-   MongoQueryFlags flags; /* TODO: Add property */
+   MongoQueryFlags flags;
 };
 
 enum
@@ -46,6 +45,7 @@ enum
    PROP_COLLECTION,
    PROP_DATABASE,
    PROP_FIELDS,
+   PROP_FLAGS,
    PROP_LIMIT,
    PROP_QUERY,
    PROP_SKIP,
@@ -100,6 +100,13 @@ mongo_cursor_get_fields (MongoCursor *cursor)
 {
    g_return_val_if_fail(MONGO_IS_CURSOR(cursor), NULL);
    return cursor->priv->fields;
+}
+
+MongoQueryFlags
+mongo_cursor_get_flags (MongoCursor *cursor)
+{
+   g_return_val_if_fail(MONGO_IS_CURSOR(cursor), 0);
+   return cursor->priv->flags;
 }
 
 const gchar *
@@ -184,6 +191,14 @@ mongo_cursor_set_fields (MongoCursor *cursor,
    if (fields) {
       cursor->priv->fields = mongo_bson_ref(fields);
    }
+}
+
+static void
+mongo_cursor_set_flags (MongoCursor     *cursor,
+                        MongoQueryFlags  flags)
+{
+   g_return_if_fail(MONGO_IS_CURSOR(cursor));
+   cursor->priv->flags = flags;
 }
 
 static void
@@ -613,6 +628,9 @@ mongo_cursor_get_property (GObject    *object,
    case PROP_FIELDS:
       g_value_set_boxed(value, mongo_cursor_get_fields(cursor));
       break;
+   case PROP_FLAGS:
+      g_value_set_uint(value, mongo_cursor_get_flags(cursor));
+      break;
    case PROP_LIMIT:
       g_value_set_uint(value, mongo_cursor_get_limit(cursor));
       break;
@@ -650,6 +668,9 @@ mongo_cursor_set_property (GObject      *object,
       break;
    case PROP_FIELDS:
       mongo_cursor_set_fields(cursor, g_value_get_boxed(value));
+      break;
+   case PROP_FLAGS:
+      mongo_cursor_set_flags(cursor, g_value_get_uint(value));
       break;
    case PROP_LIMIT:
       mongo_cursor_set_limit(cursor, g_value_get_uint(value));
@@ -724,6 +745,17 @@ mongo_cursor_class_init (MongoCursorClass *klass)
                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
    g_object_class_install_property(object_class, PROP_FIELDS,
                                    gParamSpecs[PROP_FIELDS]);
+
+   gParamSpecs[PROP_FLAGS] =
+      g_param_spec_uint("flags",
+                        _("Flags"),
+                        _("The flags for the query."),
+                        0,
+                        G_MAXUINT32,
+                        0,
+                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_FLAGS,
+                                   gParamSpecs[PROP_FLAGS]);
 
    gParamSpecs[PROP_LIMIT] =
       g_param_spec_uint("limit",

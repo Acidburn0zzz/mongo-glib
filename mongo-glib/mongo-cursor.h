@@ -27,6 +27,7 @@
 #include <gio/gio.h>
 
 #include "mongo-bson.h"
+#include "mongo-protocol.h"
 
 G_BEGIN_DECLS
 
@@ -73,40 +74,41 @@ struct _MongoCursorClass
    GObjectClass parent_class;
 };
 
-const gchar *mongo_cursor_get_collection (MongoCursor          *cursor);
-guint        mongo_cursor_get_skip       (MongoCursor          *cursor);
-guint        mongo_cursor_get_limit      (MongoCursor          *cursor);
-MongoBson   *mongo_cursor_get_fields     (MongoCursor          *cursor);
-MongoBson   *mongo_cursor_get_query      (MongoCursor          *cursor);
-void         mongo_cursor_close_async    (MongoCursor          *cursor,
-                                          GCancellable         *cancellable,
-                                          GAsyncReadyCallback   callback,
-                                          gpointer              user_data);
-gboolean     mongo_cursor_close_finish   (MongoCursor          *cursor,
-                                          GAsyncResult         *result,
-                                          GError              **error);
-void         mongo_cursor_count_async    (MongoCursor          *cursor,
-                                          GCancellable         *cancellable,
-                                          GAsyncReadyCallback   callback,
-                                          gpointer              user_data);
-gboolean     mongo_cursor_count_finish   (MongoCursor          *cursor,
-                                          GAsyncResult         *result,
-                                          guint64              *count,
-                                          GError              **error);
-void         mongo_cursor_foreach_async  (MongoCursor          *cursor,
-                                          MongoCursorCallback   foreach_func,
-                                          gpointer              foreach_data,
-                                          GDestroyNotify        foreach_notify,
-                                          GCancellable         *cancellable,
-                                          GAsyncReadyCallback   callback,
-                                          gpointer              user_data);
-gboolean     mongo_cursor_foreach_finish (MongoCursor          *cursor,
-                                          GAsyncResult         *result,
-                                          GError              **error);
-GType        mongo_cursor_get_type       (void) G_GNUC_CONST;
-guint        mongo_cursor_get_batch_size (MongoCursor          *cursor);
-void         mongo_cursor_set_batch_size (MongoCursor          *cursor,
-                                          guint                 batch_size);
+const gchar     *mongo_cursor_get_collection (MongoCursor          *cursor);
+guint            mongo_cursor_get_skip       (MongoCursor          *cursor);
+guint            mongo_cursor_get_limit      (MongoCursor          *cursor);
+MongoBson       *mongo_cursor_get_fields     (MongoCursor          *cursor);
+MongoQueryFlags  mongo_cursor_get_flags      (MongoCursor          *cursor);
+MongoBson       *mongo_cursor_get_query      (MongoCursor          *cursor);
+void             mongo_cursor_close_async    (MongoCursor          *cursor,
+                                              GCancellable         *cancellable,
+                                              GAsyncReadyCallback   callback,
+                                              gpointer              user_data);
+gboolean         mongo_cursor_close_finish   (MongoCursor          *cursor,
+                                              GAsyncResult         *result,
+                                              GError              **error);
+void             mongo_cursor_count_async    (MongoCursor          *cursor,
+                                              GCancellable         *cancellable,
+                                              GAsyncReadyCallback   callback,
+                                              gpointer              user_data);
+gboolean         mongo_cursor_count_finish   (MongoCursor          *cursor,
+                                              GAsyncResult         *result,
+                                              guint64              *count,
+                                              GError              **error);
+void             mongo_cursor_foreach_async  (MongoCursor          *cursor,
+                                              MongoCursorCallback   foreach_func,
+                                              gpointer              foreach_data,
+                                              GDestroyNotify        foreach_notify,
+                                              GCancellable         *cancellable,
+                                              GAsyncReadyCallback   callback,
+                                              gpointer              user_data);
+gboolean         mongo_cursor_foreach_finish (MongoCursor          *cursor,
+                                              GAsyncResult         *result,
+                                              GError              **error);
+GType            mongo_cursor_get_type       (void) G_GNUC_CONST;
+guint            mongo_cursor_get_batch_size (MongoCursor          *cursor);
+void             mongo_cursor_set_batch_size (MongoCursor          *cursor,
+                                              guint                 batch_size);
 
 G_END_DECLS
 
