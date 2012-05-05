@@ -147,6 +147,15 @@ void             mongo_client_query_async       (MongoClient          *client,
                                                  GCancellable         *cancellable,
                                                  GAsyncReadyCallback   callback,
                                                  gpointer              user_data);
+void            mongo_client_kill_cursors_async (MongoClient          *client,
+                                                 guint64              *cursors,
+                                                 gsize                 n_cursors,
+                                                 GCancellable         *cancellable,
+                                                 GAsyncReadyCallback   callback,
+                                                 gpointer              user_data);
+gboolean        mongo_client_kill_cursors_finish(MongoClient          *client,
+                                                 GAsyncResult         *result,
+                                                 GError              **error);
 MongoReply      *mongo_client_query_finish      (MongoClient          *client,
                                                  GAsyncResult         *result,
                                                  GError              **error);
