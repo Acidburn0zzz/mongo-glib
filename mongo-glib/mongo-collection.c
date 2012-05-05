@@ -82,6 +82,7 @@ mongo_collection_find (MongoCollection *collection,
                          "database", db_name,
                          "query", query,
                          "fields", field_selector,
+                         "flags", flags,
                          "skip", skip,
                          "limit", limit,
                          NULL);
