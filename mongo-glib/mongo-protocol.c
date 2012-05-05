@@ -918,6 +918,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    GPtrArray *docs;
    MongoBson *bson;
    GError *error = NULL;
+   guint8 *doc_buffer;
    gsize count;
 
    ENTRY;
@@ -943,8 +944,6 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    g_assert(buffer);
    g_assert_cmpint(count, >=, 36);
 
-   DUMP_BYTES(buffer, buffer, count);
-
    /*
     * Process the incoming OP_REPLY.
     */
@@ -964,11 +963,27 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       GOTO(failure);
    }
 
+   g_input_stream_skip(G_INPUT_STREAM(input_stream),
+                       sizeof reply, NULL, NULL);
+
+   count = 0;
+   doc_buffer = g_malloc(reply.len);
+   g_input_stream_read_all(G_INPUT_STREAM(input_stream),
+                           doc_buffer, reply.len - sizeof reply,
+                           &count, NULL, &error);
+   if (count != (reply.len - sizeof reply)) {
+      g_free(doc_buffer);
+      GOTO(failure);
+   }
+
    docs = g_ptr_array_new();
-   reader_init(&reader, buffer + sizeof reply, count - sizeof reply);
+   reader_init(&reader, doc_buffer, count);
    while ((bson = reader_next(&reader))) {
       g_ptr_array_add(docs, bson);
    }
+
+   g_free(doc_buffer);
+   g_assert_cmpint(docs->len, ==, reply.n_returned);
 
    /*
     * See if there was someone waiting for this request.
@@ -985,14 +1000,6 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       g_simple_async_result_set_op_res_gpointer(request, r, (GDestroyNotify)mongo_reply_unref);
       g_simple_async_result_complete_in_idle(request);
       g_hash_table_remove(priv->requests, GINT_TO_POINTER(reply.response_to));
-   }
-
-   /*
-    * Lose the buffered bytes.
-    */
-   if (!g_input_stream_skip(G_INPUT_STREAM(input_stream),
-                            reply.len, NULL, &error)) {
-      GOTO(failure);
    }
 
    /*
