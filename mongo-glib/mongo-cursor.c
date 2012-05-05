@@ -330,6 +330,7 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
                                GSimpleAsyncResult *simple)
 {
    MongoCursorCallback func;
+   MongoCursorPrivate *priv;
    GCancellable *cancellable;
    MongoCursor *cursor;
    gpointer func_data;
@@ -349,17 +350,21 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
    cursor = MONGO_CURSOR(g_async_result_get_source_object(G_ASYNC_RESULT(simple)));
    g_assert(MONGO_IS_CURSOR(cursor));
 
+   priv = cursor->priv;
+
    if (!reply->n_returned) {
       GOTO(stop);
    }
 
    for (i = 0; i < reply->n_returned; i++) {
-      if (!func(cursor, reply->documents[i], func_data)) {
+      if (((reply->starting_from + i) >= priv->limit) ||
+          !func(cursor, reply->documents[i], func_data)) {
          GOTO(stop);
       }
    }
 
-   if (!reply->cursor_id) {
+   if (!reply->cursor_id ||
+       ((reply->starting_from + reply->n_returned) >= priv->limit)) {
       GOTO(stop);
    }
 
