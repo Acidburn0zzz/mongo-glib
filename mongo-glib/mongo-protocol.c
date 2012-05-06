@@ -971,6 +971,9 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    g_input_stream_read_all(G_INPUT_STREAM(input_stream),
                            doc_buffer, reply.len - sizeof reply,
                            &count, NULL, &error);
+
+   DUMP_BYTES(buffer, buffer, count);
+
    if (count != (reply.len - sizeof reply)) {
       g_free(doc_buffer);
       GOTO(failure);
