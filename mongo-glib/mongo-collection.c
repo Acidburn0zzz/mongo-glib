@@ -187,12 +187,18 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
 
    if (!(reply = g_simple_async_result_get_op_res_gpointer(simple))) {
       g_simple_async_result_propagate_error(simple, error);
-      GOTO(failure);
+      RETURN(NULL);
    }
 
-   ret = reply->n_returned ? mongo_bson_ref(reply->documents[0]) : NULL;
+   if (reply->n_returned) {
+      ret = mongo_bson_ref(reply->documents[0]);
+   }
 
-failure:
+   g_set_error(error,
+               MONGO_COLLECTION_ERROR,
+               MONGO_COLLECTION_ERROR_NOT_FOUND,
+               _("The document could not be found."));
+
    RETURN(ret);
 }
 
@@ -913,4 +919,10 @@ mongo_collection_init (MongoCollection *collection)
                                                   MONGO_TYPE_COLLECTION,
                                                   MongoCollectionPrivate);
    EXIT;
+}
+
+GQuark
+mongo_collection_error_quark (void)
+{
+   return g_quark_from_static_string("mongo-collection-error-quark");
 }

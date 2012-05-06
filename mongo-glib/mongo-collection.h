@@ -33,6 +33,7 @@
 G_BEGIN_DECLS
 
 #define MONGO_TYPE_COLLECTION            (mongo_collection_get_type())
+#define MONGO_COLLECTION_ERROR           (mongo_collection_error_quark())
 #define MONGO_COLLECTION(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_COLLECTION, MongoCollection))
 #define MONGO_COLLECTION_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_COLLECTION, MongoCollection const))
 #define MONGO_COLLECTION_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  MONGO_TYPE_COLLECTION, MongoCollectionClass))
@@ -42,7 +43,13 @@ G_BEGIN_DECLS
 
 typedef struct _MongoCollection        MongoCollection;
 typedef struct _MongoCollectionClass   MongoCollectionClass;
+typedef enum   _MongoCollectionError   MongoCollectionError;
 typedef struct _MongoCollectionPrivate MongoCollectionPrivate;
+
+enum _MongoCollectionError
+{
+   MONGO_COLLECTION_ERROR_NOT_FOUND = 1,
+};
 
 struct _MongoCollection
 {
@@ -57,6 +64,7 @@ struct _MongoCollectionClass
    GObjectClass parent_class;
 };
 
+GQuark       mongo_collection_error_quark     (void) G_GNUC_CONST;
 GType        mongo_collection_get_type        (void) G_GNUC_CONST;
 MongoCursor *mongo_collection_find            (MongoCollection      *collection,
                                                MongoBson            *query,
