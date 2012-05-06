@@ -27,6 +27,8 @@
 
 G_BEGIN_DECLS
 
+#define MONGO_TYPE_OBJECT_ID (mongo_object_id_get_type())
+
 typedef struct _MongoObjectId MongoObjectId;
 
 void           mongo_clear_object_id         (MongoObjectId       **object_id);
