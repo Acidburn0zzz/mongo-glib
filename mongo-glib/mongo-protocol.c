@@ -344,6 +344,8 @@ mongo_protocol_update_async (MongoProtocol       *protocol,
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
 
+   g_byte_array_free(buffer, TRUE);
+
    EXIT;
 }
 
@@ -426,6 +428,8 @@ mongo_protocol_insert_async (MongoProtocol        *protocol,
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
 
+   g_byte_array_free(buffer, TRUE);
+
    EXIT;
 }
 
@@ -500,6 +504,8 @@ mongo_protocol_query_async (MongoProtocol       *protocol,
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
 
+   g_byte_array_free(buffer, TRUE);
+
    EXIT;
 }
 
@@ -567,6 +573,8 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
+
+   g_byte_array_free(buffer, TRUE);
 
    EXIT;
 }
@@ -648,6 +656,8 @@ mongo_protocol_delete_async (MongoProtocol       *protocol,
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
 
+   g_byte_array_free(buffer, TRUE);
+
    EXIT;
 }
 
@@ -716,6 +726,8 @@ mongo_protocol_kill_cursors_async (MongoProtocol       *protocol,
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
 
+   g_byte_array_free(buffer, TRUE);
+
    EXIT;
 }
 
@@ -776,6 +788,8 @@ mongo_protocol_msg_async (MongoProtocol       *protocol,
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
    mongo_protocol_write(protocol, request_id, simple,
                         buffer->data, buffer->len);
+
+   g_byte_array_free(buffer, TRUE);
 
    EXIT;
 }
