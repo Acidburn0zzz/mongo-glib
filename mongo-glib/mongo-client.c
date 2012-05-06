@@ -241,7 +241,7 @@ mongo_client_command_cb (GObject      *object,
    MongoProtocol *protocol = (MongoProtocol *)object;
    MongoBsonIter iter;
    const gchar *errmsg;
-   MongoReply *reply;
+   MongoReply *reply = NULL;
    GError *error = NULL;
 
    ENTRY;
@@ -289,13 +289,15 @@ mongo_client_command_cb (GObject      *object,
       }
    }
 
-   g_simple_async_result_set_op_res_gpointer(simple,
-                                             mongo_reply_ref(reply),
-                                             (GDestroyNotify)mongo_reply_unref);
+   g_simple_async_result_set_op_res_gpointer(
+         simple, mongo_reply_ref(reply),
+         (GDestroyNotify)mongo_reply_unref);
 
 finish:
    g_simple_async_result_complete_in_idle(simple);
-   mongo_reply_unref(reply);
+   if (reply) {
+      mongo_reply_unref(reply);
+   }
    g_object_unref(simple);
 
    EXIT;
@@ -799,10 +801,11 @@ mongo_client_query_cb (GObject      *object,
 
    if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
       g_simple_async_result_take_error(simple, error);
+   } else {
+      g_simple_async_result_set_op_res_gpointer(
+            simple, reply, (GDestroyNotify)mongo_reply_unref);
    }
 
-   g_simple_async_result_set_op_res_gpointer(
-         simple, reply, (GDestroyNotify)mongo_reply_unref);
    g_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 

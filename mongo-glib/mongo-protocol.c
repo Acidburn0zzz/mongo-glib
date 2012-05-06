@@ -1000,7 +1000,8 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       r->starting_from = reply.starting_from;
       r->n_returned = docs->len;
       r->documents = (MongoBson **)g_ptr_array_free(docs, FALSE);
-      g_simple_async_result_set_op_res_gpointer(request, r, (GDestroyNotify)mongo_reply_unref);
+      g_simple_async_result_set_op_res_gpointer(
+            request, r, (GDestroyNotify)mongo_reply_unref);
       g_simple_async_result_complete_in_idle(request);
       g_hash_table_remove(priv->requests, GINT_TO_POINTER(reply.response_to));
    }
