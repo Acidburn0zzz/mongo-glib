@@ -90,6 +90,7 @@ mongo_reply_unref (MongoReply *reply)
       for (i = 0; i < reply->n_returned; i++) {
          mongo_bson_unref(reply->documents[i]);
       }
+      g_free(reply->documents);
       g_slice_free(MongoReply, reply);
    }
 }
@@ -976,6 +977,9 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
             request, r, (GDestroyNotify)mongo_reply_unref);
       g_simple_async_result_complete_in_idle(request);
       g_hash_table_remove(priv->requests, GINT_TO_POINTER(reply.response_to));
+   } else {
+      g_ptr_array_set_free_func(docs, (GDestroyNotify)mongo_bson_unref);
+      g_ptr_array_free(docs, TRUE);
    }
 
    /*
