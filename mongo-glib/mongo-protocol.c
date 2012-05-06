@@ -179,60 +179,18 @@ mongo_protocol_fail (MongoProtocol *protocol,
    EXIT;
 }
 
-static void
-mongo_protocol_flush_cb (GObject      *object,
-                         GAsyncResult *result,
-                         gpointer      user_data)
-{
-   GOutputStream *output_stream = (GOutputStream *)object;
-   MongoProtocol *protocol = user_data;
-
-   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
-
-   g_output_stream_flush_finish(output_stream, result, NULL);
-   g_object_unref(protocol);
-
-   EXIT;
-}
-
 void
 mongo_protocol_flush_sync (MongoProtocol *protocol)
 {
-   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
-   g_output_stream_flush(protocol->priv->output_stream, NULL, NULL);
-}
-
-static gboolean
-mongo_protocol_flush (MongoProtocol *protocol)
-{
    ENTRY;
 
-   g_return_val_if_fail(MONGO_IS_PROTOCOL(protocol), FALSE);
-
-   g_output_stream_flush_async(protocol->priv->output_stream,
-                               G_PRIORITY_DEFAULT,
-                               protocol->priv->shutdown,
-                               mongo_protocol_flush_cb,
-                               protocol);
-   protocol->priv->flush_handler = 0;
-
-   RETURN(FALSE);
-}
-
-static void
-mongo_protocol_queue_flush (MongoProtocol *protocol)
-{
-   MongoProtocolPrivate *priv;
-
    g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
 
-   priv = protocol->priv;
-
-   if (!priv->flush_handler) {
-      priv->flush_handler =
-         g_timeout_add(0, (GSourceFunc)mongo_protocol_flush,
-                       g_object_ref(protocol));
+   if (!g_output_stream_has_pending(protocol->priv->output_stream)) {
+      g_output_stream_flush(protocol->priv->output_stream, NULL, NULL);
    }
+
+   EXIT;
 }
 
 static void
@@ -270,7 +228,7 @@ mongo_protocol_write (MongoProtocol      *protocol,
       EXIT;
    }
 
-   mongo_protocol_queue_flush(protocol);
+   mongo_protocol_flush_sync(protocol);
 
    EXIT;
 }
