@@ -47,6 +47,7 @@ libmongo_glib_1_0_la_CPPFLAGS =
 libmongo_glib_1_0_la_CPPFLAGS += $(GIO_CFLAGS)
 libmongo_glib_1_0_la_CPPFLAGS += $(GOBJECT_CFLAGS)
 libmongo_glib_1_0_la_CPPFLAGS += -DMONGO_COMPILATION
+libmongo_glib_1_0_la_CPPFLAGS += '-DG_LOG_DOMAIN="mongo"'
 
 libmongo_glib_1_0_la_LIBADD =
 libmongo_glib_1_0_la_LIBADD += $(GIO_LIBS)
