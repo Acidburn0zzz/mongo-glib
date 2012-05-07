@@ -1200,7 +1200,7 @@ mongo_client_init (MongoClient *client)
                                               MongoClientPrivate);
    client->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
                                                    g_free, g_object_unref);
-   client->priv->seeds = g_ptr_array_new();
+   client->priv->seeds = g_ptr_array_new_with_free_func(g_free);
    client->priv->socket_client = g_socket_client_new();
 
    EXIT;
