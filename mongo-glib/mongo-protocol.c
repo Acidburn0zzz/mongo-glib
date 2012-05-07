@@ -896,7 +896,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    ENTRY;
 
    g_assert(G_IS_BUFFERED_INPUT_STREAM(input_stream));
-   g_assert(G_IS_ASYNC_RESULT(result));
+   g_assert(!result || G_IS_ASYNC_RESULT(result));
    g_assert(MONGO_IS_PROTOCOL(protocol));
 
    priv = protocol->priv;
@@ -904,12 +904,14 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    /*
     * Check if succeeded filling buffered input with Mongo reply message.
     */
-   if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
-      /*
-       * TODO: Check if this was a cancellation from our finalizer.
-       */
-      g_assert_not_reached();
-      EXIT;
+   if (result) {
+      if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
+         /*
+          * TODO: Check if this was a cancellation from our finalizer.
+          */
+         g_assert_not_reached();
+         EXIT;
+      }
    }
 
    buffer = g_buffered_input_stream_peek_buffer(input_stream, &count);
@@ -984,13 +986,17 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    /*
     * Wait for the next message to arrive.
     */
-   g_buffered_input_stream_fill_async(
-         input_stream,
-         16, /* sizeof MsgHeader */
-         G_PRIORITY_DEFAULT,
-         priv->shutdown,
-         (GAsyncReadyCallback)mongo_protocol_fill_header_cb,
-         protocol);
+   if (g_buffered_input_stream_get_available(input_stream) < 16) {
+      g_buffered_input_stream_fill_async(
+            input_stream,
+            16, /* sizeof MsgHeader */
+            G_PRIORITY_DEFAULT,
+            priv->shutdown,
+            (GAsyncReadyCallback)mongo_protocol_fill_header_cb,
+            protocol);
+   } else {
+      mongo_protocol_fill_header_cb(input_stream, NULL, protocol);
+   }
 
    EXIT;
 
@@ -1014,20 +1020,24 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    ENTRY;
 
    g_assert(G_IS_BUFFERED_INPUT_STREAM(input_stream));
-   g_assert(G_IS_ASYNC_RESULT(result));
+   g_assert(!result || G_IS_ASYNC_RESULT(result));
    g_assert(MONGO_IS_PROTOCOL(protocol));
 
    priv = protocol->priv;
 
    /*
     * Check if we succeeded filling buffered input with Mongo reply header.
+    * If result is NULL, then this was done synchronously and we don't need
+    * to worry about finishing an async request.
     */
-   if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
-      /*
-       * TODO: Check if this was a cancellation from our finalizer.
-       */
-      g_assert_not_reached();
-      EXIT;
+   if (result) {
+      if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
+         /*
+          * TODO: Check if this was a cancellation from our finalizer.
+          */
+         g_assert_not_reached();
+         EXIT;
+      }
    }
 
    /*
@@ -1056,13 +1066,17 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    /*
     * Wait until the entire message has been received.
     */
-   g_buffered_input_stream_fill_async(
-         input_stream,
-         MAX(36, msg_len),
-         G_PRIORITY_DEFAULT,
-         priv->shutdown,
-         (GAsyncReadyCallback)mongo_protocol_fill_message_cb,
-         protocol);
+   if (g_buffered_input_stream_get_available(input_stream) < msg_len) {
+      g_buffered_input_stream_fill_async(
+            input_stream,
+            MAX(36, msg_len),
+            G_PRIORITY_DEFAULT,
+            priv->shutdown,
+            (GAsyncReadyCallback)mongo_protocol_fill_message_cb,
+            protocol);
+   } else {
+      mongo_protocol_fill_message_cb(input_stream, NULL, protocol);
+   }
 
    EXIT;
 }
