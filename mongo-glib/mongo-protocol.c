@@ -45,7 +45,6 @@ struct _MongoProtocolPrivate
    GHashTable *requests;
    gint getlasterror_w;
    gboolean getlasterror_j;
-   guint flush_handler;
 };
 
 enum
