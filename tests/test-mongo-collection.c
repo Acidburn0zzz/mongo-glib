@@ -78,7 +78,9 @@ test2_find_one_cb (GObject      *object,
    g_assert_no_error(error);
    g_assert(bson);
 
+#if 0
    g_print("%s\n", mongo_bson_to_string(bson, FALSE));
+#endif
 
    *success = !!bson;
 
