@@ -1,0 +1,14 @@
+Mongo-GLib 0.1.9                                                     2012-05-09
+===============================================================================
+
+  • Initial release of Mongo-GLib
+  • Support for non-deprecated BSON protocol.
+  • Support for connecting to a mongo server and performing queries,
+    inserts, updates, and deletes.
+  • Basic error checking of commands, queries, and other operations.
+
+  This is an initial protoype version. There are many things missing such as
+  reconnect support, master detection in a replSet, gridfs support, and
+  documentation. The missing gtk-doc will make using this from GObject
+  introspection a bit difficult for the time being.
+
