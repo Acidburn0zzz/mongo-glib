@@ -66,9 +66,9 @@ test1 (void)
 }
 
 static gboolean
-test2_foreach_func (MongoCursor     *cursor,
-                    const MongoBson *bson,
-                    gpointer         user_data)
+test2_foreach_func (MongoCursor *cursor,
+                    MongoBson   *bson,
+                    gpointer     user_data)
 {
    gchar *str;
    guint *count = user_data;

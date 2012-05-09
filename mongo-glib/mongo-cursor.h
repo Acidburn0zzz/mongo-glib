@@ -57,9 +57,9 @@ typedef struct _MongoCursorPrivate MongoCursorPrivate;
  *
  * Returns: %TRUE to continue processing, %FALSE to stop.
  */
-typedef gboolean (*MongoCursorCallback) (MongoCursor     *cursor,
-                                         const MongoBson *bson,
-                                         gpointer         user_data);
+typedef gboolean (*MongoCursorCallback) (MongoCursor *cursor,
+                                         MongoBson   *bson,
+                                         gpointer     user_data);
 
 struct _MongoCursor
 {
