@@ -1,3 +1,5 @@
+#include "test-helper.h"
+
 #include <mongo-glib/mongo-glib.h>
 
 static GMainLoop *gMainLoop;
