@@ -30,6 +30,7 @@
 
 G_BEGIN_DECLS
 
+#define MONGO_TYPE_QUERY_FLAGS         (mongo_query_flags_get_type())
 #define MONGO_TYPE_PROTOCOL            (mongo_protocol_get_type())
 #define MONGO_PROTOCOL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_PROTOCOL, MongoProtocol))
 #define MONGO_PROTOCOL_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_PROTOCOL, MongoProtocol const))
@@ -189,6 +190,7 @@ gboolean    mongo_protocol_msg_finish          (MongoProtocol        *protocol,
                                                 GAsyncResult         *result,
                                                 GError              **error);
 void        mongo_protocol_flush_sync          (MongoProtocol        *protocol);
+GType       mongo_query_flags_get_type         (void) G_GNUC_CONST;
 
 G_END_DECLS
 
