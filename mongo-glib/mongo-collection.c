@@ -192,12 +192,12 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
 
    if (reply->n_returned) {
       ret = mongo_bson_ref(reply->documents[0]);
+   } else {
+      g_set_error(error,
+                  MONGO_COLLECTION_ERROR,
+                  MONGO_COLLECTION_ERROR_NOT_FOUND,
+                  _("The document could not be found."));
    }
-
-   g_set_error(error,
-               MONGO_COLLECTION_ERROR,
-               MONGO_COLLECTION_ERROR_NOT_FOUND,
-               _("The document could not be found."));
 
    RETURN(ret);
 }
