@@ -32,3 +32,4 @@ test_mongo_object_id_CPPFLAGS = $(GIO_CFLAGS) $(GOBJECT_CFLAGS)
 test_mongo_object_id_LDADD = $(GIO_LIBS) $(GOBJECT_LIBS) $(top_builddir)/libmongo-glib-1.0.la
 
 EXTRA_DIST += $(top_srcdir)/tests/bson/*.bson
+EXTRA_DIST += $(top_srcdir)/tests/test-helper.h
