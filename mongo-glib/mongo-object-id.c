@@ -118,12 +118,12 @@ mongo_object_id_to_string (const MongoObjectId *object_id)
 MongoObjectId *
 mongo_object_id_copy (const MongoObjectId *object_id)
 {
-   MongoObjectId *copy;
+   MongoObjectId *copy = NULL;
 
-   g_return_val_if_fail(object_id != NULL, NULL);
-
-   copy = g_slice_new(MongoObjectId);
-   memcpy(copy, object_id, sizeof *object_id);
+   if (object_id) {
+      copy = g_slice_new(MongoObjectId);
+      memcpy(copy, object_id, sizeof *object_id);
+   }
 
    return copy;
 }
