@@ -312,6 +312,7 @@ mongo_bson_stream_finalize (GObject *object)
 
    if (stream->priv->channel) {
       g_io_channel_unref(stream->priv->channel);
+      stream->priv->channel = NULL;
    }
 
    G_OBJECT_CLASS(mongo_bson_stream_parent_class)->finalize(object);
