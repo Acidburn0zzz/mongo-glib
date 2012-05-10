@@ -1,17 +1,67 @@
-----------------------------------------------------------------------------
-        Mongo-GLib - A Mongo Driver for GObject Based Applications
-----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+          Mongo-GLib - A Mongo Driver for GObject Based Applications
+-------------------------------------------------------------------------------
 
 This is a work-in-progress driver that uses GLib and GObject to implement
 a Mongo driver and BSON reader and writer. It can be used via GObject
 introspection, making it available to JavaScript via GJS, Python, Vala,
 and many other languages[1].
 
-This driver is not optimized at all. However, the difference in approach
-between the python bson module and MongoBson yields anywhere from about
-4x to 25x faster. This is because the bson python module builds a SON that
-requires all the data to be build first. MongoBson is instead implemented
-as a builder (meaning less memory consumption too). Take a look at
-examples/bson_tests.py.
-
 [1]: https://live.gnome.org/GObjectIntrospection/Users
+
+-------------------------------------------------------------------------------
+   I. Introduction
+-------------------------------------------------------------------------------
+
+Mongo-GLib works in an asynchronous fashion since most GObject-based
+applications already use a main-loop such as GMainLoop. We have also taken
+the philosophy that errors should always be reported. Therefore, you wont see
+things like the "safe" parameter often seen in other drivers. We always call
+getlasterror to check for an error. This is usually not an issue since we
+pipeline the data and are asynchronous already.
+
+Each of the asynchronous functions has a corresponding finish function just
+like how GIO works. For example, to connect to a Mongo server, you need to
+provide a callback to mongo_client_connect_async() that calls
+mongo_client_connect_finish().
+
+For example:
+
+  static void
+  connect_cb (GObject *object, GAsyncResult *result, gpointer user_data)
+  {
+    MongoClient *client = MONGO_CLIENT(object);
+    GError *error = NULL;
+  
+    if (!mongo_client_connect_finish(client, result, &error)) {
+      g_error("%s\n", error->message);
+      g_error_free(error);
+    }
+  }
+
+  static void
+  connect()
+  {
+    MongoClient *client;
+  
+    client = mongo_client_new();
+    mongo_client_add_seed(client, "localhost", 27017);
+    mongo_client_connect_async(client, NULL, connect_cb, NULL);
+  }
+
+-------------------------------------------------------------------------------
+  II. Code Overview
+-------------------------------------------------------------------------------
+
+The basic gist of using Mongo-GLib can be shown by the object design below.
+
+  mongo-bson.h:        Routines for creating, reading, and traversing
+                       BSON documents.
+  mongo-bson-stream.h: Read and write files containing a sequential list
+                       of BSON documents, such as those created by mongodump.
+  mongo-client.h:      Primary object for accessing a remote Mongo server.
+  mongo-protocol.h:    Implementation of the Mongo wire protocol.
+  mongo-object-id.h:   Routines for ObjectId's, a 12-byte object identifier.
+  mongo-database.h:    Object reprsenting a database on the Mongo server.
+  mongo-collection.h:  Object representing a collection within a database.
+
