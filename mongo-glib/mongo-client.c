@@ -42,6 +42,15 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+/**
+ * mongo_client_new:
+ *
+ * Creates a new instance of #MongoClient which can be freed with
+ * g_object_unref(). See mongo_client_add_seed() to add a single or more
+ * hosts to connect to.
+ *
+ * Returns: A newly allocated #MongoClient.
+ */
 MongoClient *
 mongo_client_new (void)
 {
@@ -52,6 +61,15 @@ mongo_client_new (void)
    RETURN(ret);
 }
 
+/**
+ * mongo_client_add_seed:
+ * @client: (in): A #MongoClient.
+ *
+ * Adds a host:port combination to connect to. Upon failure, the next host
+ * in the list will be tried after the automatically discovered replSet.
+ *
+ * NOTE: Reconnection and replSets are not yet supported.
+ */
 void
 mongo_client_add_seed (MongoClient *client,
                        const gchar *hostname,
@@ -132,6 +150,16 @@ mongo_client_connect_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_connect_async:
+ * @client: (in): A #MongoClient.
+ * @cancellable: (in) (allow-none): A #GCancellable or %NULL.
+ * @callback: (in): A #GAsyncCallback.
+ * @user_data: (in) (allow-none): Data for @callback.
+ *
+ * Attempts to asynchronously connect to the first host in the seed of
+ * host:port combinations.
+ */
 void
 mongo_client_connect_async (MongoClient         *client,
                             GCancellable        *cancellable,
@@ -178,6 +206,16 @@ mongo_client_connect_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_connect_finish:
+ * @client: (in): A #MongoClient.
+ * @result: (in): A #GAsyncResult provided to callback.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous attempt to connect to a Mongo server.
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 mongo_client_connect_finish (MongoClient   *client,
                              GAsyncResult  *result,
@@ -303,6 +341,20 @@ finish:
    EXIT;
 }
 
+/**
+ * mongo_client_command_async:
+ * @client: A #MongoClient.
+ * @db: The database execute the command within.
+ * @command: (transfer none): A #MongoBson containing the command.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously requests that a command is executed on the remote Mongo
+ * server.
+ *
+ * @callback MUST execute mongo_client_command_finish().
+ */
 void
 mongo_client_command_async (MongoClient         *client,
                             const gchar         *db,
@@ -332,7 +384,7 @@ mongo_client_command_async (MongoClient         *client,
                                           MONGO_CLIENT_ERROR,
                                           MONGO_CLIENT_ERROR_NOT_CONNECTED,
                                           _("The mongo client is not "
-                                          "currently connected."));
+                                            "currently connected."));
       EXIT;
    }
 
@@ -356,6 +408,17 @@ mongo_client_command_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_command_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to execute a command on a remote
+ * Mongo server. Upon failure, %NULL is returned and @error is set.
+ *
+ * Returns: (transfer full): A #MongoReply if successful; otherwise %NULL.
+ */
 MongoReply *
 mongo_client_command_finish (MongoClient   *client,
                              GAsyncResult  *result,
@@ -404,6 +467,25 @@ mongo_client_remove_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_remove_async:
+ * @client: (in): A #MongoClient.
+ * @db_and_collection: A string containing the "db.collection".
+ * @flags: A bitwise-or of #MongoDeleteFlag.
+ * @selector: A #MongoBson of fields to select for deletion.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback to execute upon completion.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously requests the removal of one or more documents in a Mongo
+ * collection. If you only want to remove a single document from the Mongo
+ * collection, then you MUST specify the %MONGO_DELETE_SINGLE_REMOVE flag
+ * in @flags.
+ *
+ * Selector should be a #MongoBson containing the fields to match.
+ *
+ * @callback MUST call mongo_client_remove_finish().
+ */
 void
 mongo_client_remove_async (MongoClient         *client,
                            const gchar         *db_and_collection,
@@ -451,6 +533,17 @@ mongo_client_remove_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_remove_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to remove one or more documents from a
+ * Mongo collection.
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 mongo_client_remove_finish (MongoClient   *client,
                             GAsyncResult  *result,
@@ -497,6 +590,21 @@ mongo_client_update_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_update_async:
+ * @client: A #MongoClient.
+ * @db_and_collection: A string containing the "db.collection".
+ * @flags: A bitwise-or of #MongoUpdateFlag.
+ * @selector: (allow-none): A #MongoBson or %NULL.
+ * @update: A #MongoBson to apply as an update to documents matching @selector.
+ * @cancellable: (allow-none): A #GCancellable, or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously requests an update to all documents matching @selector.
+ *
+ * @callback MUST call mongo_client_update_finish().
+ */
 void
 mongo_client_update_async (MongoClient         *client,
                            const gchar         *db_and_collection,
@@ -546,6 +654,16 @@ mongo_client_update_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_update_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (allow-none) (out): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to mongo_client_update_async().
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 mongo_client_update_finish (MongoClient   *client,
                             GAsyncResult  *result,
@@ -592,6 +710,21 @@ mongo_client_insert_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_insert_async:
+ * @client: A #MongoClient.
+ * @db_and_collection: A string containing the "db.collection".
+ * @flags: A bitwise-or of #MongoInsertFlags.
+ * @documents: (array length=n_documents) (element-type MongoBson): Array  of
+ * #MongoBson documents to insert.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously requests the insertion of a document into the Mongo server.
+ *
+ * @callback MUST call mongo_client_insert_finish().
+ */
 void
 mongo_client_insert_async (MongoClient          *client,
                            const gchar          *db_and_collection,
@@ -642,6 +775,16 @@ mongo_client_insert_async (MongoClient          *client,
    EXIT;
 }
 
+/**
+ * mongo_client_insert_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asychronous request to insert a document.
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 mongo_client_insert_finish (MongoClient   *client,
                             GAsyncResult  *result,
@@ -812,6 +955,25 @@ mongo_client_query_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_query_async:
+ * @client: A #MongoClient.
+ * @db_and_collection: A string containing "db.collection".
+ * @flags: A bitwise-or of #MongoQueryFlags.
+ * @skip: The number of documents to skip in the result set.
+ * @limit: The maximum number of documents to retrieve.
+ * @query: (allow-none): A #MongoBson containing the query.
+ * @field_selector: (allow-none): A #MongoBson describing requested fields.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously queries Mongo for the documents that match. This retrieves
+ * the first reply from the server side cursor. Further replies can be
+ * retrieved with mongo_client_getmore_async().
+ *
+ * @callback MUST call mongo_client_query_finish().
+ */
 void
 mongo_client_query_async (MongoClient         *client,
                           const gchar         *db_and_collection,
@@ -877,6 +1039,16 @@ mongo_client_query_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_query_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to mongo_client_query_async().
+ *
+ * Returns: (transfer full): A #MongoReply.
+ */
 MongoReply *
 mongo_client_query_finish (MongoClient   *client,
                            GAsyncResult  *result,
@@ -927,6 +1099,20 @@ mongo_client_getmore_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_getmore_async:
+ * @client: A #MongoClient.
+ * @db_and_collection: A string containing the 'db.collection".
+ * @limit: The maximum number of documents to return in the cursor.
+ * @cursor_id: The cursor_id provided by the server.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously requests more results from a cursor on the Mongo server.
+ *
+ * @callback MUST call mongo_client_getmore_finish().
+ */
 void
 mongo_client_getmore_async (MongoClient         *client,
                             const gchar         *db_and_collection,
@@ -972,6 +1158,16 @@ mongo_client_getmore_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_getmore_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (allow-none) (out): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to mongo_client_getmore_finish().
+ *
+ * Returns: (transfer full): A #MongoReply.
+ */
 MongoReply *
 mongo_client_getmore_finish (MongoClient   *client,
                              GAsyncResult  *result,
@@ -1020,6 +1216,20 @@ mongo_client_kill_cursors_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_kill_cursors_async:
+ * @client: A #MongoClient.
+ * @cursors: (array length=n_cursors) (element-type guint64): Array of cursors.
+ * @n_cursors: Number of elements in @cursors.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously requests that a series of cursors are killed on the Mongo
+ * server.
+ *
+ * @callback MUST call mongo_client_kill_cursors_finish().
+ */
 void
 mongo_client_kill_cursors_async (MongoClient         *client,
                                  guint64             *cursors,
@@ -1065,6 +1275,16 @@ mongo_client_kill_cursors_async (MongoClient         *client,
    EXIT;
 }
 
+/**
+ * mongo_client_kill_cursors_finish:
+ * @client: A #MongoClient.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to mongo_client_kill_cursors_async().
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 mongo_client_kill_cursors_finish (MongoClient   *client,
                                   GAsyncResult  *result,
@@ -1085,6 +1305,15 @@ mongo_client_kill_cursors_finish (MongoClient   *client,
    RETURN(ret);
 }
 
+/**
+ * mongo_client_get_slave_okay:
+ * @client: A #MongoClient.
+ *
+ * Retrieves the "slave-okay" property. If "slave-okay" is %TRUE, then
+ * %MONGO_QUERY_SLAVE_OK will be set on all outgoing queries.
+ *
+ * Returns: %TRUE if "slave-okay" is set.
+ */
 gboolean
 mongo_client_get_slave_okay (MongoClient *client)
 {
@@ -1092,6 +1321,15 @@ mongo_client_get_slave_okay (MongoClient *client)
    return client->priv->slave_okay;
 }
 
+/**
+ * mongo_client_set_slave_okay:
+ * @client: A #MongoClient.
+ * @slave_okay: A #gboolean.
+ *
+ * Sets the "slave-okay" property. If @slave_okay is %TRUE, then all queries
+ * will have the %MONGO_QUERY_SLAVE_OK flag set, allowing them to be executed
+ * on slave servers.
+ */
 void
 mongo_client_set_slave_okay (MongoClient *client,
                              gboolean     slave_okay)
