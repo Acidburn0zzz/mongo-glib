@@ -849,8 +849,6 @@ mongo_bson_iter_init (MongoBsonIter   *iter,
  * If the BSON document is known to have valid UTF-8 because it came
  * from a trusted source, then this may be used to disable UTF-8
  * validation. This can improve performance dramatically.
- *
- * Returns: None.
  */
 void
 mongo_bson_iter_set_trust_utf8 (MongoBsonIter *iter,
@@ -1555,9 +1553,12 @@ mongo_clear_bson (MongoBson **bson)
 
 /**
  * mongo_bson_to_string:
- * @bson: (in): A #MongoBson.
+ * @bson: A #MongoBson.
+ * @is_array: If the document should be generated as an array.
  *
- * Build a string representing the BSON document.
+ * Build a string representing the BSON document. Since BSON documents are
+ * used for both documents and arrays, you can change the format using
+ * @is_array.
  *
  * Returns: (transfer full): A string representing the BSON document.
  */
