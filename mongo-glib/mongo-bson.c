@@ -49,7 +49,6 @@ struct _MongoBson
 {
    volatile gint ref_count;
    GByteArray *buf;
-
    const guint8 *static_data;
    gsize static_len;
    GDestroyNotify static_notify;
@@ -116,6 +115,17 @@ mongo_bson_new_from_data (const guint8 *buffer,
    return bson;
 }
 
+/**
+ * mongo_bson_new_take_data:
+ * @buffer: (in): The buffer to use when creating the #MongoBson.
+ * @length: (in): The length of @buffer.
+ *
+ * Creates a new instance of #MongoBson using the buffers provided.
+ * @buffer should be a buffer that can work with g_realloc() and
+ * g_free().
+ *
+ * Returns: (transfer full): A newly allocated #MongoBson.
+ */
 MongoBson *
 mongo_bson_new_take_data (guint8 *buffer,
                           gsize   length)
@@ -123,7 +133,8 @@ mongo_bson_new_take_data (guint8 *buffer,
    MongoBson *bson;
    guint32 bson_len;
 
-   g_return_val_if_fail(buffer != NULL, NULL);
+   g_return_val_if_fail(buffer, NULL);
+   g_return_val_if_fail(length >= 5, NULL);
 
    /*
     * The first 4 bytes of a BSON are the length, including the 4 bytes
@@ -171,7 +182,8 @@ mongo_bson_new_from_static_data (guint8         *buffer,
    MongoBson *bson;
    guint32 bson_len;
 
-   g_return_val_if_fail(buffer != NULL, NULL);
+   g_return_val_if_fail(buffer, NULL);
+   g_return_val_if_fail(length >= 5, NULL);
 
    /*
     * The first 4 bytes of a BSON are the length, including the 4 bytes
@@ -246,17 +258,23 @@ mongo_bson_new (void)
    return bson;
 }
 
+/**
+ * mongo_bson_dup:
+ * @bson: (in): A #MongoBson.
+ *
+ * Creates a new #MongoBson by copying @bson.
+ *
+ * Returns: (transfer full): A newly allocated #MongoBson.
+ */
 MongoBson *
 mongo_bson_dup (const MongoBson *bson)
 {
+   const guint8 *data;
    MongoBson *ret = NULL;
+   gsize data_len = 0;
 
-   if (bson) {
-      if (bson->static_data) {
-         ret = mongo_bson_new_from_data(bson->static_data, bson->static_len);
-      } else {
-         ret = mongo_bson_new_from_data(bson->buf->data, bson->buf->len);
-      }
+   if ((data = mongo_bson_get_data(bson, &data_len))) {
+      ret = mongo_bson_new_from_data(data, data_len);
    }
 
    return ret;
@@ -736,8 +754,8 @@ mongo_bson_append_string (MongoBson   *bson,
                           const gchar *key,
                           const gchar *value)
 {
-   gint32 value_len;
-   gint32 value_len_swab;
+   guint32 value_len;
+   guint32 value_len_swab;
 
    g_return_if_fail(bson != NULL);
    g_return_if_fail(key != NULL);
@@ -745,7 +763,7 @@ mongo_bson_append_string (MongoBson   *bson,
 
    value = value ? value : "";
    value_len = strlen(value) + 1;
-   value_len_swab = GINT_TO_LE(value_len);
+   value_len_swab = GUINT32_TO_LE(value_len);
 
    mongo_bson_append(bson, MONGO_BSON_UTF8, key,
                      (const guint8 *)&value_len_swab, sizeof value_len_swab,
@@ -770,9 +788,9 @@ mongo_bson_append_timeval (MongoBson   *bson,
 {
    guint64 msec;
 
-   g_return_if_fail(bson != NULL);
-   g_return_if_fail(key != NULL);
-   g_return_if_fail(value != NULL);
+   g_return_if_fail(bson);
+   g_return_if_fail(key);
+   g_return_if_fail(value);
 
    msec = (value->tv_sec * 1000) + (value->tv_usec / 1000);
    mongo_bson_append(bson, MONGO_BSON_DATE_TIME, key,
@@ -1329,6 +1347,15 @@ first_nul (const gchar *data,
    return 0;
 }
 
+/**
+ * mongo_bson_iter_next:
+ * @iter: (inout): A #MongoBsonIter.
+ *
+ * Moves @iter to the next field in the document. If no more fields exist,
+ * then %FALSE is returned.
+ *
+ * Returns: %FALSE if there are no more fields or an error; otherwise %TRUE.
+ */
 gboolean
 mongo_bson_iter_next (MongoBsonIter *iter)
 {
@@ -1342,7 +1369,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    const gchar *end = NULL;
    guint32 max_len;
 
-   g_return_val_if_fail(iter != NULL, FALSE);
+   g_return_val_if_fail(iter, FALSE);
 
    /*
     * Copy values onto stack from iter.
@@ -1654,6 +1681,13 @@ again:
    return g_string_free(str, FALSE);
 }
 
+/**
+ * mongo_bson_join:
+ * @bson: (in): A #MongoBson.
+ * @other: (in): A #MongoBson.
+ *
+ * Appends the contents of @other to the end of @bson.
+ */
 void
 mongo_bson_join (MongoBson       *bson,
                  const MongoBson *other)
