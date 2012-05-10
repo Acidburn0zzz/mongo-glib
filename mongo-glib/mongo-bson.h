@@ -110,9 +110,9 @@ void           mongo_bson_append_int64             (MongoBson       *bson,
                                                     gint64           value);
 void           mongo_bson_append_null              (MongoBson       *bson,
                                                     const gchar     *key);
-void           mongo_bson_append_object_id         (MongoBson       *bson,
-                                                    const gchar     *key,
-                                                    MongoObjectId   *object_id);
+void           mongo_bson_append_object_id         (MongoBson           *bson,
+                                                    const gchar         *key,
+                                                    const MongoObjectId *object_id);
 void           mongo_bson_append_regex             (MongoBson       *bson,
                                                     const gchar     *key,
                                                     const gchar     *regex,

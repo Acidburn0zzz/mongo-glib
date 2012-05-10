@@ -687,9 +687,9 @@ mongo_bson_append_null (MongoBson   *bson,
  * Appends @object_id to the document under @key.
  */
 void
-mongo_bson_append_object_id (MongoBson     *bson,
-                             const gchar   *key,
-                             MongoObjectId *object_id)
+mongo_bson_append_object_id (MongoBson           *bson,
+                             const gchar         *key,
+                             const MongoObjectId *object_id)
 {
    g_return_if_fail(bson != NULL);
    g_return_if_fail(key != NULL);
