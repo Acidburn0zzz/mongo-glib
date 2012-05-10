@@ -20,6 +20,7 @@
 #include <unistr.h>
 
 #include "mongo-bson.h"
+#include "mongo-debug.h"
 
 /**
  * SECTION:mongo-bson
@@ -62,12 +63,6 @@ typedef enum
 
 #define ITER_IS_TYPE(iter, type) \
    (GPOINTER_TO_INT(iter->user_data5) == type)
-
-#if 0
-#define GOTO(_l) G_STMT_START { g_debug("GOTO("#_l"):%d", __LINE__); goto _l; } G_STMT_END
-#else
-#define GOTO(_l) goto _l
-#endif
 
 /**
  * mongo_bson_dispose:
@@ -1657,4 +1652,34 @@ again:
    g_string_append(str, is_array ? "]" : "}");
 
    return g_string_free(str, FALSE);
+}
+
+void
+mongo_bson_join (MongoBson       *bson,
+                 const MongoBson *other)
+{
+   const guint8 *other_data;
+   guint32 new_size;
+   gsize other_len;
+   guint offset;
+
+   g_return_if_fail(bson);
+   g_return_if_fail(other);
+
+   if (!bson->buf) {
+      g_warning("Cannot join BSON document to static BSON.");
+      return;
+   }
+
+   g_assert(bson->buf->len >= 5);
+
+   other_data = mongo_bson_get_data(other, &other_len);
+   g_assert_cmpint(other_len, >=, 5);
+
+   offset = bson->buf->len - 1;
+   g_byte_array_set_size(bson->buf, bson->buf->len + other_len - 5);
+   memcpy(&bson->buf->data[offset], other_data + 4, other_len - 4);
+
+   new_size = GUINT32_TO_LE(bson->buf->len);
+   memcpy(bson->buf->data, &new_size, sizeof new_size);
 }

@@ -500,6 +500,42 @@ iter_tests (void)
    mongo_bson_unref(bson);
 }
 
+static void
+join (void)
+{
+   MongoBsonIter iter;
+   MongoBson *b1;
+   MongoBson *b2;
+   MongoBson *b3;
+
+   b1 = mongo_bson_new_empty();
+   mongo_bson_append_int(b1, "key1", 1234);
+   mongo_bson_append_int(b1, "key2", 4321);
+
+   b2 = mongo_bson_new_empty();
+   mongo_bson_append_int(b2, "key1", 1234);
+
+   b3 = mongo_bson_new_empty();
+   mongo_bson_append_int(b3, "key2", 4321);
+
+   mongo_bson_join(b2, b3);
+
+   mongo_bson_iter_init(&iter, b2);
+   g_assert(mongo_bson_iter_next(&iter));
+   g_assert_cmpint(mongo_bson_iter_get_value_type(&iter), ==, MONGO_BSON_INT32);
+   g_assert_cmpstr(mongo_bson_iter_get_key(&iter), ==, "key1");
+   g_assert_cmpint(mongo_bson_iter_get_value_int(&iter), ==, 1234);
+   g_assert(mongo_bson_iter_next(&iter));
+   g_assert_cmpint(mongo_bson_iter_get_value_type(&iter), ==, MONGO_BSON_INT32);
+   g_assert_cmpstr(mongo_bson_iter_get_key(&iter), ==, "key2");
+   g_assert_cmpint(mongo_bson_iter_get_value_int(&iter), ==, 4321);
+   g_assert(!mongo_bson_iter_next(&iter));
+
+   mongo_bson_unref(b1);
+   mongo_bson_unref(b2);
+   mongo_bson_unref(b3);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -507,5 +543,6 @@ main (gint   argc,
    g_test_init(&argc, &argv, NULL);
    g_test_add_func("/MongoBson/append_tests", append_tests);
    g_test_add_func("/MongoBson/iter_tests", iter_tests);
+   g_test_add_func("/MongoBson/join", join);
    return g_test_run();
 }
