@@ -116,6 +116,22 @@ mongo_collection_find_one_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_collection_find_one_async:
+ * @collection: A #MongoCollection.
+ * @query: (allow-none): A #MongoBson or %NULL.
+ * @field_selector: (allow-none): A #MongoBson or %NULL.
+ * @flags: A bitwise-or of #MongoQueryFlags.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: A #GAsyncReadyCallback.
+ * @user_data: User data for @callback.
+ *
+ * Asynchronously queries the collection for the first document matching
+ * @query. You may specify the fields that should be retrieved by providing
+ * @field_selector.
+ *
+ * @callback MUST call mongo_collection_find_one_finish().
+ */
 void
 mongo_collection_find_one_async (MongoCollection     *collection,
                                  const MongoBson     *query,
@@ -171,6 +187,18 @@ mongo_collection_find_one_async (MongoCollection     *collection,
    EXIT;
 }
 
+/**
+ * mongo_collection_find_one_finish:
+ * @collection: A #MongoCollection.
+ * @result: A #GAsyncResult.
+ * @error: (out) (allow-none): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to mongo_collection_find_one_async().
+ * If no document was found %NULl is returned and @error is set.
+ *
+ * Returns: (transfer full): A #MongoBson if successful; otherwise %NULL
+ * and @error is set.
+ */
 MongoBson *
 mongo_collection_find_one_finish (MongoCollection  *collection,
                                   GAsyncResult     *result,
