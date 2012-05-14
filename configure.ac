@@ -140,7 +140,7 @@ dnl Output
 dnl **************************************************************************
 AC_CONFIG_FILES([
 	Makefile
-	data/mongo-glib-1.0.pc
+	mongo-glib-1.0.pc
 	doc/Makefile
 	doc/version.xml
 ])

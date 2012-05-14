@@ -1,6 +1,5 @@
 include Makefile.include
 include Makefile.tests
-include data/Makefile.include
 include mongo-glib/Makefile.include
 include tests/Makefile.include
 
@@ -17,6 +16,10 @@ mongodoc_DATA += AUTHORS
 mongodoc_DATA += ChangeLog
 mongodoc_DATA += INSTALL
 mongodoc_DATA += NEWS
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA =
+pkgconfig_DATA += $(top_builddir)/mongo-glib-1.0.pc
 
 EXTRA_DIST += $(mongodoc_DATA)
 
