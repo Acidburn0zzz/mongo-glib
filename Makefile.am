@@ -5,7 +5,7 @@ include tests/Makefile.include
 
 SUBDIRS = . doc
 
-ACLOCAL_AMFLAGS = -I build/m4 ${ACLOCAL_FLAGS}
+ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
 DISTCHECK_CONFIGURE_FLAGS = --enable-maintainer-flags --enable-gtk-doc --enable-introspection=yes --enable-silent-rules
 
 mongodocdir = ${prefix}/doc/mongo-glib-1.0

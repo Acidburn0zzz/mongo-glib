@@ -21,7 +21,7 @@ AC_PREREQ([2.64])
 AC_INIT([mongo-glib],[mongo_version])
 
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_MACRO_DIR([build/m4])
+AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([-Wno-portability])
 AM_MAINTAINER_MODE([enable])
