@@ -20,6 +20,7 @@
 
 #include "mongo-debug.h"
 #include "mongo-protocol.h"
+#include "mongo-source.h"
 
 G_DEFINE_TYPE(MongoProtocol, mongo_protocol, G_TYPE_OBJECT)
 
@@ -223,7 +224,7 @@ mongo_protocol_write (MongoProtocol      *protocol,
                                   NULL, &error)) {
       mongo_protocol_fail(protocol, error);
       g_simple_async_result_take_error(simple, error);
-      g_simple_async_result_complete_in_idle(simple);
+      mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }
@@ -976,7 +977,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       r->documents = (MongoBson **)g_ptr_array_free(docs, FALSE);
       g_simple_async_result_set_op_res_gpointer(
             request, r, (GDestroyNotify)mongo_reply_unref);
-      g_simple_async_result_complete_in_idle(request);
+      mongo_simple_async_result_complete_in_idle(request);
       g_hash_table_remove(priv->requests, GINT_TO_POINTER(reply.response_to));
    } else {
       g_ptr_array_set_free_func(docs, (GDestroyNotify)mongo_bson_unref);

@@ -19,6 +19,7 @@ INST_H_FILES += $(top_srcdir)/mongo-glib/mongo-protocol.h
 
 NOINST_H_FILES =
 NOINST_H_FILES += $(top_srcdir)/mongo-glib/mongo-debug.h
+NOINST_H_FILES += $(top_srcdir)/mongo-glib/mongo-source.h
 
 GIR_FILES =
 GIR_FILES += $(INST_H_FILES)
@@ -42,6 +43,7 @@ libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-cursor.c
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-database.c
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-object-id.c
 libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-protocol.c
+libmongo_glib_1_0_la_SOURCES += $(top_srcdir)/mongo-glib/mongo-source.c
 
 libmongo_glib_1_0_la_CPPFLAGS =
 libmongo_glib_1_0_la_CPPFLAGS += $(GIO_CFLAGS)

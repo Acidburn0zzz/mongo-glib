@@ -21,6 +21,7 @@
 #include "mongo-client.h"
 #include "mongo-debug.h"
 #include "mongo-protocol.h"
+#include "mongo-source.h"
 
 G_DEFINE_TYPE(MongoClient, mongo_client, G_TYPE_OBJECT)
 
@@ -126,7 +127,7 @@ mongo_client_connect_cb (GObject      *object,
        *       backoff if we are at the end of the list.
        */
       g_simple_async_result_take_error(simple, error);
-      g_simple_async_result_complete_in_idle(simple);
+      mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       g_object_unref(client);
       EXIT;
@@ -143,7 +144,7 @@ mongo_client_connect_cb (GObject      *object,
     * Complete the asynchronous request.
     */
    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
    g_object_unref(client);
 
@@ -184,7 +185,7 @@ mongo_client_connect_async (MongoClient         *client,
                                                MONGO_CLIENT_ERROR,
                                                MONGO_CLIENT_ERROR_NO_SEEDS,
                                                _("No hosts have been seeded"));
-      g_simple_async_result_complete_in_idle(simple);
+      mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }
@@ -332,7 +333,7 @@ mongo_client_command_cb (GObject      *object,
          (GDestroyNotify)mongo_reply_unref);
 
 finish:
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    if (reply) {
       mongo_reply_unref(reply);
    }
@@ -461,7 +462,7 @@ mongo_client_remove_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -584,7 +585,7 @@ mongo_client_update_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -704,7 +705,7 @@ mongo_client_insert_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -825,7 +826,7 @@ mongo_client_disconnect_close_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -901,7 +902,7 @@ mongo_client_disconnect_async (MongoClient         *client,
       EXIT;
    } else {
       g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-      g_simple_async_result_complete_in_idle(simple);
+      mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }
@@ -949,7 +950,7 @@ mongo_client_query_cb (GObject      *object,
             simple, reply, (GDestroyNotify)mongo_reply_unref);
    }
 
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -1093,7 +1094,7 @@ mongo_client_getmore_cb (GObject      *object,
             simple, reply, (GDestroyNotify)mongo_reply_unref);
    }
 
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -1210,7 +1211,7 @@ mongo_client_kill_cursors_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;

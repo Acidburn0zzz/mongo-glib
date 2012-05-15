@@ -22,6 +22,7 @@
 #include "mongo-database.h"
 #include "mongo-debug.h"
 #include "mongo-protocol.h"
+#include "mongo-source.h"
 
 G_DEFINE_TYPE(MongoDatabase, mongo_database, G_TYPE_OBJECT)
 
@@ -153,7 +154,7 @@ mongo_database_drop_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, !!reply);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    if (reply) {

@@ -21,6 +21,7 @@
 #include "mongo-client.h"
 #include "mongo-cursor.h"
 #include "mongo-debug.h"
+#include "mongo-source.h"
 
 G_DEFINE_TYPE(MongoCursor, mongo_cursor, G_TYPE_OBJECT)
 
@@ -247,7 +248,7 @@ mongo_cursor_count_cb (GObject      *object,
             simple, reply, (GDestroyNotify)mongo_reply_unref);
    }
 
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -429,7 +430,7 @@ stop:
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
    g_object_unref(cursor);
 
@@ -453,7 +454,7 @@ mongo_cursor_foreach_getmore_cb (GObject      *object,
 
    if (!(reply = mongo_client_getmore_finish(client, result, &error))) {
       g_simple_async_result_take_error(simple, error);
-      g_simple_async_result_complete_in_idle(simple);
+      mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }
@@ -481,7 +482,7 @@ mongo_cursor_foreach_query_cb (GObject      *object,
 
    if (!(reply = mongo_client_query_finish(client, result, &error))) {
       g_simple_async_result_take_error(simple, error);
-      g_simple_async_result_complete_in_idle(simple);
+      mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }

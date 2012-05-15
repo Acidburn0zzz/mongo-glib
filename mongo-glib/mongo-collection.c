@@ -21,6 +21,7 @@
 #include "mongo-client.h"
 #include "mongo-collection.h"
 #include "mongo-debug.h"
+#include "mongo-source.h"
 
 G_DEFINE_TYPE(MongoCollection, mongo_collection, G_TYPE_OBJECT)
 
@@ -110,7 +111,7 @@ mongo_collection_find_one_cb (GObject      *object,
             simple, reply, (GDestroyNotify)mongo_reply_unref);
    }
 
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -252,7 +253,7 @@ mongo_collection_count_cb (GObject      *object,
             simple, reply, (GDestroyNotify)mongo_reply_unref);
    }
 
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -486,7 +487,7 @@ mongo_collection_remove_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -572,7 +573,7 @@ mongo_collection_update_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -660,7 +661,7 @@ mongo_collection_insert_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, ret);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    EXIT;
@@ -751,7 +752,7 @@ mongo_collection_drop_cb (GObject      *object,
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, !!reply);
-   g_simple_async_result_complete_in_idle(simple);
+   mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
    if (reply) {
