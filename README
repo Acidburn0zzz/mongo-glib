@@ -9,8 +9,25 @@ and many other languages[1].
 
 [1]: https://live.gnome.org/GObjectIntrospection/Users
 
+
 -------------------------------------------------------------------------------
-   I. Introduction
+   0: STUFF THAT IS MISSING
+-------------------------------------------------------------------------------
+
+Mongo-GLib currently lacks a lot of features. For example, the following needs
+to be implemented in the short term.
+
+  - Auto-reconnect to Mongo server upon connection being lost. Current
+    commands in flight should be completed with an error.
+  - Discovery of replSet from Mongo server. This can help us reconnect
+    to a host that is master faster than iterating through seeds. However,
+    it is only needed when slave-okay is False.
+  - Support for sort ordering.
+  - Support for creating indexes.
+
+
+-------------------------------------------------------------------------------
+   I. INTRODUCTION
 -------------------------------------------------------------------------------
 
 Mongo-GLib works in an asynchronous fashion since most GObject-based
@@ -50,7 +67,7 @@ For example:
   }
 
 -------------------------------------------------------------------------------
-  II. Code Overview
+  II. CODE OVERVIEW
 -------------------------------------------------------------------------------
 
 The basic gist of using Mongo-GLib can be shown by the object design below.
