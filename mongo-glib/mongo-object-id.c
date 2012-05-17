@@ -21,6 +21,28 @@
 
 #include "mongo-object-id.h"
 
+/**
+ * SECTION:mongo-object-id
+ * @title: MongoObjectId
+ * @short_description: ObjectId structure used by BSON and Mongo.
+ *
+ * #MongoObjectId represents an ObjectId as used by the BSON serialization
+ * format and Mongo. It is a 12-byte structure designed in a way to allow
+ * client side generation of unique object identifiers. The first 4 bytes
+ * contain the UNIX timestamp since January 1, 1970. The following 3 bytes
+ * contain the first 3 bytes of the hostname MD5 hashed. Following that are
+ * 2 bytes containing the Process ID or Thread ID. The last 3 bytes contain
+ * a continually incrementing counter.
+ *
+ * When creating a new #MongoObjectId using mongo_object_id_new(), all of
+ * this data is created for you.
+ *
+ * To create a #MongoObjectId from an existing 12 bytes, use
+ * mongo_object_id_new_from_data().
+ *
+ * To free an allocated #MongoObjectId, use mongo_object_id_free().
+ */
+
 struct _MongoObjectId
 {
    guint8 data[12];
@@ -49,6 +71,15 @@ mongo_object_id_init (void)
    gPid = (gushort)getpid();
 }
 
+/**
+ * mongo_object_id_new:
+ *
+ * Create a new #MongoObjectId. The timestamp, PID, hostname, and counter
+ * fields of the #MongoObjectId will be generated.
+ *
+ * Returns: (transfer full): A #MongoObjectId that should be freed with
+ * mongo_object_id_free().
+ */
 MongoObjectId *
 mongo_object_id_new (void)
 {
@@ -77,6 +108,16 @@ mongo_object_id_new (void)
    return mongo_object_id_new_from_data(bytes);
 }
 
+/**
+ * mongo_object_id_new_from_data:
+ * @bytes: (array): The bytes containing the object id.
+ *
+ * Creates a new #MongoObjectId from an array of 12 bytes. @bytes
+ * MUST contain 12-bytes.
+ *
+ * Returns: (transfer full): A newly allocated #MongoObjectId that should
+ * be freed with mongo_object_id_free().
+ */
 MongoObjectId *
 mongo_object_id_new_from_data (const guint8 *bytes)
 {
@@ -95,7 +136,7 @@ mongo_object_id_new_from_data (const guint8 *bytes)
  * mongo_object_id_to_string:
  * @object_id: (in): A #MongoObjectId.
  *
- * Converts @id into a hex string.
+ * Converts @object_id into a hex string.
  *
  * Returns: (transfer full): The ObjectId as a string.
  */
@@ -115,6 +156,15 @@ mongo_object_id_to_string (const MongoObjectId *object_id)
    return g_string_free(str, FALSE);
 }
 
+/**
+ * mongo_object_id_copy:
+ * @object_id: (in): A #MongoObjectId.
+ *
+ * Creates a new #MongoObjectId that is a copy of @object_id.
+ *
+ * Returns: (transfer full): A #MongoObjectId that should be freed with
+ * mongo_object_id_free().
+ */
 MongoObjectId *
 mongo_object_id_copy (const MongoObjectId *object_id)
 {
@@ -128,6 +178,17 @@ mongo_object_id_copy (const MongoObjectId *object_id)
    return copy;
 }
 
+/**
+ * mongo_object_id_compare:
+ * @object_id: (in): The first #MongoObjectId.
+ * @other: (in): The second #MongoObjectId.
+ *
+ * A qsort() style compare function that will return less than zero
+ * if @object_id is less than @other, zero if they are the same, and
+ * greater than one if @other is greater than @object_id.
+ *
+ * Returns: A qsort() style compare integer.
+ */
 gint
 mongo_object_id_compare (const MongoObjectId *object_id,
                          const MongoObjectId *other)
@@ -135,6 +196,15 @@ mongo_object_id_compare (const MongoObjectId *object_id,
    return memcmp(object_id, other, sizeof object_id->data);
 }
 
+/**
+ * mongo_object_id_equal:
+ * @object_id: (in): A #MongoObjectId.
+ * @other: (in): A #MongoObjectId.
+ *
+ * Checks if @object_id and @other contain the same object id.
+ *
+ * Returns: %TRUE if @object_id and @other are equal.
+ */
 gboolean
 mongo_object_id_equal (const MongoObjectId *object_id,
                        const MongoObjectId *other)
@@ -142,6 +212,12 @@ mongo_object_id_equal (const MongoObjectId *object_id,
    return !mongo_object_id_compare(object_id, other);
 }
 
+/**
+ * mongo_object_id_free:
+ * @object_id: (in): A #MongoObjectId.
+ *
+ * Frees a #MongoObjectId.
+ */
 void
 mongo_object_id_free (MongoObjectId *object_id)
 {
@@ -150,6 +226,14 @@ mongo_object_id_free (MongoObjectId *object_id)
    }
 }
 
+/**
+ * mongo_clear_object_id:
+ * @object_id: (out): A pointer to a #MongoObjectId.
+ *
+ * Clears the pointer to a #MongoObjectId by freeing the #MongoObjectId
+ * and then setting the pointer to %NULL. If no #MongoObjectId was found,
+ * then no operation is performed.
+ */
 void
 mongo_clear_object_id (MongoObjectId **object_id)
 {
@@ -159,6 +243,13 @@ mongo_clear_object_id (MongoObjectId **object_id)
    }
 }
 
+/**
+ * mongo_object_id_get_type:
+ *
+ * Fetches the boxed #GType for #MongoObjectId.
+ *
+ * Returns: A #GType.
+ */
 GType
 mongo_object_id_get_type (void)
 {
