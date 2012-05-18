@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -130,6 +131,35 @@ mongo_object_id_new_from_data (const guint8 *bytes)
    }
 
    return object_id;
+}
+
+/**
+ * mongo_object_id_new_from_string:
+ * @string: A 24-character string containing the object id.
+ *
+ * Creates a new #MongoObjectId from a 24-character, hex-encoded, string.
+ *
+ * Returns: A newly created #MongoObjectId if successful; otherwise %NULL.
+ */
+MongoObjectId *
+mongo_object_id_new_from_string (const gchar *string)
+{
+   guint32 v;
+   guint8 data[12] = { 0 };
+   guint i;
+
+   g_return_val_if_fail(string, NULL);
+
+   if (strlen(string) != 24) {
+      return NULL;
+   }
+
+   for (i = 0; i < 12; i++) {
+      sscanf(&string[i * 2], "%02x", &v);
+      data[i] = v;
+   }
+
+   return mongo_object_id_new_from_data(data);
 }
 
 /**

@@ -43,6 +43,26 @@ test3 (void)
    g_assert(!oid1);
 }
 
+static void
+test4 (void)
+{
+   MongoObjectId *oid1;
+   MongoObjectId *oid2;
+   gchar *str;
+   gint ret;
+
+   oid1 = mongo_object_id_new();
+   str = mongo_object_id_to_string(oid1);
+   oid2 = mongo_object_id_new_from_string(str);
+
+   ret = mongo_object_id_equal(oid1, oid2);
+   g_assert_cmpint(ret, ==, TRUE);
+
+   g_free(str);
+   mongo_object_id_free(oid1);
+   mongo_object_id_free(oid2);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -51,6 +71,7 @@ main (gint   argc,
    g_type_init();
 
    g_test_add_func("/MongoObjectId/new", test1);
+   g_test_add_func("/MongoObjectId/new_from_string", test4);
    g_test_add_func("/MongoObjectId/copy", test2);
    g_test_add_func("/MongoObjectId/clear", test3);
 
