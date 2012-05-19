@@ -22,6 +22,10 @@
 
 #include "mongo-object-id.h"
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 256
+#endif
+
 /**
  * SECTION:mongo-object-id
  * @title: MongoObjectId
