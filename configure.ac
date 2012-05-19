@@ -3,7 +3,7 @@ dnl Versioning Macros
 dnl **************************************************************************
 m4_define([mongo_major_version], [0])
 m4_define([mongo_minor_version], [1])
-m4_define([mongo_micro_version], [12])
+m4_define([mongo_micro_version], [13])
 m4_define([mongo_version],
           [mongo_major_version.mongo_minor_version.mongo_micro_version])
 m4_define([mongo_binary_age], [m4_eval(100 * mongo_minor_version +
