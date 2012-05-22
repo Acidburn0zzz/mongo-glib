@@ -195,7 +195,7 @@ mongo_collection_find_one_async (MongoCollection     *collection,
  * @error: (out) (allow-none): A location for a #GError, or %NULL.
  *
  * Completes an asynchronous request to mongo_collection_find_one_async().
- * If no document was found %NULl is returned and @error is set.
+ * If no document was found %NULL is returned and @error is set.
  *
  * Returns: (transfer full): A #MongoBson if successful; otherwise %NULL
  * and @error is set.
