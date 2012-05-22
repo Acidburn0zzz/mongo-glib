@@ -247,6 +247,31 @@ mongo_object_id_equal (const MongoObjectId *object_id,
 }
 
 /**
+ * mongo_object_id_hash:
+ * @key: (in): A #MongoObjectId.
+ *
+ * Hashes the bytes of the provided #MongoObjectId using DJB hash.
+ * This is suitable for using as a hash function for #GHashTable.
+ *
+ * Returns: A hash value corresponding to the key.
+ */
+guint
+mongo_object_id_hash (gconstpointer key)
+{
+   const MongoObjectId *object_id = key;
+   guint hash = 5381;
+   guint i;
+
+   g_return_val_if_fail(object_id, 5381);
+
+   for (i = 0; i < G_N_ELEMENTS(object_id->data); i++) {
+      hash = ((hash << 5) + hash) + object_id->data[i];
+   }
+
+   return hash;
+}
+
+/**
  * mongo_object_id_free:
  * @object_id: (in): A #MongoObjectId.
  *

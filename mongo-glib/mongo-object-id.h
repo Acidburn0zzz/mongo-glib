@@ -43,6 +43,7 @@ gint           mongo_object_id_compare         (const MongoObjectId  *object_id,
                                                 const MongoObjectId  *other);
 gboolean       mongo_object_id_equal           (const MongoObjectId  *object_id,
                                                 const MongoObjectId  *other);
+guint          mongo_object_id_hash            (gconstpointer         key);
 
 G_END_DECLS
 
