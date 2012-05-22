@@ -232,23 +232,23 @@ mongo_object_id_compare (const MongoObjectId *object_id,
 
 /**
  * mongo_object_id_equal:
- * @object_id: (in): A #MongoObjectId.
- * @other: (in): A #MongoObjectId.
+ * @v1: (in): A #MongoObjectId.
+ * @v2: (in): A #MongoObjectId.
  *
- * Checks if @object_id and @other contain the same object id.
+ * Checks if @v1 and @v2 contain the same object id.
  *
- * Returns: %TRUE if @object_id and @other are equal.
+ * Returns: %TRUE if @v1 and @v2 are equal.
  */
 gboolean
-mongo_object_id_equal (const MongoObjectId *object_id,
-                       const MongoObjectId *other)
+mongo_object_id_equal (gconstpointer v1,
+                       gconstpointer v2)
 {
-   return !mongo_object_id_compare(object_id, other);
+   return !mongo_object_id_compare(v1, v2);
 }
 
 /**
  * mongo_object_id_hash:
- * @key: (in): A #MongoObjectId.
+ * @v: (in): A #MongoObjectId.
  *
  * Hashes the bytes of the provided #MongoObjectId using DJB hash.
  * This is suitable for using as a hash function for #GHashTable.
@@ -256,9 +256,9 @@ mongo_object_id_equal (const MongoObjectId *object_id,
  * Returns: A hash value corresponding to the key.
  */
 guint
-mongo_object_id_hash (gconstpointer key)
+mongo_object_id_hash (gconstpointer v)
 {
-   const MongoObjectId *object_id = key;
+   const MongoObjectId *object_id = v;
    guint hash = 5381;
    guint i;
 
