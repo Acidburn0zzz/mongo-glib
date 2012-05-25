@@ -41,6 +41,8 @@ GType          mongo_object_id_get_type        (void) G_GNUC_CONST;
 gchar         *mongo_object_id_to_string       (const MongoObjectId  *object_id);
 gint           mongo_object_id_compare         (const MongoObjectId  *object_id,
                                                 const MongoObjectId  *other);
+const guint8  *mongo_object_id_get_data        (const MongoObjectId  *object_id,
+                                                gsize                *length);
 gboolean       mongo_object_id_equal           (gconstpointer         v1,
                                                 gconstpointer         v2);
 guint          mongo_object_id_hash            (gconstpointer         v);

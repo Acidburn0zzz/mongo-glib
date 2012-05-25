@@ -272,6 +272,27 @@ mongo_object_id_hash (gconstpointer v)
 }
 
 /**
+ * mongo_object_id_get_data:
+ * @object_id: (in): A #MongoObjectId.
+ * @length: (out) (allow-none): Then number of bytes returned.
+ *
+ * Gets the raw bytes for the object id. The length of the bytes is
+ * returned in the out paramter @length for language bindings and
+ * is always 12.
+ *
+ * Returns: (transfer none) (array length=length): The object id bytes.
+ */
+const guint8 *
+mongo_object_id_get_data (const MongoObjectId *object_id,
+                           gsize              *length)
+{
+   g_return_val_if_fail(object_id, NULL);
+   if (length)
+      *length = sizeof object_id->data;
+   return object_id->data;
+}
+
+/**
  * mongo_object_id_free:
  * @object_id: (in): A #MongoObjectId.
  *
