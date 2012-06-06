@@ -90,6 +90,50 @@ mongo_client_add_seed (MongoClient *client,
 }
 
 static void
+mongo_client_connect_slave_cb (GObject      *object,
+                               GAsyncResult *result,
+                               gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoBsonIter iter;
+   MongoClient *client = (MongoClient *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+
+   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+      GOTO(failure);
+   }
+
+   if (reply->n_returned) {
+      mongo_bson_iter_init(&iter, reply->documents[0]);
+      if (mongo_bson_iter_find(&iter, "ismaster")) {
+         if (!mongo_bson_iter_get_value_boolean(&iter)) {
+            error = g_error_new(MONGO_CLIENT_ERROR,
+                                MONGO_CLIENT_ERROR_NOT_MASTER,
+                                _("The server is mot PRIMARY."));
+            mongo_protocol_fail(client->priv->protocol, error);
+            g_error_free(error);
+            GOTO(failure);
+         }
+      }
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+   mongo_reply_unref(reply);
+
+failure:
+   g_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
 mongo_client_connect_cb (GObject      *object,
                          GAsyncResult *result,
                          gpointer      user_data)
@@ -98,6 +142,7 @@ mongo_client_connect_cb (GObject      *object,
    GSimpleAsyncResult *simple = user_data;
    GSocketConnection *connection;
    GSocketClient *socket_client = (GSocketClient *)object;
+   MongoBson *command;
    GObject *client;
    GError *error = NULL;
 
@@ -141,11 +186,25 @@ mongo_client_connect_cb (GObject      *object,
                                  NULL);
 
    /*
-    * Complete the asynchronous request.
+    * Check to see if the server is PRIMARY if we cannot connect to
+    * a slave. Otherwise, we are done.
     */
-   g_simple_async_result_set_op_res_gboolean(simple, TRUE);
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
+   if (!priv->slave_okay) {
+      command = mongo_bson_new_empty();
+      mongo_bson_append_int(command, "ismaster", 1);
+      mongo_client_command_async(MONGO_CLIENT(client),
+                                 "admin",
+                                 command,
+                                 NULL,
+                                 mongo_client_connect_slave_cb,
+                                 simple);
+      mongo_bson_unref(command);
+   } else {
+      g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+      mongo_simple_async_result_complete_in_idle(simple);
+      g_object_unref(simple);
+   }
+
    g_object_unref(client);
 
    EXIT;

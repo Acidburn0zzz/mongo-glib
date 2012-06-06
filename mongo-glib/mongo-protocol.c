@@ -169,7 +169,7 @@ _g_byte_array_overwrite_int32 (GByteArray *array,
    EXIT;
 }
 
-static void
+void
 mongo_protocol_fail (MongoProtocol *protocol,
                      const GError  *error)
 {

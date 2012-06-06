@@ -117,6 +117,8 @@ void        mongo_reply_unref                  (MongoReply *reply);
 GType       mongo_reply_get_type               (void) G_GNUC_CONST;
 GType       mongo_protocol_get_type            (void) G_GNUC_CONST;
 GIOStream  *mongo_protocol_get_io_stream       (MongoProtocol        *protocol);
+void        mongo_protocol_fail                (MongoProtocol        *protocol,
+                                                const GError         *error);
 void        mongo_protocol_update_async        (MongoProtocol        *protocol,
                                                 const gchar          *db_and_collection,
                                                 MongoUpdateFlags      flags,
