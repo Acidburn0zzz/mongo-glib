@@ -275,10 +275,10 @@ mongo_bson_stream_next (MongoBsonStream *stream)
    doc_len = GUINT32_FROM_LE(doc_len_le);
 
    /*
-    * Sanity check to make sure it is less than 8mB and
+    * Sanity check to make sure it is less than 16 MB and
     * greater than 5 bytes (minimum required).
     */
-   if (doc_len > (1024 * 1024 * 8) || doc_len <= 5) {
+   if (doc_len > (1024 * 1024 * 16) || doc_len <= 5) {
       return NULL;
    }
 
@@ -292,10 +292,11 @@ mongo_bson_stream_next (MongoBsonStream *stream)
                                buffer + sizeof doc_len_le,
                                doc_len,
                                doc_len - sizeof doc_len_le)) {
+      g_free(buffer);
       return NULL;
    }
 
-   if (!(bson = mongo_bson_new_from_data(buffer, doc_len))) {
+   if (!(bson = mongo_bson_new_take_data(buffer, doc_len))) {
       g_free(buffer);
       return NULL;
    }
