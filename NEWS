@@ -1,3 +1,27 @@
+Mongo-GLib 0.1.14                                                    2012-06-13
+===============================================================================
+
+  • Increase allowed document size to 16 MB in MongoBsonStream.
+  • Fix a memory leak in MongoBsonStream leaking the read buffer
+    on each call to mongo_bson_stream_next().
+  • Add helpers for using MongoObjectId instances in a hashtable, including
+    mongo_object_id_equal() and mongo_object_id_hash().
+  • Get access to raw bytes of MongoObjectId with mongo_object_id_get_data().
+  • Make mongo_protocol_fail() public.
+
+Mongo-GLib 0.1.12                                                    2012-05-21
+===============================================================================
+
+  • Use mongo_simple_async_result_complete_in_idle() to complete async results
+    with fewer allocations and locks taken. Improves main loop latency by
+    about 20%. [http://audidude.com/?p=605]
+  • Build system cleanup.
+  • mongo_bson_append_object_id() takes a const MongoObjectId.
+  • Be more precise with endianness swabbing.
+  • Add mongo_bson_join() to join to BSON documents.
+  • Passing NULL to mongo_object_id_copy() will return NULL.
+  • Add mongo_query_flags_get_type().
+
 Mongo-GLib 0.1.9                                                     2012-05-09
 ===============================================================================
 
