@@ -148,7 +148,13 @@ mongo_bson_new_take_data (guint8 *buffer,
 
    bson = g_slice_new0(MongoBson);
    bson->ref_count = 1;
+#if GLIB_CHECK_VERSION(2, 32, 0)
    bson->buf = g_byte_array_new_take(buffer, length);
+#else
+   bson->buf = g_byte_array_new();
+   bson->buf->data = buffer;
+   bson->buf->len = length;
+#endif
 
    return bson;
 }
