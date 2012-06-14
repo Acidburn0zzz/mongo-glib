@@ -27,12 +27,59 @@ G_DEFINE_TYPE(MongoClient, mongo_client, G_TYPE_OBJECT)
 
 struct _MongoClientPrivate
 {
+   // Remove me.
    GPtrArray *seeds;
+
    GHashTable *databases;
-   MongoProtocol *protocol;
+
    GSocketClient *socket_client;
+
+   MongoProtocol *protocol;
+   GQueue *queue;
+
    gboolean slave_okay;
 };
+
+typedef struct
+{
+   MongoOperation oper;
+   GSimpleAsyncResult *simple;
+   GCancellable *cancellable;
+   union {
+      struct {
+         gchar *db_and_collection;
+         MongoUpdateFlags flags;
+         MongoBson *selector;
+         MongoBson *update;
+      } update;
+      struct {
+         gchar *db_and_collection;
+         MongoInsertFlags flags;
+         GPtrArray *documents;
+      } insert;
+      struct {
+         gchar *db_and_collection;
+         MongoQueryFlags flags;
+         guint32 skip;
+         guint32 limit;
+         MongoBson *query;
+         MongoBson *field_selector;
+      } query;
+      struct {
+         gchar *db_and_collection;
+         guint32 limit;
+         guint64 cursor_id;
+      } getmore;
+      struct {
+         gchar *db_and_collection;
+         MongoDeleteFlags flags;
+         MongoBson *selector;
+      } delete;
+      struct {
+         GArray *cursors;
+      } kill_cursors;
+   } u;
+} Request;
 
 enum
 {
@@ -42,6 +89,319 @@ enum
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
+
+static void
+mongo_client_update_cb (GObject      *object,
+                        GAsyncResult *result,
+                        gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   gboolean ret;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(ret = mongo_protocol_update_finish(protocol, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, ret);
+   mongo_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+mongo_client_insert_cb (GObject      *object,
+                        GAsyncResult *result,
+                        gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   gboolean ret;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(ret = mongo_protocol_insert_finish(protocol, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, ret);
+   mongo_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+mongo_client_query_cb (GObject      *object,
+                       GAsyncResult *result,
+                       gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   g_assert(MONGO_IS_PROTOCOL(protocol));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   } else {
+      g_simple_async_result_set_op_res_gpointer(
+            simple, reply, (GDestroyNotify)mongo_reply_unref);
+   }
+
+   mongo_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+mongo_client_getmore_cb (GObject      *object,
+                         GAsyncResult *result,
+                         gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_PROTOCOL(protocol));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(reply = mongo_protocol_getmore_finish(protocol, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   } else {
+      g_simple_async_result_set_op_res_gpointer(
+            simple, reply, (GDestroyNotify)mongo_reply_unref);
+   }
+
+   mongo_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+mongo_client_remove_cb (GObject      *object,
+                        GAsyncResult *result,
+                        gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   gboolean ret;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(ret = mongo_protocol_delete_finish(protocol, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, ret);
+   mongo_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+mongo_client_kill_cursors_cb (GObject      *object,
+                              GAsyncResult *result,
+                              gpointer      user_data)
+{
+   GSimpleAsyncResult *simple = user_data;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   gboolean ret;
+   GError *error = NULL;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_PROTOCOL(protocol));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   if (!(ret = mongo_protocol_kill_cursors_finish(protocol, result, &error))) {
+      g_simple_async_result_take_error(simple, error);
+   }
+
+   g_simple_async_result_set_op_res_gboolean(simple, ret);
+   mongo_simple_async_result_complete_in_idle(simple);
+   g_object_unref(simple);
+
+   EXIT;
+}
+
+static void
+request_fail (Request      *request,
+              const GError *error)
+{
+   g_simple_async_result_take_error(request->simple, g_error_copy(error));
+   g_simple_async_result_complete_in_idle(request->simple);
+}
+
+static void
+request_run (Request       *request,
+             MongoProtocol *protocol)
+{
+   switch (request->oper) {
+   case MONGO_OPERATION_UPDATE:
+      mongo_protocol_update_async(
+            protocol,
+            request->u.update.db_and_collection,
+            request->u.update.flags,
+            request->u.update.selector,
+            request->u.update.update,
+            request->cancellable,
+            mongo_client_update_cb,
+            g_object_ref(request->simple));
+      break;
+   case MONGO_OPERATION_INSERT:
+      mongo_protocol_insert_async(
+            protocol,
+            request->u.insert.db_and_collection,
+            request->u.insert.flags,
+            (MongoBson **)request->u.insert.documents->pdata,
+            request->u.insert.documents->len,
+            request->cancellable,
+            mongo_client_insert_cb,
+            g_object_ref(request->simple));
+      break;
+   case MONGO_OPERATION_QUERY:
+      mongo_protocol_query_async(
+            protocol,
+            request->u.query.db_and_collection,
+            request->u.query.flags,
+            request->u.query.skip,
+            request->u.query.limit,
+            request->u.query.query,
+            request->u.query.field_selector,
+            request->cancellable,
+            mongo_client_query_cb,
+            g_object_ref(request->simple));
+      break;
+   case MONGO_OPERATION_GETMORE:
+      mongo_protocol_getmore_async(
+            protocol,
+            request->u.getmore.db_and_collection,
+            request->u.getmore.limit,
+            request->u.getmore.cursor_id,
+            request->cancellable,
+            mongo_client_getmore_cb,
+            g_object_ref(request->simple));
+      break;
+   case MONGO_OPERATION_DELETE:
+      mongo_protocol_delete_async(
+            protocol,
+            request->u.delete.db_and_collection,
+            request->u.delete.flags,
+            request->u.delete.selector,
+            request->cancellable,
+            mongo_client_remove_cb,
+            g_object_ref(request->simple));
+      break;
+   case MONGO_OPERATION_KILL_CURSORS:
+      mongo_protocol_kill_cursors_async(
+            protocol,
+            (guint64 *)request->u.kill_cursors.cursors->data,
+            request->u.kill_cursors.cursors->len,
+            request->cancellable,
+            mongo_client_kill_cursors_cb,
+            g_object_ref(request->simple));
+      break;
+   case MONGO_OPERATION_REPLY:
+   case MONGO_OPERATION_MSG:
+   default:
+      g_assert_not_reached();
+      break;
+   }
+}
+
+static void
+request_free (Request *request)
+{
+   if (request) {
+      g_clear_object(&request->simple);
+      g_clear_object(&request->cancellable);
+      switch (request->oper) {
+      case MONGO_OPERATION_UPDATE:
+         g_free(request->u.update.db_and_collection);
+         if (request->u.update.selector) {
+            mongo_bson_unref(request->u.update.selector);
+         }
+         if (request->u.update.update) {
+            mongo_bson_unref(request->u.update.update);
+         }
+         break;
+      case MONGO_OPERATION_INSERT:
+         g_free(request->u.insert.db_and_collection);
+         g_ptr_array_free(request->u.insert.documents, TRUE);
+         break;
+      case MONGO_OPERATION_QUERY:
+         g_free(request->u.insert.db_and_collection);
+         if (request->u.query.query) {
+            mongo_bson_unref(request->u.query.query);
+         }
+         if (request->u.query.field_selector) {
+            mongo_bson_unref(request->u.query.field_selector);
+         }
+         break;
+      case MONGO_OPERATION_GETMORE:
+         g_free(request->u.insert.db_and_collection);
+         break;
+      case MONGO_OPERATION_DELETE:
+         g_free(request->u.insert.db_and_collection);
+         if (request->u.delete.selector) {
+            mongo_bson_unref(request->u.delete.selector);
+         }
+         break;
+      case MONGO_OPERATION_KILL_CURSORS:
+         g_array_free(request->u.kill_cursors.cursors, TRUE);
+         break;
+      case MONGO_OPERATION_REPLY:
+      case MONGO_OPERATION_MSG:
+      default:
+         g_assert_not_reached();
+         break;
+      }
+      memset(&request->u, 0, sizeof request->u);
+   }
+}
+
+static void
+mongo_client_queue (MongoClient *client,
+                    Request     *request)
+{
+   MongoClientPrivate *priv;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(request);
+
+   priv = client->priv;
+
+   if (priv->protocol) {
+      request_run(request, priv->protocol);
+      request_free(request);
+   } else {
+      g_queue_push_tail(priv->queue, request);
+   }
+}
 
 /**
  * mongo_client_new:
@@ -501,32 +861,6 @@ mongo_client_command_finish (MongoClient   *client,
    RETURN(ret);
 }
 
-static void
-mongo_client_remove_cb (GObject      *object,
-                        GAsyncResult *result,
-                        gpointer      user_data)
-{
-   GSimpleAsyncResult *simple = user_data;
-   MongoProtocol *protocol = (MongoProtocol *)object;
-   gboolean ret;
-   GError *error = NULL;
-
-   ENTRY;
-
-   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
-   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   if (!(ret = mongo_protocol_delete_finish(protocol, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-   }
-
-   g_simple_async_result_set_op_res_gboolean(simple, ret);
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
-
-   EXIT;
-}
-
 /**
  * mongo_client_remove_async:
  * @client: (in): A #MongoClient.
@@ -624,32 +958,6 @@ mongo_client_remove_finish (MongoClient   *client,
    RETURN(ret);
 }
 
-static void
-mongo_client_update_cb (GObject      *object,
-                        GAsyncResult *result,
-                        gpointer      user_data)
-{
-   GSimpleAsyncResult *simple = user_data;
-   MongoProtocol *protocol = (MongoProtocol *)object;
-   gboolean ret;
-   GError *error = NULL;
-
-   ENTRY;
-
-   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
-   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   if (!(ret = mongo_protocol_update_finish(protocol, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-   }
-
-   g_simple_async_result_set_op_res_gboolean(simple, ret);
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
-
-   EXIT;
-}
-
 /**
  * mongo_client_update_async:
  * @client: A #MongoClient.
@@ -742,32 +1050,6 @@ mongo_client_update_finish (MongoClient   *client,
    }
 
    RETURN(ret);
-}
-
-static void
-mongo_client_insert_cb (GObject      *object,
-                        GAsyncResult *result,
-                        gpointer      user_data)
-{
-   GSimpleAsyncResult *simple = user_data;
-   MongoProtocol *protocol = (MongoProtocol *)object;
-   gboolean ret;
-   GError *error = NULL;
-
-   ENTRY;
-
-   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
-   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   if (!(ret = mongo_protocol_insert_finish(protocol, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-   }
-
-   g_simple_async_result_set_op_res_gboolean(simple, ret);
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
-
-   EXIT;
 }
 
 /**
@@ -989,32 +1271,6 @@ mongo_client_disconnect_finish (MongoClient   *client,
    RETURN(ret);
 }
 
-static void
-mongo_client_query_cb (GObject      *object,
-                       GAsyncResult *result,
-                       gpointer      user_data)
-{
-   GSimpleAsyncResult *simple = user_data;
-   MongoProtocol *protocol = (MongoProtocol *)object;
-   MongoReply *reply;
-   GError *error = NULL;
-
-   g_assert(MONGO_IS_PROTOCOL(protocol));
-   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-   } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
-   }
-
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
-
-   EXIT;
-}
-
 /**
  * mongo_client_query_async:
  * @client: A #MongoClient.
@@ -1131,34 +1387,6 @@ mongo_client_query_finish (MongoClient   *client,
    RETURN(reply);
 }
 
-static void
-mongo_client_getmore_cb (GObject      *object,
-                         GAsyncResult *result,
-                         gpointer      user_data)
-{
-   GSimpleAsyncResult *simple = user_data;
-   MongoProtocol *protocol = (MongoProtocol *)object;
-   MongoReply *reply;
-   GError *error = NULL;
-
-   ENTRY;
-
-   g_assert(MONGO_IS_PROTOCOL(protocol));
-   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   if (!(reply = mongo_protocol_getmore_finish(protocol, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-   } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
-   }
-
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
-
-   EXIT;
-}
-
 /**
  * mongo_client_getmore_async:
  * @client: A #MongoClient.
@@ -1248,32 +1476,6 @@ mongo_client_getmore_finish (MongoClient   *client,
    reply = reply ? mongo_reply_ref(reply) : NULL;
 
    RETURN(reply);
-}
-
-static void
-mongo_client_kill_cursors_cb (GObject      *object,
-                              GAsyncResult *result,
-                              gpointer      user_data)
-{
-   GSimpleAsyncResult *simple = user_data;
-   MongoProtocol *protocol = (MongoProtocol *)object;
-   gboolean ret;
-   GError *error = NULL;
-
-   ENTRY;
-
-   g_assert(MONGO_IS_PROTOCOL(protocol));
-   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
-
-   if (!(ret = mongo_protocol_kill_cursors_finish(protocol, result, &error))) {
-      g_simple_async_result_take_error(simple, error);
-   }
-
-   g_simple_async_result_set_op_res_gboolean(simple, ret);
-   mongo_simple_async_result_complete_in_idle(simple);
-   g_object_unref(simple);
-
-   EXIT;
 }
 
 /**
@@ -1406,6 +1608,7 @@ mongo_client_finalize (GObject *object)
    MongoClientPrivate *priv;
    GHashTable *hash;
    GPtrArray *ar;
+   Request *request;
 
    ENTRY;
 
@@ -1420,6 +1623,18 @@ mongo_client_finalize (GObject *object)
       priv->databases = NULL;
       g_hash_table_unref(hash);
    }
+
+   /*
+    * TODO: Move a lot of this to dispose.
+    */
+
+   while ((request = g_queue_pop_head(priv->queue))) {
+      request_fail(request, NULL);
+      request_free(request);
+   }
+
+   g_queue_free(priv->queue);
+   priv->queue = NULL;
 
    g_clear_object(&priv->socket_client);
    g_clear_object(&priv->protocol);
@@ -1500,6 +1715,7 @@ mongo_client_init (MongoClient *client)
                                                    g_free, g_object_unref);
    client->priv->seeds = g_ptr_array_new_with_free_func(g_free);
    client->priv->socket_client = g_socket_client_new();
+   client->priv->queue = g_queue_new();
 
    EXIT;
 }
