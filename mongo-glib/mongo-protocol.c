@@ -50,18 +50,6 @@ struct _MongoProtocolPrivate
 
 enum
 {
-   OP_REPLY        = 1,
-   OP_MSG          = 1000,
-   OP_UPDATE       = 2001,
-   OP_INSERT       = 2002,
-   OP_QUERY        = 2004,
-   OP_GETMORE      = 2005,
-   OP_DELETE       = 2006,
-   OP_KILL_CURSORS = 2007,
-};
-
-enum
-{
    PROP_0,
    PROP_IO_STREAM,
    LAST_PROP
@@ -268,12 +256,12 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    }
 
    /*
-    * Build the OP_QUERY message.
+    * Build the MONGO_OPERATION_QUERY message.
     */
    _g_byte_array_append_int32(array, 0);
    _g_byte_array_append_int32(array, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(array, 0);
-   _g_byte_array_append_int32(array, GINT32_TO_LE(OP_QUERY));
+   _g_byte_array_append_int32(array, GINT32_TO_LE(MONGO_OPERATION_QUERY));
    _g_byte_array_append_int32(array, GINT32_TO_LE(MONGO_QUERY_NONE));
    _g_byte_array_append_cstring(array, "admin.$cmd");
    _g_byte_array_append_int32(array, 0);
@@ -322,7 +310,7 @@ mongo_protocol_update_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_UPDATE));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_UPDATE));
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_cstring(buffer, db_and_collection);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
@@ -406,7 +394,7 @@ mongo_protocol_insert_async (MongoProtocol        *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_INSERT));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_INSERT));
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
    _g_byte_array_append_cstring(buffer, db_and_collection);
    for (i = 0; i < n_documents; i++) {
@@ -490,7 +478,7 @@ mongo_protocol_query_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_QUERY));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_QUERY));
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
    _g_byte_array_append_cstring(buffer, db_and_collection);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(skip));
@@ -564,7 +552,7 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_GETMORE));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_GETMORE));
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_cstring(buffer, db_and_collection);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(limit));
@@ -635,7 +623,7 @@ mongo_protocol_delete_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_DELETE));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_DELETE));
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_cstring(buffer, db_and_collection);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
@@ -715,7 +703,7 @@ mongo_protocol_kill_cursors_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_KILL_CURSORS));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_KILL_CURSORS));
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, n_cursors);
    for (i = 0; i < n_cursors; i++) {
@@ -782,7 +770,7 @@ mongo_protocol_msg_async (MongoProtocol       *protocol,
    _g_byte_array_append_int32(buffer, 0);
    _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
    _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(OP_MSG));
+   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_MSG));
    _g_byte_array_append_cstring(buffer, message);
    _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
 
@@ -920,7 +908,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    g_assert_cmpint(count, >=, 36);
 
    /*
-    * Process the incoming OP_REPLY.
+    * Process the incoming MONGO_OPERATION_REPLY.
     */
    memcpy(&reply, buffer, sizeof reply);
 #if G_BYTE_ORDER != G_LITTLE_ENDIAN
@@ -934,7 +922,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    reply.n_returned = GUINT32_FROM_LE(reply.n_returned);
 #endif
 
-   if (reply.op_code != OP_REPLY) {
+   if (reply.op_code != MONGO_OPERATION_REPLY) {
       GOTO(failure);
    }
 
@@ -1057,10 +1045,10 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    op_code = GUINT32_FROM_LE(*(const guint32 *)(buffer + 12));
 
    /*
-    * We only know about OP_REPLY from the server. Everything else is a
-    * protocol error.
+    * We only know about MONGO_OPERATION_REPLY from the server. Everything
+    * else is a protocol error.
     */
-   if (op_code != OP_REPLY) {
+   if (op_code != MONGO_OPERATION_REPLY) {
       mongo_protocol_fail(protocol, NULL);
    }
 

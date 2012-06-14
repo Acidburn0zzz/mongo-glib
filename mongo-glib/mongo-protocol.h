@@ -45,6 +45,7 @@ typedef struct _MongoProtocolPrivate MongoProtocolPrivate;
 typedef struct _MongoReply           MongoReply;
 typedef enum   _MongoDeleteFlags     MongoDeleteFlags;
 typedef enum   _MongoInsertFlags     MongoInsertFlags;
+typedef enum   _MongoOperation       MongoOperation;
 typedef enum   _MongoQueryFlags      MongoQueryFlags;
 typedef enum   _MongoReplyFlags      MongoReplyFlags;
 typedef enum   _MongoUpdateFlags     MongoUpdateFlags;
@@ -59,6 +60,18 @@ enum _MongoInsertFlags
 {
    MONGO_INSERT_NONE              = 0,
    MONGO_INSERT_CONTINUE_ON_ERROR = 1 << 0,
+};
+
+enum _MongoOperation
+{
+   MONGO_OPERATION_REPLY        = 1,
+   MONGO_OPERATION_MSG          = 1000,
+   MONGO_OPERATION_UPDATE       = 2001,
+   MONGO_OPERATION_INSERT       = 2002,
+   MONGO_OPERATION_QUERY        = 2004,
+   MONGO_OPERATION_GETMORE      = 2005,
+   MONGO_OPERATION_DELETE       = 2006,
+   MONGO_OPERATION_KILL_CURSORS = 2007,
 };
 
 enum _MongoQueryFlags
