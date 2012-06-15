@@ -665,7 +665,7 @@ static void
 mongo_client_start_connecting (MongoClient *client)
 {
    MongoClientPrivate *priv;
-   const gchar *host_and_port = NULL;
+   const gchar *host_and_port = "localhost:27017";
 
    ENTRY;
 
