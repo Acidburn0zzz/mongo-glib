@@ -467,6 +467,7 @@ mongo_client_ismaster_cb (GObject      *object,
    const gchar *replica_set;
    MongoReply *reply;
    gboolean ismaster = FALSE;
+   Request *request;
    GError *error = NULL;
 
    ENTRY;
@@ -574,6 +575,16 @@ mongo_client_ismaster_cb (GObject      *object,
    g_signal_connect(protocol, "notify::failure",
                     G_CALLBACK(mongo_client_protocol_notify_failure),
                     client);
+
+   /*
+    * Flush any pending requests.
+    */
+   while ((priv->state == STATE_CONNECTED) &&
+          (priv->protocol) &&
+          (request = g_queue_pop_head(priv->queue))) {
+      request_run(request, priv->protocol);
+      request_free(request);
+   }
 
 failure:
    mongo_reply_unref(reply);
