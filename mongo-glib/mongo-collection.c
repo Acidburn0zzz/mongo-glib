@@ -482,7 +482,7 @@ mongo_collection_remove_cb (GObject      *object,
 
    ENTRY;
 
-   if (!(ret = mongo_client_remove_finish(client, result, &error))) {
+   if (!(ret = mongo_client_delete_finish(client, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    }
 
@@ -527,7 +527,7 @@ mongo_collection_remove_async (MongoCollection      *collection,
                                       user_data,
                                       mongo_collection_remove_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
-   mongo_client_remove_async(priv->client,
+   mongo_client_delete_async(priv->client,
                              priv->db_and_collection,
                              flags,
                              selector,

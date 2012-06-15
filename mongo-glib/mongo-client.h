@@ -69,9 +69,6 @@ struct _MongoClientClass
    GObjectClass parent_class;
 };
 
-void             mongo_client_add_seed          (MongoClient          *client,
-                                                 const gchar          *hostname,
-                                                 guint16               port);
 void             mongo_client_command_async     (MongoClient          *client,
                                                  const gchar          *db,
                                                  const MongoBson      *command,
@@ -79,21 +76,6 @@ void             mongo_client_command_async     (MongoClient          *client,
                                                  GAsyncReadyCallback   callback,
                                                  gpointer              user_data);
 MongoReply      *mongo_client_command_finish    (MongoClient          *client,
-                                                 GAsyncResult         *result,
-                                                 GError              **error);
-void             mongo_client_connect_async     (MongoClient          *client,
-                                                 GCancellable         *cancellable,
-                                                 GAsyncReadyCallback   callback,
-                                                 gpointer              user_data);
-gboolean         mongo_client_connect_finish    (MongoClient          *client,
-                                                 GAsyncResult         *result,
-                                                 GError              **error);
-void             mongo_client_disconnect_async  (MongoClient          *client,
-                                                 gboolean              kill_cursors,
-                                                 GCancellable         *cancellable,
-                                                 GAsyncReadyCallback   callback,
-                                                 gpointer              user_data);
-gboolean         mongo_client_disconnect_finish (MongoClient          *client,
                                                  GAsyncResult         *result,
                                                  GError              **error);
 void             mongo_client_getmore_async     (MongoClient          *client,
@@ -117,14 +99,14 @@ void             mongo_client_insert_async      (MongoClient          *client,
 gboolean         mongo_client_insert_finish     (MongoClient          *client,
                                                  GAsyncResult         *result,
                                                  GError              **error);
-void             mongo_client_remove_async      (MongoClient          *client,
+void             mongo_client_delete_async      (MongoClient          *client,
                                                  const gchar          *db_and_collection,
                                                  MongoDeleteFlags      flags,
                                                  const MongoBson      *selector,
                                                  GCancellable         *cancellable,
                                                  GAsyncReadyCallback   callback,
                                                  gpointer              user_data);
-gboolean         mongo_client_remove_finish     (MongoClient          *client,
+gboolean         mongo_client_delete_finish     (MongoClient          *client,
                                                  GAsyncResult         *result,
                                                  GError              **error);
 void             mongo_client_update_async      (MongoClient          *client,
