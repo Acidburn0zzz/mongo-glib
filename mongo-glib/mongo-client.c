@@ -25,10 +25,15 @@
 
 G_DEFINE_TYPE(MongoClient, mongo_client, G_TYPE_OBJECT)
 
+#ifndef MONGO_PORT_DEFAULT
+#define MONGO_PORT_DEFAULT 27017
+#endif
+
 struct _MongoClientPrivate
 {
    GHashTable *databases;
 
+   GSocketClient *socket_client;
    MongoProtocol *protocol;
 
    GCancellable *dispose_cancel;
@@ -39,6 +44,7 @@ struct _MongoClientPrivate
 
    gchar *replica_set;
    gboolean slave_okay;
+   guint connect_timeout_ms;
 };
 
 typedef struct
@@ -423,22 +429,210 @@ request_free (Request *request)
 }
 
 static void
+mongo_client_ismaster_cb (GObject      *object,
+                          GAsyncResult *result,
+                          gpointer      user_data)
+{
+   MongoClientPrivate *priv;
+   MongoProtocol *protocol = (MongoProtocol *)object;
+   MongoBsonIter iter;
+   MongoBsonIter iter2;
+   MongoClient *client = user_data;
+   const gchar *host;
+   const gchar *primary;
+   const gchar *replica_set;
+   MongoReply *reply;
+   gboolean ismaster = FALSE;
+   GError *error = NULL;
+
+   g_assert(MONGO_IS_PROTOCOL(protocol));
+   g_assert(MONGO_IS_CLIENT(client));
+
+   priv = client->priv;
+
+   if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
+      /*
+       * TODO: Failed to query? log error somewhere?
+       * TODO: Start the connection loop over again?
+       */
+      g_error_free(error);
+      EXIT;
+   }
+
+   if (!reply->n_returned) {
+      /*
+       * TODO: No result document back, handle error?
+       */
+      mongo_reply_unref(reply);
+      EXIT;
+   }
+
+   /*
+    * Make sure we got a valid response back.
+    */
+   mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (mongo_bson_iter_find(&iter, "ok")) {
+      if (!mongo_bson_iter_get_value_boolean(&iter)) {
+         GOTO(failure);
+      }
+   }
+
+   /*
+    * Check to see if this host contains the repl set name.
+    * If so, verify that it is the one we should be talking to.
+    */
+   if (priv->replica_set) {
+      mongo_bson_iter_init(&iter, reply->documents[0]);
+      if (mongo_bson_iter_find(&iter, "setName")) {
+         replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
+         if (!!g_strcmp0(replica_set, priv->replica_set)) {
+            /*
+             * This is not our expected replica set!
+             */
+            GOTO(failure);
+         }
+      }
+   }
+
+   /*
+    * Update who we think the primary is now so that we can reconnect
+    * if this isn't the primary.
+    */
+   mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (mongo_bson_iter_find(&iter, "primary")) {
+      primary = mongo_bson_iter_get_value_string(&iter, NULL);
+   }
+
+   /*
+    * Update who we think is in the list of nodes for this replica set
+    * so that we can iterate through them upon inability to find master.
+    */
+   mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (mongo_bson_iter_find(&iter, "hosts")) {
+      mongo_bson_iter_init(&iter2, mongo_bson_iter_get_value_bson(&iter));
+      while (mongo_bson_iter_next(&iter2)) {
+         host = mongo_bson_iter_get_value_string(&iter2, NULL);
+         /*
+          * TODO: Add the host to be connected to.
+          */
+      }
+   }
+
+   /*
+    * Check to see if this host is PRIMARY.
+    */
+   mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (mongo_bson_iter_find(&iter, "ismaster")) {
+      if (!(ismaster = mongo_bson_iter_get_value_boolean(&iter))) {
+         /*
+          * TODO: Anything we need to do here?
+          */
+      }
+   }
+
+
+
+failure:
+   mongo_reply_unref(reply);
+}
+
+static void
+mongo_client_connect_to_host_cb (GObject      *object,
+                                 GAsyncResult *result,
+                                 gpointer      user_data)
+{
+   MongoClientPrivate *priv;
+   GSocketConnection *conn;
+   GSocketClient *socket_client = (GSocketClient *)object;
+   MongoProtocol *protocol;
+   MongoClient *client = user_data;
+   MongoBson *command;
+   GError *error = NULL;
+   gchar *host_and_port = NULL;
+
+   ENTRY;
+
+   g_assert(G_IS_SOCKET_CLIENT(socket_client));
+   g_assert(MONGO_IS_CLIENT(client));
+
+   priv = client->priv;
+
+   /*
+    * Complete the asynchronous connection attempt.
+    */
+   if (!(conn = g_socket_client_connect_to_host_finish(socket_client,
+                                                       result,
+                                                       &error))) {
+      /*
+       * TODO: Get the next host to try.
+       *       Update exponential backoff?
+       */
+      g_socket_client_connect_to_host_async(priv->socket_client,
+                                            host_and_port,
+                                            MONGO_PORT_DEFAULT,
+                                            priv->dispose_cancel,
+                                            mongo_client_connect_to_host_cb,
+                                            client);
+      /*
+       * XXX: Log error somewhere?
+       */
+      g_error_free(error);
+
+      EXIT;
+   }
+
+   /*
+    * Build a protocol using our connection. We then need to check that
+    * the server is PRIMARY and matches our requested replica set.
+    */
+   protocol = g_object_new(MONGO_TYPE_PROTOCOL,
+                           "io-stream", conn,
+                           NULL);
+   command = mongo_bson_new_empty();
+   mongo_bson_append_int(command, "ismaster", 1);
+   mongo_protocol_query_async(protocol,
+                              "admin.$cmd",
+                              MONGO_QUERY_EXHAUST,
+                              0,
+                              1,
+                              command,
+                              NULL,
+                              priv->dispose_cancel,
+                              mongo_client_ismaster_cb,
+                              client);
+   mongo_bson_unref(command);
+   g_object_unref(protocol);
+   g_object_unref(conn);
+
+   EXIT;
+}
+
+static void
 mongo_client_start_connecting (MongoClient *client)
 {
-   GSocketClient *socket_client;
+   MongoClientPrivate *priv;
    const gchar *host_and_port = NULL;
-   guint default_port = 27017;
+
+   ENTRY;
 
    g_return_if_fail(MONGO_IS_CLIENT(client));
 
-   socket = g_socket_client_new();
-   g_socket_client_connect_to_host_async(socket_client,
+   priv = client->priv;
+
+   g_assert(priv->state == STATE_0);
+
+   /*
+    * TODO: Get the next host:port pair to connect to.
+    */
+
+   g_socket_client_connect_to_host_async(priv->socket_client,
                                          host_and_port,
-                                         default_port,
+                                         MONGO_PORT_DEFAULT,
                                          priv->dispose_cancel,
                                          mongo_client_connect_to_host_cb,
                                          client);
-   g_object_unref(socket);
+
+   EXIT;
 }
 
 static void
@@ -465,6 +659,7 @@ mongo_client_queue (MongoClient *client,
       request_free(request);
       break;
    case STATE_DISPOSED:
+   default:
       g_assert_not_reached();
       break;
    }
@@ -1336,6 +1531,13 @@ mongo_client_init (MongoClient *client)
    client->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
                                                    g_free, g_object_unref);
    client->priv->queue = g_queue_new();
+   client->priv->socket_client =
+         g_object_new(G_TYPE_SOCKET_CLIENT,
+                      "timeout", 0,
+                      "family", G_SOCKET_FAMILY_IPV4,
+                      "protocol", G_SOCKET_PROTOCOL_TCP,
+                      "type", G_SOCKET_TYPE_STREAM,
+                      NULL);
 
    EXIT;
 }
