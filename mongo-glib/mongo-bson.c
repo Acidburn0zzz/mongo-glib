@@ -279,7 +279,7 @@ mongo_bson_dup (const MongoBson *bson)
    MongoBson *ret = NULL;
    gsize data_len = 0;
 
-   if ((data = mongo_bson_get_data(bson, &data_len))) {
+   if (bson && (data = mongo_bson_get_data(bson, &data_len))) {
       ret = mongo_bson_new_from_data(data, data_len);
    }
 
