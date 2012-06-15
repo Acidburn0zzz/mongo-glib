@@ -433,7 +433,7 @@ mongo_client_queue (MongoClient *client,
 
    priv = client->priv;
 
-   if (priv->protocol) {
+   if (priv->state == STATE_CONNECTED) {
       request_run(request, priv->protocol);
       request_free(request);
    } else {
