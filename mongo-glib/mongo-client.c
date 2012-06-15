@@ -918,8 +918,7 @@ mongo_client_query_async (MongoClient         *client,
                           gpointer             user_data)
 {
    MongoClientPrivate *priv;
-   GSimpleAsyncResult *simple;
-   MongoBson *q = NULL;
+   Request *request;
 
    ENTRY;
 
@@ -930,42 +929,21 @@ mongo_client_query_async (MongoClient         *client,
 
    priv = client->priv;
 
-   if (!priv->protocol) {
-      g_simple_async_report_error_in_idle(G_OBJECT(client),
-                                          callback,
-                                          user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Not currently connected"));
-      EXIT;
-   }
-
    if (priv->slave_okay) {
       flags |= MONGO_QUERY_SLAVE_OK;
    }
 
-   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
-                                      mongo_client_query_async);
-   g_simple_async_result_set_check_cancellable(simple, cancellable);
-
-   if (!query) {
-      query = q = mongo_bson_new_empty();
-   }
-
-   mongo_protocol_query_async(priv->protocol,
-                              db_and_collection,
-                              flags,
-                              skip,
-                              limit,
-                              query,
-                              field_selector,
-                              cancellable,
-                              mongo_client_query_cb,
-                              simple);
-
-   if (q) {
-      mongo_bson_unref(q);
-   }
+   request = request_new(client, cancellable, callback, user_data,
+                         mongo_client_query_async);
+   request->oper = MONGO_OPERATION_QUERY;
+   request->u.query.db_and_collection = g_strdup(db_and_collection);
+   request->u.query.flags = flags;
+   request->u.query.skip = skip;
+   request->u.query.limit = limit;
+   request->u.query.query =
+      query ? mongo_bson_dup(query) : mongo_bson_new_empty();
+   request->u.query.field_selector = mongo_bson_dup(field_selector);
+   mongo_client_queue(client, request);
 
    EXIT;
 }
@@ -1025,8 +1003,7 @@ mongo_client_getmore_async (MongoClient         *client,
                             GAsyncReadyCallback  callback,
                             gpointer             user_data)
 {
-   MongoClientPrivate *priv;
-   GSimpleAsyncResult *simple;
+   Request *request;
 
    ENTRY;
 
@@ -1034,29 +1011,13 @@ mongo_client_getmore_async (MongoClient         *client,
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   priv = client->priv;
-
-   if (!priv->protocol) {
-      g_simple_async_report_error_in_idle(G_OBJECT(client),
-                                          callback,
-                                          user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Not currently connected"));
-      EXIT;
-   }
-
-   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
-                                      mongo_client_getmore_async);
-   g_simple_async_result_set_check_cancellable(simple, cancellable);
-
-   mongo_protocol_getmore_async(priv->protocol,
-                                db_and_collection,
-                                limit,
-                                cursor_id,
-                                cancellable,
-                                mongo_client_getmore_cb,
-                                simple);
+   request = request_new(client, cancellable, callback, user_data,
+                         mongo_client_getmore_async);
+   request->oper = MONGO_OPERATION_GETMORE;
+   request->u.getmore.db_and_collection = g_strdup(db_and_collection);
+   request->u.getmore.limit = limit;
+   request->u.getmore.cursor_id = cursor_id;
+   mongo_client_queue(client, request);
 
    EXIT;
 }
@@ -1115,8 +1076,7 @@ mongo_client_kill_cursors_async (MongoClient         *client,
                                  GAsyncReadyCallback  callback,
                                  gpointer             user_data)
 {
-   MongoClientPrivate *priv;
-   GSimpleAsyncResult *simple;
+   Request *request;
 
    ENTRY;
 
@@ -1126,28 +1086,12 @@ mongo_client_kill_cursors_async (MongoClient         *client,
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   priv = client->priv;
-
-   if (!priv->protocol) {
-      g_simple_async_report_error_in_idle(G_OBJECT(client),
-                                          callback,
-                                          user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Not currently connected"));
-      EXIT;
-   }
-
-   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
-                                      mongo_client_getmore_async);
-   g_simple_async_result_set_check_cancellable(simple, cancellable);
-
-   mongo_protocol_kill_cursors_async(priv->protocol,
-                                     cursors,
-                                     n_cursors,
-                                     cancellable,
-                                     mongo_client_kill_cursors_cb,
-                                     simple);
+   request = request_new(client, cancellable, callback, user_data,
+                         mongo_client_kill_cursors_async);
+   request->oper = MONGO_OPERATION_KILL_CURSORS;
+   request->u.kill_cursors.cursors = g_array_new(FALSE, FALSE, sizeof(guint64));
+   g_array_append_vals(request->u.kill_cursors.cursors, cursors, n_cursors);
+   mongo_client_queue(client, request);
 
    EXIT;
 }
