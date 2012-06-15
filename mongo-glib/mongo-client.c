@@ -429,6 +429,30 @@ request_free (Request *request)
 }
 
 static void
+mongo_client_protocol_notify_failure (MongoProtocol *protocol,
+                                      GParamSpec    *pspec,
+                                      MongoClient   *client)
+{
+   MongoClientPrivate *priv;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_PROTOCOL(protocol));
+   g_assert(MONGO_IS_CLIENT(client));
+
+   priv = client->priv;
+
+   /*
+    * TODO: Clear the protocol so we can connect to the next host.
+    */
+
+   priv->state = STATE_0;
+   g_clear_object(&priv->protocol);
+
+   EXIT;
+}
+
+static void
 mongo_client_ismaster_cb (GObject      *object,
                           GAsyncResult *result,
                           gpointer      user_data)
@@ -444,6 +468,8 @@ mongo_client_ismaster_cb (GObject      *object,
    MongoReply *reply;
    gboolean ismaster = FALSE;
    GError *error = NULL;
+
+   ENTRY;
 
    g_assert(MONGO_IS_PROTOCOL(protocol));
    g_assert(MONGO_IS_CLIENT(client));
@@ -501,6 +527,7 @@ mongo_client_ismaster_cb (GObject      *object,
    mongo_bson_iter_init(&iter, reply->documents[0]);
    if (mongo_bson_iter_find(&iter, "primary")) {
       primary = mongo_bson_iter_get_value_string(&iter, NULL);
+      g_message("Node things %s is PRIMARY.", primary);
    }
 
    /*
@@ -515,6 +542,7 @@ mongo_client_ismaster_cb (GObject      *object,
          /*
           * TODO: Add the host to be connected to.
           */
+         g_message("Found host in replSet: %s", host);
       }
    }
 
@@ -527,10 +555,25 @@ mongo_client_ismaster_cb (GObject      *object,
          /*
           * TODO: Anything we need to do here?
           */
+         g_message("Connected to PRIMARY.");
       }
    }
 
+   /*
+    * This is the master and we are connected, so lets store the
+    * protocol for use by the client and change the state to
+    * connected.
+    */
+   priv->protocol = g_object_ref(protocol);
+   priv->state = STATE_CONNECTED;
 
+   /*
+    * Wire up failure of the protocol so that we can connect to
+    * the next host.
+    */
+   g_signal_connect(protocol, "notify::failure",
+                    G_CALLBACK(mongo_client_protocol_notify_failure),
+                    client);
 
 failure:
    mongo_reply_unref(reply);
