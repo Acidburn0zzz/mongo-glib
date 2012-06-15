@@ -29,9 +29,9 @@ struct _MongoClientPrivate
 {
    GHashTable *databases;
 
-   GSocketClient *socket_client;
-
    MongoProtocol *protocol;
+
+   GCancellable *dispose_cancel;
 
    guint state;
 
@@ -423,6 +423,25 @@ request_free (Request *request)
 }
 
 static void
+mongo_client_start_connecting (MongoClient *client)
+{
+   GSocketClient *socket_client;
+   const gchar *host_and_port = NULL;
+   guint default_port = 27017;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+
+   socket = g_socket_client_new();
+   g_socket_client_connect_to_host_async(socket_client,
+                                         host_and_port,
+                                         default_port,
+                                         priv->dispose_cancel,
+                                         mongo_client_connect_to_host_cb,
+                                         client);
+   g_object_unref(socket);
+}
+
+static void
 mongo_client_queue (MongoClient *client,
                     Request     *request)
 {
@@ -433,11 +452,21 @@ mongo_client_queue (MongoClient *client,
 
    priv = client->priv;
 
-   if (priv->state == STATE_CONNECTED) {
+   switch (priv->state) {
+   case STATE_0:
+      g_queue_push_tail(priv->queue, request);
+      mongo_client_start_connecting(client);
+      break;
+   case STATE_CONNECTING:
+      g_queue_push_tail(priv->queue, request);
+      break;
+   case STATE_CONNECTED:
       request_run(request, priv->protocol);
       request_free(request);
-   } else {
-      g_queue_push_tail(priv->queue, request);
+      break;
+   case STATE_DISPOSED:
+      g_assert_not_reached();
+      break;
    }
 }
 
@@ -1306,7 +1335,6 @@ mongo_client_init (MongoClient *client)
                                               MongoClientPrivate);
    client->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
                                                    g_free, g_object_unref);
-   client->priv->socket_client = g_socket_client_new();
    client->priv->queue = g_queue_new();
 
    EXIT;
