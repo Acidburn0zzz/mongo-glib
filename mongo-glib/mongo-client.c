@@ -37,6 +37,7 @@ struct _MongoClientPrivate
 
    GQueue *queue;
 
+   gchar *replica_set;
    gboolean slave_okay;
 };
 
@@ -84,6 +85,7 @@ typedef struct
 enum
 {
    PROP_0,
+   PROP_REPLICA_SET,
    PROP_SLAVE_OKAY,
    LAST_PROP
 };
@@ -1126,6 +1128,23 @@ mongo_client_kill_cursors_finish (MongoClient   *client,
    RETURN(ret);
 }
 
+const gchar *
+mongo_client_get_replica_set (MongoClient *client)
+{
+   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
+   return client->priv->replica_set;
+}
+
+void
+mongo_client_set_replica_set (MongoClient *client,
+                              const gchar *replica_set)
+{
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_free(client->priv->replica_set);
+   client->priv->replica_set = g_strdup(replica_set);
+   g_object_notify_by_pspec(G_OBJECT(client), gParamSpecs[PROP_REPLICA_SET]);
+}
+
 /**
  * mongo_client_get_slave_okay:
  * @client: A #MongoClient.
@@ -1206,6 +1225,9 @@ mongo_client_get_property (GObject    *object,
    MongoClient *client = MONGO_CLIENT(object);
 
    switch (prop_id) {
+   case PROP_REPLICA_SET:
+      g_value_set_string(value, mongo_client_get_replica_set(client));
+      break;
    case PROP_SLAVE_OKAY:
       g_value_set_boolean(value, mongo_client_get_slave_okay(client));
       break;
@@ -1223,6 +1245,9 @@ mongo_client_set_property (GObject      *object,
    MongoClient *client = MONGO_CLIENT(object);
 
    switch (prop_id) {
+   case PROP_REPLICA_SET:
+      mongo_client_set_replica_set(client, g_value_get_string(value));
+      break;
    case PROP_SLAVE_OKAY:
       mongo_client_set_slave_okay(client, g_value_get_boolean(value));
       break;
@@ -1243,6 +1268,15 @@ mongo_client_class_init (MongoClientClass *klass)
    object_class->get_property = mongo_client_get_property;
    object_class->set_property = mongo_client_set_property;
    g_type_class_add_private(object_class, sizeof(MongoClientPrivate));
+
+   gParamSpecs[PROP_REPLICA_SET] =
+      g_param_spec_string("replica-set",
+                          _("Replica Set"),
+                          _("The replica set to enforce connecting to."),
+                          NULL,
+                          G_PARAM_READWRITE);
+   g_object_class_install_property(object_class, PROP_REPLICA_SET,
+                                   gParamSpecs[PROP_REPLICA_SET]);
 
    gParamSpecs[PROP_SLAVE_OKAY] =
       g_param_spec_boolean("slave-okay",
