@@ -34,7 +34,7 @@ typedef struct
    const guint8 *buffer;
    gssize count;
    gsize offset;
-} Reader;
+} MongoProtocolReader;
 
 struct _MongoProtocolPrivate
 {
@@ -819,9 +819,9 @@ mongo_protocol_get_io_stream (MongoProtocol *protocol)
 }
 
 static void
-reader_init (Reader       *reader,
-             const guint8 *buffer,
-             gssize        count)
+mongo_protocol_reader_init (MongoProtocolReader *reader,
+                            const guint8        *buffer,
+                            gssize               count)
 {
    ENTRY;
    reader->buffer = buffer;
@@ -831,7 +831,7 @@ reader_init (Reader       *reader,
 }
 
 static MongoBson *
-reader_next (Reader *reader)
+mongo_protocol_reader_next (MongoProtocolReader *reader)
 {
    MongoBson *bson;
    guint32 bson_size;
@@ -860,10 +860,10 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
                                 MongoProtocol        *protocol)
 {
    MongoProtocolPrivate *priv;
+   MongoProtocolReader reader;
    GSimpleAsyncResult *request;
    const guint8 *buffer;
    MongoReply *r;
-   Reader reader;
 #pragma pack(1)
    struct {
       guint32 len;
@@ -943,8 +943,8 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    }
 
    docs = g_ptr_array_new();
-   reader_init(&reader, doc_buffer, count);
-   while ((bson = reader_next(&reader))) {
+   mongo_protocol_reader_init(&reader, doc_buffer, count);
+   while ((bson = mongo_protocol_reader_next(&reader))) {
       g_ptr_array_add(docs, bson);
    }
 
