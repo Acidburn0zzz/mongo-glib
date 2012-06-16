@@ -85,6 +85,45 @@ test2 (void)
    g_assert_cmpint(success, ==, TRUE);
 }
 
+static void
+test3_query_cb (GObject      *object,
+                GAsyncResult *result,
+                gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   gboolean *success = user_data;
+   GError *error = NULL;
+
+   *success = mongo_client_delete_finish(client, result, &error);
+   g_assert_no_error(error);
+   g_assert(*success);
+
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test3 (void)
+{
+   MongoClient *client;
+   MongoBson *selector;
+   gboolean success = FALSE;
+
+   client = mongo_client_new();
+   selector = mongo_bson_new_empty();
+   mongo_client_delete_async(client,
+                             "dbtest1.dbcollection1",
+                             MONGO_DELETE_NONE,
+                             selector,
+                             NULL,
+                             test3_query_cb,
+                             &success);
+   mongo_bson_unref(selector);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -94,5 +133,6 @@ main (gint   argc,
    gMainLoop = g_main_loop_new(NULL, FALSE);
    g_test_add_func("/MongoClient/insert_async", test1);
    g_test_add_func("/MongoClient/query_async", test2);
+   g_test_add_func("/MongoClient/delete_async", test3);
    return g_test_run();
 }
