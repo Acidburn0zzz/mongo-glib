@@ -100,8 +100,8 @@ mongo_reply_get_type (void)
 }
 
 static void
-_g_byte_array_append_bson (GByteArray      *array,
-                           const MongoBson *bson)
+mongo_protocol_append_bson (GByteArray      *array,
+                            const MongoBson *bson)
 {
    const guint8 *data;
    gsize data_len = 0;
@@ -120,8 +120,8 @@ _g_byte_array_append_bson (GByteArray      *array,
 }
 
 static void
-_g_byte_array_append_cstring (GByteArray  *array,
-                              const gchar *value)
+mongo_protocol_append_cstring (GByteArray  *array,
+                               const gchar *value)
 {
    ENTRY;
    g_byte_array_append(array, (guint8 *)value, strlen(value) + 1);
@@ -129,8 +129,8 @@ _g_byte_array_append_cstring (GByteArray  *array,
 }
 
 static void
-_g_byte_array_append_int32 (GByteArray *array,
-                            gint32      value)
+mongo_protocol_append_int32 (GByteArray *array,
+                             gint32      value)
 {
    ENTRY;
    g_byte_array_append(array, (guint8 *)&value, sizeof value);
@@ -138,7 +138,7 @@ _g_byte_array_append_int32 (GByteArray *array,
 }
 
 static void
-_g_byte_array_append_int64 (GByteArray *array,
+mongo_protocol_append_int64 (GByteArray *array,
                             gint64      value)
 {
    ENTRY;
@@ -147,9 +147,9 @@ _g_byte_array_append_int64 (GByteArray *array,
 }
 
 static void
-_g_byte_array_overwrite_int32 (GByteArray *array,
-                               guint       offset,
-                               gint32      value)
+mongo_protocol_overwrite_int32 (GByteArray *array,
+                                guint       offset,
+                                gint32      value)
 {
    ENTRY;
    g_assert_cmpint(offset, <, array->len);
@@ -258,16 +258,16 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    /*
     * Build the MONGO_OPERATION_QUERY message.
     */
-   _g_byte_array_append_int32(array, 0);
-   _g_byte_array_append_int32(array, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(array, 0);
-   _g_byte_array_append_int32(array, GINT32_TO_LE(MONGO_OPERATION_QUERY));
-   _g_byte_array_append_int32(array, GINT32_TO_LE(MONGO_QUERY_NONE));
-   _g_byte_array_append_cstring(array, "admin.$cmd");
-   _g_byte_array_append_int32(array, 0);
-   _g_byte_array_append_int32(array, 0);
-   _g_byte_array_append_bson(array, bson);
-   _g_byte_array_overwrite_int32(array, offset,
+   mongo_protocol_append_int32(array, 0);
+   mongo_protocol_append_int32(array, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(array, 0);
+   mongo_protocol_append_int32(array, GINT32_TO_LE(MONGO_OPERATION_QUERY));
+   mongo_protocol_append_int32(array, GINT32_TO_LE(MONGO_QUERY_NONE));
+   mongo_protocol_append_cstring(array, "admin.$cmd");
+   mongo_protocol_append_int32(array, 0);
+   mongo_protocol_append_int32(array, 0);
+   mongo_protocol_append_bson(array, bson);
+   mongo_protocol_overwrite_int32(array, offset,
                                  GINT32_TO_LE(array->len - offset));
 
    mongo_bson_unref(bson);
@@ -307,16 +307,16 @@ mongo_protocol_update_async (MongoProtocol       *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_UPDATE));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_cstring(buffer, db_and_collection);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
-   _g_byte_array_append_bson(buffer, selector);
-   _g_byte_array_append_bson(buffer, update);
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_UPDATE));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_cstring(buffer, db_and_collection);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(flags));
+   mongo_protocol_append_bson(buffer, selector);
+   mongo_protocol_append_bson(buffer, update);
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
    mongo_protocol_append_getlasterror(protocol, buffer, db_and_collection);
 
    /*
@@ -391,16 +391,16 @@ mongo_protocol_insert_async (MongoProtocol        *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_INSERT));
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
-   _g_byte_array_append_cstring(buffer, db_and_collection);
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_INSERT));
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(flags));
+   mongo_protocol_append_cstring(buffer, db_and_collection);
    for (i = 0; i < n_documents; i++) {
-      _g_byte_array_append_bson(buffer, documents[i]);
+      mongo_protocol_append_bson(buffer, documents[i]);
    }
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
    mongo_protocol_append_getlasterror(protocol, buffer, db_and_collection);
 
    /*
@@ -475,19 +475,19 @@ mongo_protocol_query_async (MongoProtocol       *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_QUERY));
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
-   _g_byte_array_append_cstring(buffer, db_and_collection);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(skip));
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(limit));
-   _g_byte_array_append_bson(buffer, query);
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_QUERY));
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(flags));
+   mongo_protocol_append_cstring(buffer, db_and_collection);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(skip));
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(limit));
+   mongo_protocol_append_bson(buffer, query);
    if (field_selector) {
-      _g_byte_array_append_bson(buffer, field_selector);
+      mongo_protocol_append_bson(buffer, field_selector);
    }
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
 
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
    mongo_protocol_write(protocol, request_id, simple,
@@ -549,15 +549,15 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_GETMORE));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_cstring(buffer, db_and_collection);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(limit));
-   _g_byte_array_append_int64(buffer, GINT64_TO_LE(cursor_id));
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_GETMORE));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_cstring(buffer, db_and_collection);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(limit));
+   mongo_protocol_append_int64(buffer, GINT64_TO_LE(cursor_id));
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
 
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
    mongo_protocol_write(protocol, request_id, simple,
@@ -620,15 +620,15 @@ mongo_protocol_delete_async (MongoProtocol       *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_DELETE));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_cstring(buffer, db_and_collection);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(flags));
-   _g_byte_array_append_bson(buffer, selector);
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_DELETE));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_cstring(buffer, db_and_collection);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(flags));
+   mongo_protocol_append_bson(buffer, selector);
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
    mongo_protocol_append_getlasterror(protocol, buffer, db_and_collection);
 
    /*
@@ -700,16 +700,16 @@ mongo_protocol_kill_cursors_async (MongoProtocol       *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_KILL_CURSORS));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, n_cursors);
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_KILL_CURSORS));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, n_cursors);
    for (i = 0; i < n_cursors; i++) {
-      _g_byte_array_append_int64(buffer, cursors[i]);
+      mongo_protocol_append_int64(buffer, cursors[i]);
    }
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
 
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
    mongo_protocol_write(protocol, request_id, simple,
@@ -767,12 +767,12 @@ mongo_protocol_msg_async (MongoProtocol       *protocol,
    request_id = ++priv->last_request_id;
 
    buffer = g_byte_array_new();
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(request_id));
-   _g_byte_array_append_int32(buffer, 0);
-   _g_byte_array_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_MSG));
-   _g_byte_array_append_cstring(buffer, message);
-   _g_byte_array_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(request_id));
+   mongo_protocol_append_int32(buffer, 0);
+   mongo_protocol_append_int32(buffer, GINT32_TO_LE(MONGO_OPERATION_MSG));
+   mongo_protocol_append_cstring(buffer, message);
+   mongo_protocol_overwrite_int32(buffer, 0, GINT32_TO_LE(buffer->len));
 
    g_hash_table_insert(priv->requests, GINT_TO_POINTER(request_id), simple);
    mongo_protocol_write(protocol, request_id, simple,
