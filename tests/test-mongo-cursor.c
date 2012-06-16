@@ -25,21 +25,16 @@ test1_count_cb (GObject      *object,
 }
 
 static void
-test1_connect_cb (GObject      *object,
-                  GAsyncResult *result,
-                  gpointer      user_data)
+test1 (void)
 {
+   gboolean success = FALSE;
    MongoCollection *col;
    MongoDatabase *db;
    MongoCursor *cursor;
    MongoBson *query = NULL;
    MongoBson *fields = NULL;
-   gboolean ret;
-   GError *error = NULL;
 
-   ret = mongo_client_connect_finish(gClient, result, &error);
-   g_assert_no_error(error);
-   g_assert(ret);
+   gClient = mongo_client_new();
 
    db = mongo_client_get_database(gClient, "dbtest1");
    g_assert(db);
@@ -50,17 +45,7 @@ test1_connect_cb (GObject      *object,
    cursor = mongo_collection_find(col, query, fields, 0, 100, MONGO_QUERY_NONE);
    g_assert(cursor);
 
-   mongo_cursor_count_async(cursor, NULL, test1_count_cb, user_data);
-}
-
-static void
-test1 (void)
-{
-   gboolean success = FALSE;
-
-   gClient = mongo_client_new();
-   mongo_client_add_seed(gClient, "localhost", 27017);
-   mongo_client_connect_async(gClient, NULL, test1_connect_cb, &success);
+   mongo_cursor_count_async(cursor, NULL, test1_count_cb, &success);
 
    g_main_loop_run(gMainLoop);
 
@@ -102,21 +87,16 @@ test2_foreach_cb (GObject      *object,
 }
 
 static void
-test2_connect_cb (GObject      *object,
-                  GAsyncResult *result,
-                  gpointer      user_data)
+test2 (void)
 {
    MongoCollection *col;
    MongoDatabase *db;
    MongoCursor *cursor;
    MongoBson *query = NULL;
    MongoBson *fields = NULL;
-   gboolean ret;
-   GError *error = NULL;
+   guint count = 0;
 
-   ret = mongo_client_connect_finish(gClient, result, &error);
-   g_assert_no_error(error);
-   g_assert(ret);
+   gClient = mongo_client_new();
 
    db = mongo_client_get_database(gClient, "dbtest1");
    g_assert(db);
@@ -129,26 +109,15 @@ test2_connect_cb (GObject      *object,
 
    mongo_cursor_foreach_async(cursor,
                               test2_foreach_func,
-                              user_data,
+                              &count,
                               NULL,
                               NULL,
                               test2_foreach_cb,
-                              user_data);
-}
-
-static void
-test2 (void)
-{
-   guint count = 0;
-
-   gClient = mongo_client_new();
-   mongo_client_add_seed(gClient, "localhost", 27017);
-   mongo_client_connect_async(gClient, NULL, test2_connect_cb, &count);
+                              &count);
 
    g_main_loop_run(gMainLoop);
 
-   g_assert_cmpint(count, >, 1);
-   g_assert_cmpint(count, <=, 100);
+   g_assert_cmpint(count, ==, 1);
 }
 
 gint
