@@ -124,6 +124,49 @@ test3 (void)
    g_assert_cmpint(success, ==, TRUE);
 }
 
+static void
+test4_query_cb (GObject      *object,
+                GAsyncResult *result,
+                gpointer      user_data)
+{
+   MongoClient *client = (MongoClient *)object;
+   gboolean *success = user_data;
+   MongoReply *reply;
+   GError *error = NULL;
+
+   reply = mongo_client_command_finish(client, result, &error);
+   g_assert_no_error(error);
+   g_assert(reply);
+
+   *success = TRUE;
+
+   mongo_reply_unref(reply);
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test4 (void)
+{
+   MongoClient *client;
+   MongoBson *command;
+   gboolean success = FALSE;
+
+   client = mongo_client_new();
+   command = mongo_bson_new_empty();
+   mongo_bson_append_int(command, "ismaster", 1);
+   mongo_client_command_async(client,
+                              "dbtest1.dbcollection1",
+                              command,
+                              NULL,
+                              test4_query_cb,
+                              &success);
+   mongo_bson_unref(command);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -134,5 +177,6 @@ main (gint   argc,
    g_test_add_func("/MongoClient/insert_async", test1);
    g_test_add_func("/MongoClient/query_async", test2);
    g_test_add_func("/MongoClient/delete_async", test3);
+   g_test_add_func("/MongoClient/command_async", test4);
    return g_test_run();
 }
