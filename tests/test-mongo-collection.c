@@ -12,32 +12,27 @@ test1_count_cb (GObject      *object,
 {
    MongoCollection *col = (MongoCollection *)object;
    gboolean *success = user_data;
-   GError *error = NULL;
    guint64 count = 0;
+   GError *error = NULL;
 
    *success = mongo_collection_count_finish(col, result, &count, &error);
    g_assert_no_error(error);
    g_assert(*success);
 
-   g_assert_cmpint(count, >, 0);
+   g_assert_cmpint(count, ==, 0);
 
    g_main_loop_quit(gMainLoop);
 }
 
 static void
-test1_connect_cb (GObject      *object,
-                  GAsyncResult *result,
-                  gpointer      user_data)
+test1 (void)
 {
    MongoCollection *col;
    MongoDatabase *db;
    MongoBson *query = NULL;
-   gboolean ret;
-   GError *error = NULL;
+   gboolean success = FALSE;
 
-   ret = mongo_client_connect_finish(gClient, result, &error);
-   g_assert_no_error(error);
-   g_assert(ret);
+   gClient = mongo_client_new();
 
    db = mongo_client_get_database(gClient, "dbtest1");
    g_assert(db);
@@ -45,17 +40,7 @@ test1_connect_cb (GObject      *object,
    col = mongo_database_get_collection(db, "dbcollection1");
    g_assert(col);
 
-   mongo_collection_count_async(col, query, NULL, test1_count_cb, user_data);
-}
-
-static void
-test1 (void)
-{
-   gboolean success = FALSE;
-
-   gClient = mongo_client_new();
-   mongo_client_add_seed(gClient, "localhost", 27017);
-   mongo_client_connect_async(gClient, NULL, test1_connect_cb, &success);
+   mongo_collection_count_async(col, query, NULL, test1_count_cb, &success);
 
    g_main_loop_run(gMainLoop);
 
@@ -63,7 +48,49 @@ test1 (void)
 }
 
 static void
-test2_find_one_cb (GObject      *object,
+test2_insert_cb (GObject      *object,
+                 GAsyncResult *result,
+                 gpointer      user_data)
+{
+   MongoCollection *col = (MongoCollection *)object;
+   gboolean *success = user_data;
+   GError *error = NULL;
+
+   *success = mongo_collection_insert_finish(col, result, &error);
+   g_assert_no_error(error);
+   g_assert(*success);
+
+   g_main_loop_quit(gMainLoop);
+}
+
+static void
+test2 (void)
+{
+   MongoCollection *col;
+   MongoDatabase *db;
+   MongoBson *doc;
+   gboolean success = FALSE;
+
+   gClient = mongo_client_new();
+
+   db = mongo_client_get_database(gClient, "dbtest1");
+   g_assert(db);
+
+   col = mongo_database_get_collection(db, "dbcollection1");
+   g_assert(col);
+
+   doc = mongo_bson_new();
+   mongo_bson_append_int(doc, "test-key", 54321);
+   mongo_collection_insert_async(col, &doc, 1, MONGO_INSERT_NONE, NULL, test2_insert_cb, &success);
+   mongo_bson_unref(doc);
+
+   g_main_loop_run(gMainLoop);
+
+   g_assert_cmpint(success, ==, TRUE);
+}
+
+static void
+test3_find_one_cb (GObject      *object,
                    GAsyncResult *result,
                    gpointer      user_data)
 {
@@ -88,19 +115,14 @@ test2_find_one_cb (GObject      *object,
 }
 
 static void
-test2_connect_cb (GObject      *object,
-                  GAsyncResult *result,
-                  gpointer      user_data)
+test3 (void)
 {
    MongoCollection *col;
    MongoDatabase *db;
    MongoBson *query = NULL;
-   gboolean ret;
-   GError *error = NULL;
+   gboolean success = FALSE;
 
-   ret = mongo_client_connect_finish(gClient, result, &error);
-   g_assert_no_error(error);
-   g_assert(ret);
+   gClient = mongo_client_new();
 
    db = mongo_client_get_database(gClient, "dbtest1");
    g_assert(db);
@@ -109,17 +131,7 @@ test2_connect_cb (GObject      *object,
    g_assert(col);
 
    mongo_collection_find_one_async(col, query, NULL, MONGO_QUERY_NONE,
-                                   NULL, test2_find_one_cb, user_data);
-}
-
-static void
-test2 (void)
-{
-   gboolean success = FALSE;
-
-   gClient = mongo_client_new();
-   mongo_client_add_seed(gClient, "localhost", 27017);
-   mongo_client_connect_async(gClient, NULL, test2_connect_cb, &success);
+                                   NULL, test3_find_one_cb, &success);
 
    g_main_loop_run(gMainLoop);
 
@@ -136,7 +148,8 @@ main (gint   argc,
    gMainLoop = g_main_loop_new(NULL, FALSE);
 
    g_test_add_func("/MongoCollection/count", test1);
-   g_test_add_func("/MongoCollection/find_one", test2);
+   g_test_add_func("/MongoCollection/insert", test2);
+   g_test_add_func("/MongoCollection/find_one", test3);
 
    return g_test_run();
 }
