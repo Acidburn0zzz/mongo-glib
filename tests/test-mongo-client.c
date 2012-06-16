@@ -5,7 +5,7 @@
 static GMainLoop *gMainLoop;
 
 static void
-test4_insert_cb (GObject      *object,
+test1_insert_cb (GObject      *object,
                  GAsyncResult *result,
                  gpointer      user_data)
 {
@@ -21,7 +21,7 @@ test4_insert_cb (GObject      *object,
 }
 
 static void
-test4 (void)
+test1 (void)
 {
    MongoClient *client;
    MongoBson *bson;
@@ -33,7 +33,7 @@ test4 (void)
    mongo_bson_append_string(bson, "key2", "Some test string");
    mongo_client_insert_async(client, "dbtest1.dbcollection1",
                              MONGO_INSERT_NONE, &bson, 1, NULL,
-                             test4_insert_cb, &success);
+                             test1_insert_cb, &success);
    mongo_bson_unref(bson);
 
    g_main_loop_run(gMainLoop);
@@ -42,7 +42,7 @@ test4 (void)
 }
 
 static void
-test5_query_cb (GObject      *object,
+test2_query_cb (GObject      *object,
                 GAsyncResult *result,
                 gpointer      user_data)
 {
@@ -67,7 +67,7 @@ test5_query_cb (GObject      *object,
 }
 
 static void
-test5 (void)
+test2 (void)
 {
    MongoClient *client;
    MongoBson *bson;
@@ -77,7 +77,7 @@ test5 (void)
    bson = mongo_bson_new_empty();
    mongo_bson_append_int(bson, "key1", 1234);
    mongo_client_query_async(client, "dbtest1.dbcollection1", MONGO_QUERY_NONE,
-                            0, 0, bson, NULL, NULL, test5_query_cb, &success);
+                            0, 0, bson, NULL, NULL, test2_query_cb, &success);
    mongo_bson_unref(bson);
 
    g_main_loop_run(gMainLoop);
@@ -92,7 +92,7 @@ main (gint   argc,
    g_test_init(&argc, &argv, NULL);
    g_type_init();
    gMainLoop = g_main_loop_new(NULL, FALSE);
-   g_test_add_func("/MongoClient/insert_async", test4);
-   g_test_add_func("/MongoClient/query_async", test5);
+   g_test_add_func("/MongoClient/insert_async", test1);
+   g_test_add_func("/MongoClient/query_async", test2);
    return g_test_run();
 }
