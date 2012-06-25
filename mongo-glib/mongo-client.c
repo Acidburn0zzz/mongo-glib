@@ -815,14 +815,14 @@ mongo_client_command_cb (GObject      *object,
                      simple,
                      MONGO_CLIENT_ERROR,
                      MONGO_CLIENT_ERROR_COMMAND_FAILED,
-                     _("Command failed with: %s"),
+                     _("Command failed: %s"),
                      errmsg);
             } else {
                g_simple_async_result_set_error(
                      simple,
                      MONGO_CLIENT_ERROR,
                      MONGO_CLIENT_ERROR_COMMAND_FAILED,
-                     _("Command failed with no errmsg"));
+                     _("Command failed."));
             }
             GOTO(finish);
          }
