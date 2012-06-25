@@ -32,6 +32,7 @@ G_BEGIN_DECLS
 
 #define MONGO_TYPE_QUERY_FLAGS         (mongo_query_flags_get_type())
 #define MONGO_TYPE_PROTOCOL            (mongo_protocol_get_type())
+#define MONGO_PROTOCOL_ERROR           (mongo_protocol_error_quark())
 #define MONGO_PROTOCOL(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_PROTOCOL, MongoProtocol))
 #define MONGO_PROTOCOL_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), MONGO_TYPE_PROTOCOL, MongoProtocol const))
 #define MONGO_PROTOCOL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  MONGO_TYPE_PROTOCOL, MongoProtocolClass))
@@ -41,6 +42,7 @@ G_BEGIN_DECLS
 
 typedef struct _MongoProtocol        MongoProtocol;
 typedef struct _MongoProtocolClass   MongoProtocolClass;
+typedef enum   _MongoProtocolError   MongoProtocolError;
 typedef struct _MongoProtocolPrivate MongoProtocolPrivate;
 typedef struct _MongoReply           MongoReply;
 typedef enum   _MongoDeleteFlags     MongoDeleteFlags;
@@ -49,6 +51,11 @@ typedef enum   _MongoOperation       MongoOperation;
 typedef enum   _MongoQueryFlags      MongoQueryFlags;
 typedef enum   _MongoReplyFlags      MongoReplyFlags;
 typedef enum   _MongoUpdateFlags     MongoUpdateFlags;
+
+enum _MongoProtocolError
+{
+   MONGO_PROTOCOL_ERROR_UNEXPECTED = 1,
+};
 
 enum _MongoDeleteFlags
 {
@@ -128,6 +135,7 @@ struct _MongoProtocolClass
 MongoReply *mongo_reply_ref                    (MongoReply *reply);
 void        mongo_reply_unref                  (MongoReply *reply);
 GType       mongo_reply_get_type               (void) G_GNUC_CONST;
+GQuark      mongo_protocol_error_quark         (void) G_GNUC_CONST;
 GType       mongo_protocol_get_type            (void) G_GNUC_CONST;
 GIOStream  *mongo_protocol_get_io_stream       (MongoProtocol        *protocol);
 void        mongo_protocol_fail                (MongoProtocol        *protocol,

@@ -55,7 +55,14 @@ enum
    LAST_PROP
 };
 
+enum
+{
+   FAILED,
+   LAST_SIGNAL
+};
+
 static GParamSpec *gParamSpecs[LAST_PROP];
+static guint       gSignals[LAST_SIGNAL];
 
 MongoReply *
 mongo_reply_ref (MongoReply *reply)
@@ -161,10 +168,38 @@ void
 mongo_protocol_fail (MongoProtocol *protocol,
                      const GError  *error)
 {
+   MongoProtocolPrivate *priv;
+   GHashTableIter iter;
+   gpointer key;
+   gpointer value;
+   GError *local_error;
+
    ENTRY;
-   /*
-    * TODO: Fail the connection.
-    */
+
+   g_return_if_fail(MONGO_IS_PROTOCOL(protocol));
+
+   priv = protocol->priv;
+
+   if (error) {
+      local_error = g_error_copy(error);
+   } else {
+      local_error = g_error_new(MONGO_PROTOCOL_ERROR,
+                                MONGO_PROTOCOL_ERROR_UNEXPECTED,
+                                _("An unexpected failure occurred."));
+   }
+
+   g_hash_table_iter_init(&iter, priv->requests);
+   while (g_hash_table_iter_next(&iter, &key, &value)) {
+      g_simple_async_result_set_from_error(value, local_error);
+      mongo_simple_async_result_complete_in_idle(value);
+   }
+
+   g_hash_table_remove_all(priv->requests);
+
+   g_signal_emit(protocol, gSignals[FAILED], 0, local_error);
+
+   g_error_free(local_error);
+
    EXIT;
 }
 
@@ -1197,6 +1232,17 @@ mongo_protocol_class_init (MongoProtocolClass *klass)
    g_object_class_install_property(object_class, PROP_IO_STREAM,
                                    gParamSpecs[PROP_IO_STREAM]);
 
+   gSignals[FAILED] = g_signal_new("failed",
+                                   MONGO_TYPE_PROTOCOL,
+                                   G_SIGNAL_RUN_FIRST,
+                                   0,
+                                   NULL,
+                                   NULL,
+                                   g_cclosure_marshal_VOID__BOXED,
+                                   G_TYPE_NONE,
+                                   1,
+                                   G_TYPE_ERROR);
+
    EXIT;
 }
 
@@ -1259,4 +1305,10 @@ mongo_query_flags_get_type (void)
    }
 
    return type_id;
+}
+
+GQuark
+mongo_protocol_error_quark (void)
+{
+   return g_quark_from_static_string("mongo-protocol-error-quark");
 }
