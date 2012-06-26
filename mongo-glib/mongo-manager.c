@@ -18,11 +18,14 @@
 
 #include "mongo-manager.h"
 
+#define MAX_DELAY (1000 * 60)
+
 struct _MongoManager
 {
    volatile gint ref_count;
    GPtrArray *seeds;
    GPtrArray *hosts;
+   guint offset;
    guint delay;
 };
 
@@ -204,6 +207,58 @@ mongo_manager_reset_delay (MongoManager *manager)
 {
    g_return_if_fail(manager);
    manager->delay = 0;
+}
+
+/**
+ * mongo_manager_next:
+ * @manager: (in): A #MongoManager.
+ * @delay: (out): A location for the requested delay.
+ *
+ * Retrieves the next host that should be connected to. If another host
+ * does not exist, %NULL is returned and @delay is set. The caller should
+ * delay that many milliseconds before calling mongo_manager_next() again.
+ *
+ * Returns: A "host:port" to connect to, or %NULL and @delay is set.
+ */
+const gchar *
+mongo_manager_next (MongoManager *manager,
+                    guint        *delay)
+{
+   gchar *next;
+   guint offset;
+
+   g_return_val_if_fail(manager, NULL);
+   g_return_val_if_fail(delay, NULL);
+
+   *delay = 0;
+
+   offset = manager->offset;
+
+   if (offset < manager->seeds->len) {
+      next = g_ptr_array_index(manager->seeds, offset);
+      manager->offset++;
+      return next;
+   }
+
+   offset -= manager->seeds->len;
+
+   if (offset < manager->hosts->len) {
+      next = g_ptr_array_index(manager->hosts, offset);
+      manager->offset++;
+      return next;
+   }
+
+   manager->offset = 0;
+
+   if (!manager->delay) {
+      manager->delay = g_random_int_range(200, 1000);
+   } else {
+      manager->delay = CLAMP(manager->delay << 1, 1, MAX_DELAY);
+   }
+
+   *delay = manager->delay;
+
+   return NULL;
 }
 
 static void

@@ -33,6 +33,57 @@ test1 (void)
    mongo_manager_unref(mgr);
 }
 
+static void
+test2 (void)
+{
+   MongoManager *mgr;
+   const gchar *host;
+   guint delay;
+   guint i;
+
+   mgr = mongo_manager_new();
+
+   mongo_manager_add_seed(mgr, "a:27017");
+   mongo_manager_add_seed(mgr, "b:27017");
+   mongo_manager_add_seed(mgr, "c:27017");
+   mongo_manager_add_host(mgr, "d:27017");
+   mongo_manager_add_host(mgr, "e:27017");
+   mongo_manager_add_host(mgr, "f:27017");
+
+   for (i = 0; i < 5; i++) {
+      host = mongo_manager_next(mgr, &delay);
+      g_assert_cmpstr(host, ==, "a:27017");
+      g_assert_cmpint(delay, ==, 0);
+
+      host = mongo_manager_next(mgr, &delay);
+      g_assert_cmpstr(host, ==, "b:27017");
+      g_assert_cmpint(delay, ==, 0);
+
+      host = mongo_manager_next(mgr, &delay);
+      g_assert_cmpstr(host, ==, "c:27017");
+      g_assert_cmpint(delay, ==, 0);
+
+      host = mongo_manager_next(mgr, &delay);
+      g_assert_cmpstr(host, ==, "d:27017");
+      g_assert_cmpint(delay, ==, 0);
+
+      host = mongo_manager_next(mgr, &delay);
+      g_assert_cmpstr(host, ==, "e:27017");
+      g_assert_cmpint(delay, ==, 0);
+
+      host = mongo_manager_next(mgr, &delay);
+      g_assert_cmpstr(host, ==, "f:27017");
+      g_assert_cmpint(delay, ==, 0);
+
+      host = mongo_manager_next(mgr, &delay);
+      g_assert(!host);
+      g_assert_cmpint(delay, >=, 0);
+      g_assert_cmpint(delay, <=, (1000 << i));
+   }
+
+   mongo_manager_unref(mgr);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -40,5 +91,6 @@ main (gint   argc,
    g_test_init(&argc, &argv, NULL);
    g_type_init();
    g_test_add_func("/MongoManager/basic", test1);
+   g_test_add_func("/MongoManager/next", test2);
    return g_test_run();
 }

@@ -36,6 +36,8 @@ gchar        **mongo_manager_get_hosts   (MongoManager *manager);
 gchar        **mongo_manager_get_seeds   (MongoManager *manager);
 GType          mongo_manager_get_type    (void) G_GNUC_CONST;
 MongoManager  *mongo_manager_new         (void);
+const gchar   *mongo_manager_next        (MongoManager *manager,
+                                          guint        *delay);
 MongoManager  *mongo_manager_ref         (MongoManager *manager);
 void           mongo_manager_remove_host (MongoManager *manager,
                                           const gchar  *host);
