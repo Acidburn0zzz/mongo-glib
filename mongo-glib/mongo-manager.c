@@ -26,6 +26,13 @@ struct _MongoManager
    guint delay;
 };
 
+/**
+ * mongo_manager_new:
+ *
+ * Creates a new instance of #MongoManager.
+ *
+ * Returns: (transfer full): A newly created #MongoManager.
+ */
 MongoManager *
 mongo_manager_new (void)
 {
@@ -39,6 +46,14 @@ mongo_manager_new (void)
    return mgr;
 }
 
+/**
+ * mongo_manager_add_host:
+ * @manager: (in): A #MongoManager.
+ * @host: (in): A "host:port" string.
+ *
+ * Adds a host to @manager. This is a node that was discovered by performing
+ * an "ismaster" command to the mongod instance.
+ */
 void
 mongo_manager_add_host (MongoManager *manager,
                         const gchar  *host)
@@ -48,6 +63,14 @@ mongo_manager_add_host (MongoManager *manager,
    g_ptr_array_add(manager->hosts, g_strdup(host));
 }
 
+/**
+ * mongo_manager_add_seed:
+ * @manager: (in): A #MongoManager.
+ * @seed: (in): A "host:port" string.
+ *
+ * Adds a seed to @manager. This is a node that was provided in the
+ * mongodb:// style connection string.
+ */
 void
 mongo_manager_add_seed (MongoManager *manager,
                         const gchar  *seed)
@@ -57,6 +80,15 @@ mongo_manager_add_seed (MongoManager *manager,
    g_ptr_array_add(manager->seeds, g_strdup(seed));
 }
 
+/**
+ * mongo_manager_clear_hosts:
+ * @manager: (in): A #MongoManager.
+ *
+ * Clear all hosts that were "discovered" in the replica set.
+ *
+ * Returns: None.
+ * Side effects: None.
+ */
 void
 mongo_manager_clear_hosts (MongoManager *manager)
 {
@@ -112,6 +144,13 @@ mongo_manager_get_seeds (MongoManager *manager)
    return ret;
 }
 
+/**
+ * mongo_manager_remove_host:
+ * @manager: (in): A #MongoManager.
+ * @host: (in): A "host:port" string.
+ *
+ * Remove a discovered host from the manager.
+ */
 void
 mongo_manager_remove_host (MongoManager *manager,
                            const gchar  *host)
@@ -129,6 +168,13 @@ mongo_manager_remove_host (MongoManager *manager,
    }
 }
 
+/**
+ * mongo_manager_remove_seed:
+ * @manager: (in): A #MongoManager.
+ * @seed: (in): A "host:port" string.
+ *
+ * Remove a seed from @manager.
+ */
 void
 mongo_manager_remove_seed (MongoManager *manager,
                            const gchar  *seed)
@@ -146,6 +192,13 @@ mongo_manager_remove_seed (MongoManager *manager,
    }
 }
 
+/**
+ * mongo_manager_reset_delay:
+ * @manager: (in): A #MongoManager.
+ *
+ * Resets the delay that will be provided when iterating nodes to connect to.
+ * This should be called after successfully connecting to a PRIMARY node.
+ */
 void
 mongo_manager_reset_delay (MongoManager *manager)
 {
@@ -161,6 +214,14 @@ mongo_manager_dispose (MongoManager *manager)
    g_ptr_array_unref(manager->seeds);
 }
 
+/**
+ * mongo_manager_ref:
+ * @manager: (in): A #MongoManager.
+ *
+ * Increment the reference count of @manager by one.
+ *
+ * Returns: @manager.
+ */
 MongoManager *
 mongo_manager_ref (MongoManager *manager)
 {
@@ -170,6 +231,13 @@ mongo_manager_ref (MongoManager *manager)
    return manager;
 }
 
+/**
+ * mongo_manager_unref:
+ * @manager: (in): A #MongoManager.
+ *
+ * Decrement the reference count of @manager by one. Upon reaching zero, the
+ * structure will be freed and resources released.
+ */
 void
 mongo_manager_unref (MongoManager *manager)
 {
@@ -181,6 +249,13 @@ mongo_manager_unref (MongoManager *manager)
    }
 }
 
+/**
+ * mongo_manager_get_type:
+ *
+ * Fetches the boxed #GType for #MongoManager.
+ *
+ * Returns: A #GType.
+ */
 GType
 mongo_manager_get_type (void)
 {
