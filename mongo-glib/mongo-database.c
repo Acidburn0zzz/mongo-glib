@@ -46,6 +46,7 @@ static GParamSpec *gParamSpecs[LAST_PROP];
 /**
  * mongo_database_get_collection:
  * @database: (in): A #MongoDatabase.
+ * @name: (in): The database name.
  *
  * Fetches the collection that is found in @database.
  *
