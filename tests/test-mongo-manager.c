@@ -20,6 +20,16 @@ test1 (void)
    g_assert_cmpstr(items[0], ==, "127.0.0.1:27017");
    g_strfreev(items);
 
+   mongo_manager_remove_seed(mgr, "localhost:27017");
+   items = mongo_manager_get_seeds(mgr);
+   g_assert_cmpint(0, ==, g_strv_length(items));
+   g_strfreev(items);
+
+   mongo_manager_remove_host(mgr, "127.0.0.1:27017");
+   items = mongo_manager_get_hosts(mgr);
+   g_assert_cmpint(0, ==, g_strv_length(items));
+   g_strfreev(items);
+
    mongo_manager_unref(mgr);
 }
 
