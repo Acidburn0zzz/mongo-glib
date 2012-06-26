@@ -429,9 +429,9 @@ request_free (Request *request)
 }
 
 static void
-mongo_client_protocol_notify_failure (MongoProtocol *protocol,
-                                      GParamSpec    *pspec,
-                                      MongoClient   *client)
+mongo_client_protocol_failed (MongoProtocol *protocol,
+                              const GError  *error,
+                              MongoClient   *client)
 {
    MongoClientPrivate *priv;
 
@@ -443,11 +443,28 @@ mongo_client_protocol_notify_failure (MongoProtocol *protocol,
    priv = client->priv;
 
    /*
-    * TODO: Clear the protocol so we can connect to the next host.
+    * Clear the protocol so we can connect to the next host.
     */
-
    priv->state = STATE_0;
    g_clear_object(&priv->protocol);
+
+   /*
+    * Start connecting to the next configured host.
+    */
+   if (!g_cancellable_is_cancelled(priv->dispose_cancel)) {
+      //if (!(host = mongo_client_next_host(protocol))) {
+         /*
+          * TODO: Add exponential backoff.
+          */
+         EXIT;
+      //}
+
+      /*
+       * Start connecting to the next host.
+       */
+
+      //g_free(host);
+   }
 
    EXIT;
 }
@@ -572,8 +589,8 @@ mongo_client_ismaster_cb (GObject      *object,
     * Wire up failure of the protocol so that we can connect to
     * the next host.
     */
-   g_signal_connect(protocol, "notify::failure",
-                    G_CALLBACK(mongo_client_protocol_notify_failure),
+   g_signal_connect(protocol, "failed",
+                    G_CALLBACK(mongo_client_protocol_failed),
                     client);
 
    /*
@@ -636,12 +653,16 @@ mongo_client_connect_to_host_cb (GObject      *object,
    }
 
    /*
-    * Build a protocol using our connection. We then need to check that
-    * the server is PRIMARY and matches our requested replica set.
+    * Build a protocol using our connection.
     */
    protocol = g_object_new(MONGO_TYPE_PROTOCOL,
                            "io-stream", conn,
                            NULL);
+
+   /*
+    * We then need to check that the server is PRIMARY and matches our
+    * requested replica set.
+    */
    command = mongo_bson_new_empty();
    mongo_bson_append_int(command, "ismaster", 1);
    mongo_protocol_query_async(protocol,
