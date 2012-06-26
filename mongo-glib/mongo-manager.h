@@ -30,7 +30,7 @@ typedef struct _MongoManager MongoManager;
 void           mongo_manager_add_seed    (MongoManager *manager,
                                           const gchar  *seed);
 void           mongo_manager_add_host    (MongoManager *manager,
-                                          const gchar  *peer);
+                                          const gchar  *host);
 void           mongo_manager_clear_hosts (MongoManager *manager);
 gchar        **mongo_manager_get_hosts   (MongoManager *manager);
 gchar        **mongo_manager_get_seeds   (MongoManager *manager);
