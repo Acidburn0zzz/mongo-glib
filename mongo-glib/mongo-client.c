@@ -506,7 +506,7 @@ mongo_client_ismaster_cb (GObject      *object,
    const gchar *host;
    const gchar *primary;
    const gchar *replica_set;
-   MongoReply *reply;
+   MongoReply *reply = NULL;
    gboolean ismaster = FALSE;
    Request *request;
    GError *error = NULL;
@@ -525,7 +525,7 @@ mongo_client_ismaster_cb (GObject      *object,
        * TODO: Start the connection loop over again?
        */
       g_error_free(error);
-      EXIT;
+      GOTO(failure);
    }
 
    if (!reply->n_returned) {
