@@ -1056,10 +1056,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
     */
    if (result) {
       if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
-         /*
-          * TODO: Check if this was a cancellation from our finalizer.
-          */
-         g_assert_not_reached();
+         mongo_protocol_fail(protocol, NULL);
          EXIT;
       }
    }
