@@ -519,6 +519,7 @@ mongo_client_ismaster_cb (GObject      *object,
    priv = client->priv;
 
    if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
+      g_warning("%s", error->message);
       /*
        * TODO: Failed to query? log error somewhere?
        * TODO: Start the connection loop over again?
@@ -550,6 +551,7 @@ mongo_client_ismaster_cb (GObject      *object,
       if (mongo_bson_iter_find(&iter, "setName")) {
          replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
          if (!!g_strcmp0(replica_set, priv->replica_set)) {
+            g_warning("Peer replicaSet does not match: %s", replica_set);
             /*
              * This is not our expected replica set!
              */
