@@ -459,37 +459,22 @@ mongo_client_protocol_failed (MongoProtocol *protocol,
                               const GError  *error,
                               MongoClient   *client)
 {
-   MongoClientPrivate *priv;
-
    ENTRY;
 
    g_assert(MONGO_IS_PROTOCOL(protocol));
    g_assert(MONGO_IS_CLIENT(client));
 
-   priv = client->priv;
-
    /*
     * Clear the protocol so we can connect to the next host.
     */
-   priv->state = STATE_0;
-   g_clear_object(&priv->protocol);
+   client->priv->state = STATE_0;
+   g_clear_object(&client->priv->protocol);
 
    /*
     * Start connecting to the next configured host.
     */
-   if (!g_cancellable_is_cancelled(priv->dispose_cancel)) {
-      //if (!(host = mongo_client_next_host(protocol))) {
-         /*
-          * TODO: Add exponential backoff.
-          */
-         EXIT;
-      //}
-
-      /*
-       * Start connecting to the next host.
-       */
-
-      //g_free(host);
+   if (!g_cancellable_is_cancelled(client->priv->dispose_cancel)) {
+      mongo_client_start_connecting(client);
    }
 
    EXIT;
