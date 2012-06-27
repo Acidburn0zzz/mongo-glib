@@ -387,7 +387,6 @@ request_new (gpointer             source,
    g_assert(G_IS_OBJECT(source));
    g_assert(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_assert(callback);
-   g_assert(user_data);
    g_assert(tag);
 
    request = g_slice_new0(Request);
