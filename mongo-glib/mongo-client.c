@@ -130,6 +130,8 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
+static void mongo_client_start_connecting (MongoClient *client);
+
 static void
 mongo_client_update_cb (GObject      *object,
                         GAsyncResult *result,
@@ -630,9 +632,8 @@ failure:
    mongo_protocol_fail(protocol, NULL);
    mongo_reply_unref(reply);
 
-   /*
-    * TODO: Start connecting to the next host!
-    */
+   priv->state = STATE_0;
+   mongo_client_start_connecting(client);
 
    EXIT;
 }
@@ -649,7 +650,6 @@ mongo_client_connect_to_host_cb (GObject      *object,
    MongoClient *client = user_data;
    MongoBson *command;
    GError *error = NULL;
-   gchar *host_and_port = NULL;
 
    ENTRY;
 
@@ -664,21 +664,10 @@ mongo_client_connect_to_host_cb (GObject      *object,
    if (!(conn = g_socket_client_connect_to_host_finish(socket_client,
                                                        result,
                                                        &error))) {
-      /*
-       * TODO: Get the next host to try.
-       *       Update exponential backoff?
-       */
-      g_socket_client_connect_to_host_async(priv->socket_client,
-                                            host_and_port,
-                                            MONGO_PORT_DEFAULT,
-                                            priv->dispose_cancel,
-                                            mongo_client_connect_to_host_cb,
-                                            client);
-      /*
-       * XXX: Log error somewhere?
-       */
+      g_warning("Failed to connect to host: %s", error->message);
+      priv->state = STATE_0;
+      mongo_client_start_connecting(client);
       g_error_free(error);
-
       EXIT;
    }
 
