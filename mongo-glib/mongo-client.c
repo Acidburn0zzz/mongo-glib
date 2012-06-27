@@ -524,7 +524,7 @@ mongo_client_ismaster_cb (GObject      *object,
     * Complete asynchronous protocol query.
     */
    if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
-      g_warning("%s", error->message);
+      g_message("%s", error->message);
       g_error_free(error);
       GOTO(failure);
    }
@@ -555,7 +555,7 @@ mongo_client_ismaster_cb (GObject      *object,
       if (mongo_bson_iter_find(&iter, "setName")) {
          replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
          if (!!g_strcmp0(replica_set, priv->replica_set)) {
-            g_warning("Peer replicaSet does not match: %s", replica_set);
+            g_message("Peer replicaSet does not match: %s", replica_set);
             GOTO(failure);
          }
       }
@@ -664,7 +664,7 @@ mongo_client_connect_to_host_cb (GObject      *object,
    if (!(conn = g_socket_client_connect_to_host_finish(socket_client,
                                                        result,
                                                        &error))) {
-      g_warning("Failed to connect to host: %s", error->message);
+      g_message("Failed to connect to host: %s", error->message);
       priv->state = STATE_0;
       mongo_client_start_connecting(client);
       g_error_free(error);
@@ -701,26 +701,38 @@ mongo_client_connect_to_host_cb (GObject      *object,
    EXIT;
 }
 
+static gboolean
+mongo_client_start_connecting_timeout (gpointer data)
+{
+   mongo_client_start_connecting(data);
+   g_object_unref(data);
+   return FALSE;
+}
+
 static void
 mongo_client_start_connecting (MongoClient *client)
 {
    MongoClientPrivate *priv;
-   const gchar *host_and_port = "localhost:27017";
+   const gchar *host;
+   guint delay = 0;
 
    ENTRY;
 
    g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(client->priv->state == STATE_0);
 
    priv = client->priv;
 
-   g_assert(priv->state == STATE_0);
-
-   /*
-    * TODO: Get the next host:port pair to connect to.
-    */
+   if (!(host = mongo_manager_next(priv->manager, &delay))) {
+      g_message("No more hosts, delaying for %u milliseconds.", delay);
+      g_timeout_add(delay,
+                    mongo_client_start_connecting_timeout,
+                    g_object_ref(client));
+      EXIT;
+   }
 
    g_socket_client_connect_to_host_async(priv->socket_client,
-                                         host_and_port,
+                                         host,
                                          MONGO_PORT_DEFAULT,
                                          priv->dispose_cancel,
                                          mongo_client_connect_to_host_cb,
@@ -1628,6 +1640,7 @@ mongo_client_init (MongoClient *client)
    client->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
                                                    g_free, g_object_unref);
    client->priv->manager = mongo_manager_new();
+   mongo_manager_add_seed(client->priv->manager, "127.0.0.1:27017");
    client->priv->queue = g_queue_new();
    client->priv->socket_client =
          g_object_new(G_TYPE_SOCKET_CLIENT,
