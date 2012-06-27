@@ -518,16 +518,18 @@ mongo_client_ismaster_cb (GObject      *object,
 
    priv = client->priv;
 
+   /*
+    * Complete asynchronous protocol query.
+    */
    if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
       g_warning("%s", error->message);
-      /*
-       * TODO: Failed to query? log error somewhere?
-       * TODO: Start the connection loop over again?
-       */
       g_error_free(error);
       GOTO(failure);
    }
 
+   /*
+    * Make sure we got a valid document back.
+    */
    if (!reply->n_returned) {
       GOTO(failure);
    }
@@ -552,9 +554,6 @@ mongo_client_ismaster_cb (GObject      *object,
          replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
          if (!!g_strcmp0(replica_set, priv->replica_set)) {
             g_warning("Peer replicaSet does not match: %s", replica_set);
-            /*
-             * This is not our expected replica set!
-             */
             GOTO(failure);
          }
       }
