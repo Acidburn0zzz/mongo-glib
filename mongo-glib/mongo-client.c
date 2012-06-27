@@ -20,6 +20,7 @@
 
 #include "mongo-client.h"
 #include "mongo-debug.h"
+#include "mongo-manager.h"
 #include "mongo-protocol.h"
 #include "mongo-source.h"
 
@@ -31,20 +32,43 @@ G_DEFINE_TYPE(MongoClient, mongo_client, G_TYPE_OBJECT)
 
 struct _MongoClientPrivate
 {
+   /*
+    * Hashtable of databases opened.
+    */
    GHashTable *databases;
 
+   /*
+    * Connection and protocol.
+    */
    GSocketClient *socket_client;
    MongoProtocol *protocol;
 
+   /*
+    * Cancellable emitted when shutting down.
+    */
    GCancellable *dispose_cancel;
 
+   /*
+    * Current client state.
+    */
    guint state;
 
+   /*
+    * Queued requests.
+    */
    GQueue *queue;
 
+   /*
+    * Connection options.
+    */
+   guint connect_timeout_ms;
    gchar *replica_set;
    gboolean slave_okay;
-   guint connect_timeout_ms;
+
+   /*
+    * Node reconnection manager.
+    */
+   MongoManager *manager;
 };
 
 typedef struct
@@ -504,11 +528,7 @@ mongo_client_ismaster_cb (GObject      *object,
    }
 
    if (!reply->n_returned) {
-      /*
-       * TODO: No result document back, handle error?
-       */
-      mongo_reply_unref(reply);
-      EXIT;
+      GOTO(failure);
    }
 
    /*
@@ -545,7 +565,7 @@ mongo_client_ismaster_cb (GObject      *object,
    mongo_bson_iter_init(&iter, reply->documents[0]);
    if (mongo_bson_iter_find(&iter, "primary")) {
       primary = mongo_bson_iter_get_value_string(&iter, NULL);
-      g_message("Node things %s is PRIMARY.", primary);
+      mongo_manager_add_host(priv->manager, primary);
    }
 
    /*
@@ -557,10 +577,7 @@ mongo_client_ismaster_cb (GObject      *object,
       mongo_bson_iter_init(&iter2, mongo_bson_iter_get_value_bson(&iter));
       while (mongo_bson_iter_next(&iter2)) {
          host = mongo_bson_iter_get_value_string(&iter2, NULL);
-         /*
-          * TODO: Add the host to be connected to.
-          */
-         g_message("Found host in replSet: %s", host);
+         mongo_manager_add_host(priv->manager, host);
       }
    }
 
@@ -570,12 +587,14 @@ mongo_client_ismaster_cb (GObject      *object,
    mongo_bson_iter_init(&iter, reply->documents[0]);
    if (mongo_bson_iter_find(&iter, "ismaster")) {
       if (!(ismaster = mongo_bson_iter_get_value_boolean(&iter))) {
-         /*
-          * TODO: Anything we need to do here?
-          */
-         g_message("Connected to PRIMARY.");
+         GOTO(failure);
       }
    }
+
+   /*
+    * We can reset the connection delay since we were successful.
+    */
+   mongo_manager_reset_delay(priv->manager);
 
    /*
     * This is the master and we are connected, so lets store the
@@ -603,8 +622,18 @@ mongo_client_ismaster_cb (GObject      *object,
       request_free(request);
    }
 
-failure:
    mongo_reply_unref(reply);
+   EXIT;
+
+failure:
+   mongo_protocol_fail(protocol, NULL);
+   mongo_reply_unref(reply);
+
+   /*
+    * TODO: Start connecting to the next host!
+    */
+
+   EXIT;
 }
 
 static void
@@ -1510,6 +1539,9 @@ mongo_client_finalize (GObject *object)
       request_free(request);
    }
 
+   mongo_manager_unref(priv->manager);
+   priv->manager = NULL;
+
    g_queue_free(priv->queue);
    priv->queue = NULL;
 
@@ -1605,6 +1637,7 @@ mongo_client_init (MongoClient *client)
                                               MongoClientPrivate);
    client->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
                                                    g_free, g_object_unref);
+   client->priv->manager = mongo_manager_new();
    client->priv->queue = g_queue_new();
    client->priv->socket_client =
          g_object_new(G_TYPE_SOCKET_CLIENT,
