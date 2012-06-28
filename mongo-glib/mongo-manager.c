@@ -88,15 +88,31 @@ mongo_manager_add_seed (MongoManager *manager,
  * @manager: (in): A #MongoManager.
  *
  * Clear all hosts that were "discovered" in the replica set.
- *
- * Returns: None.
- * Side effects: None.
  */
 void
 mongo_manager_clear_hosts (MongoManager *manager)
 {
    g_return_if_fail(manager);
-   g_ptr_array_remove_range(manager->hosts, 0, manager->hosts->len);
+
+   if (manager->hosts->len) {
+      g_ptr_array_remove_range(manager->hosts, 0, manager->hosts->len);
+   }
+}
+
+/**
+ * mongo_manager_clear_seeds:
+ * @manager: (in): A #MongoManager.
+ *
+ * Clear all known seeds.
+ */
+void
+mongo_manager_clear_seeds (MongoManager *manager)
+{
+   g_return_if_fail(manager);
+
+   if (manager->seeds->len) {
+      g_ptr_array_remove_range(manager->seeds, 0, manager->seeds->len);
+   }
 }
 
 /**

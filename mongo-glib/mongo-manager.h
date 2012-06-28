@@ -32,6 +32,7 @@ void           mongo_manager_add_seed    (MongoManager *manager,
 void           mongo_manager_add_host    (MongoManager *manager,
                                           const gchar  *host);
 void           mongo_manager_clear_hosts (MongoManager *manager);
+void           mongo_manager_clear_seeds (MongoManager *manager);
 gchar        **mongo_manager_get_hosts   (MongoManager *manager);
 gchar        **mongo_manager_get_seeds   (MongoManager *manager);
 GType          mongo_manager_get_type    (void) G_GNUC_CONST;
