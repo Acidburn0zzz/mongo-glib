@@ -780,6 +780,26 @@ mongo_client_new (void)
 }
 
 /**
+ * mongo_client_new_from_uri:
+ * @uri: (in): A URI string.
+ *
+ * Creates a new #MongoClient using the URI provided. The URI should be in
+ * the mongodb://host:port form.
+ *
+ * Returns: (transfer full): A newly created #MongoClient.
+ */
+MongoClient *
+mongo_client_new_from_uri (const gchar *uri)
+{
+   MongoClient *ret;
+
+   ENTRY;
+   g_return_val_if_fail(uri, NULL);
+   ret = g_object_new(MONGO_TYPE_CLIENT, "uri", uri, NULL);
+   RETURN(ret);
+}
+
+/**
  * mongo_client_get_database:
  * @client: (in): A #MongoClient.
  * @name: (in): The database name.
