@@ -934,7 +934,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
           * TODO: Check if this was a cancellation from our finalizer.
           */
          g_assert_not_reached();
-         EXIT;
+         GOTO(cleanup);
       }
    }
 
@@ -1017,15 +1017,20 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
             G_PRIORITY_DEFAULT,
             priv->shutdown,
             (GAsyncReadyCallback)mongo_protocol_fill_header_cb,
-            protocol);
+            g_object_ref(protocol));
    } else {
-      mongo_protocol_fill_header_cb(input_stream, NULL, protocol);
+      mongo_protocol_fill_header_cb(input_stream,
+                                    NULL,
+                                    g_object_ref(protocol));
    }
 
+cleanup:
+   g_object_unref(protocol);
    EXIT;
 
 failure:
    mongo_protocol_fail(protocol, error);
+   g_object_unref(protocol);
    EXIT;
 }
 
@@ -1057,7 +1062,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    if (result) {
       if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
          mongo_protocol_fail(protocol, NULL);
-         EXIT;
+         GOTO(cleanup);
       }
    }
 
@@ -1094,11 +1099,13 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
             G_PRIORITY_DEFAULT,
             priv->shutdown,
             (GAsyncReadyCallback)mongo_protocol_fill_message_cb,
-            protocol);
+            g_object_ref(protocol));
    } else {
       mongo_protocol_fill_message_cb(input_stream, NULL, protocol);
    }
 
+cleanup:
+   g_object_unref(protocol);
    EXIT;
 }
 
@@ -1140,8 +1147,7 @@ mongo_protocol_set_io_stream (MongoProtocol *protocol,
          G_PRIORITY_DEFAULT,
          priv->shutdown,
          (GAsyncReadyCallback)mongo_protocol_fill_header_cb,
-         protocol);
-
+         g_object_ref(protocol));
 
    EXIT;
 }
