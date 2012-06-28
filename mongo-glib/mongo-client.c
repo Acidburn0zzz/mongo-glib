@@ -772,9 +772,8 @@ mongo_client_queue (MongoClient *client,
 /**
  * mongo_client_new:
  *
- * Creates a new instance of #MongoClient which can be freed with
- * g_object_unref(). See mongo_client_add_seed() to add a single or more
- * hosts to connect to.
+ * Creates a new instance of #MongoClient which will connect to
+ * mongodb://127.0.0.1:27017.
  *
  * Returns: A newly allocated #MongoClient.
  */
@@ -794,6 +793,17 @@ mongo_client_new (void)
  *
  * Creates a new #MongoClient using the URI provided. The URI should be in
  * the mongodb://host:port form.
+ *
+ * Currently, mongodb:// style URIs that contain multiple hosts must all
+ * connect on the same port number, specified in the last host due to an
+ * incomplete implementation of URI parsing. This will be supported in
+ * the future.
+ *
+ * Such a URI would look like:
+ *
+ *   mongodb://127.0.0.1:27017,127.0.0.2:27018
+ *
+ * And will result in %NULL being returned.
  *
  * Returns: (transfer full): A newly created #MongoClient.
  */
@@ -1514,7 +1524,7 @@ mongo_client_get_uri (MongoClient *client)
    return client->priv->uri_string;
 }
 
-void
+static void
 mongo_client_set_uri (MongoClient *client,
                       const gchar *uri)
 {
