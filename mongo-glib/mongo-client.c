@@ -17,6 +17,7 @@
  */
 
 #include <glib/gi18n.h>
+#include <stdlib.h>
 
 #include "guri.h"
 
@@ -63,11 +64,19 @@ struct _MongoClientPrivate
    /*
     * Connection options.
     */
-   guint connect_timeout_ms;
+   guint connecttimeoutms;
+   gboolean fsync;
+   gboolean fsync_set;
+   guint w;
+   gboolean journal;
+   gboolean journal_set;
    gchar *replica_set;
+   gboolean safe;
    gboolean slave_okay;
+   guint sockettimeoutms;
    GUri *uri;
    gchar *uri_string;
+   guint wtimeoutms;
 
    /*
     * Node reconnection manager.
@@ -1510,8 +1519,11 @@ mongo_client_set_uri (MongoClient *client,
                       const gchar *uri)
 {
    MongoClientPrivate *priv;
+   const gchar *value;
+   GHashTable *params;
    GError *error = NULL;
    gchar **hosts;
+   gchar *lower;
    guint i;
    GUri *guri;
 
@@ -1538,19 +1550,81 @@ mongo_client_set_uri (MongoClient *client,
       priv->uri = NULL;
    }
 
+   /*
+    * Save the uri for later.
+    */
    priv->uri = guri;
-
    g_free(priv->uri_string);
    priv->uri_string = g_strdup(uri);
 
+   /*
+    * Clear seeds/hosts to be used for connecting.
+    */
    mongo_manager_clear_seeds(priv->manager);
    mongo_manager_clear_hosts(priv->manager);
 
+   /*
+    * Add the seeds to the manager.
+    */
    hosts = g_strsplit(priv->uri->host, ",", -1);
    for (i = 0; hosts[i]; i++) {
       mongo_manager_add_seed(priv->manager, hosts[i]);
    }
    g_strfreev(hosts);
+
+   /*
+    * Clear existing parameters.
+    */
+   priv->connecttimeoutms = 0;
+   priv->fsync = FALSE;
+   priv->fsync_set = FALSE;
+   priv->w = 0;
+   priv->journal = FALSE;
+   priv->journal_set = FALSE;
+   g_free(priv->replica_set);
+   priv->replica_set = NULL;
+   priv->safe = TRUE;
+   priv->slave_okay = FALSE;
+   priv->sockettimeoutms = 0;
+   priv->wtimeoutms = 0;
+
+   /*
+    * Parse URI parameters containing connection options.
+    */
+   lower = g_utf8_strdown(priv->uri->query ?: "", -1);
+   if ((params = g_uri_parse_params(lower, -1, '&', TRUE))) {
+      if ((value = g_hash_table_lookup(params, "replicaset"))) {
+         priv->replica_set = g_strdup(value);
+      }
+      if ((value = g_hash_table_lookup(params, "slaveok"))) {
+         priv->slave_okay = !!g_strcmp0(value, "false");
+      }
+      if ((value = g_hash_table_lookup(params, "safe"))) {
+         priv->safe = !!g_strcmp0(value, "false");
+      }
+      if ((value = g_hash_table_lookup(params, "w"))) {
+         priv->w = MAX(0, strtol(value, NULL, 10));
+      }
+      if ((value = g_hash_table_lookup(params, "wtimeoutms"))) {
+         priv->wtimeoutms = MAX(0, strtol(value, NULL, 10));
+      }
+      if ((value = g_hash_table_lookup(params, "fsync"))) {
+         priv->fsync = !!g_strcmp0(value, "false");
+         priv->fsync_set = TRUE;
+      }
+      if ((value = g_hash_table_lookup(params, "journal"))) {
+         priv->journal = !!g_strcmp0(value, "false");
+         priv->journal_set = TRUE;
+      }
+      if ((value = g_hash_table_lookup(params, "connecttimeoutms"))) {
+         priv->connecttimeoutms = MAX(0, strtol(value, NULL, 10));
+      }
+      if ((value = g_hash_table_lookup(params, "sockettimeoutms"))) {
+         priv->sockettimeoutms = MAX(0, strtol(value, NULL, 10));
+      }
+      g_hash_table_unref(params);
+   }
+   g_free(lower);
 
    EXIT;
 }
