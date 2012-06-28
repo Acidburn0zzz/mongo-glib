@@ -1533,6 +1533,7 @@ mongo_client_set_uri (MongoClient *client,
    GHashTable *params;
    GError *error = NULL;
    gchar **hosts;
+   gchar *host_port;
    gchar *lower;
    guint i;
    GUri *guri;
@@ -1578,7 +1579,17 @@ mongo_client_set_uri (MongoClient *client,
     */
    hosts = g_strsplit(priv->uri->host, ",", -1);
    for (i = 0; hosts[i]; i++) {
-      mongo_manager_add_seed(priv->manager, hosts[i]);
+      /*
+       * TODO: This should be fixed after our URI fixes to support
+       *       , in the hosts properly.
+       */
+      if (!strstr(hosts[i], ":") && guri->port) {
+         host_port = g_strdup_printf("%s:%u", hosts[i], guri->port);
+         mongo_manager_add_seed(priv->manager, host_port);
+         g_free(host_port);
+      } else {
+         mongo_manager_add_seed(priv->manager, hosts[i]);
+      }
    }
    g_strfreev(hosts);
 
