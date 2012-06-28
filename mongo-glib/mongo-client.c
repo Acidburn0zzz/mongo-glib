@@ -1539,7 +1539,7 @@ mongo_client_set_uri (MongoClient *client,
       EXIT;
    }
 
-   if (!(guri = g_uri_new(uri, G_URI_PARSE_STRICT, &error))) {
+   if (!(guri = g_uri_new(uri, G_URI_PARSE_NON_DNS, &error))) {
       g_warning("Invalid uri: %s", error->message);
       g_error_free(error);
       EXIT;

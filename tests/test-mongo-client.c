@@ -167,6 +167,45 @@ test4 (void)
    g_assert_cmpint(success, ==, TRUE);
 }
 
+static void
+test5 (void)
+{
+#define TEST_URI(str) \
+   G_STMT_START { \
+      MongoClient *c = mongo_client_new_from_uri(str); \
+      g_assert(c); \
+      g_object_unref(c); \
+   } G_STMT_END
+
+   TEST_URI("mongodb://127.0.0.1:27017");
+   TEST_URI("mongodb://127.0.0.1:27017/");
+   TEST_URI("mongodb://127.0.0.1:27017/?replicaSet=abc");
+   TEST_URI("mongodb://127.0.0.1:27017/?replicaSet=abc"
+                                      "&connectTimeoutMS=1000"
+                                      "&fsync=false"
+                                      "&journal=true"
+                                      "&safe=true"
+                                      "&socketTimeoutMS=5000"
+                                      "&wTimeoutMS=1000");
+   TEST_URI("mongodb://mongo/?replicaSet=abc");
+   TEST_URI("mongodb://mongo:27017?replicaSet=abc");
+   TEST_URI("mongodb://mongo:27017/?replicaSet=abc");
+   TEST_URI("mongodb://mongo.example.com:27017?replicaSet=abc");
+   TEST_URI("mongodb://mongo.example.com?replicaSet=abc");
+   TEST_URI("mongodb://mongo.example.com/?replicaSet=abc");
+   TEST_URI("mongodb://127.0.0.1,127.0.0.2:27017/?w=123");
+   TEST_URI("mongodb://127.0.0.1,127.0.0.2:27017?w=123");
+
+   /*
+    * We do not yet support port per host like follows.
+    */
+#if 0
+   TEST_URI("mongodb://user:pass@127.0.0.1:27017,127.0.0.2:27017/?w=123");
+#endif
+
+#undef TEST_URI
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -178,5 +217,6 @@ main (gint   argc,
    g_test_add_func("/MongoClient/query_async", test2);
    g_test_add_func("/MongoClient/delete_async", test3);
    g_test_add_func("/MongoClient/command_async", test4);
+   g_test_add_func("/MongoClient/uri", test5);
    return g_test_run();
 }
