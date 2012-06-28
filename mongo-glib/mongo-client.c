@@ -18,6 +18,8 @@
 
 #include <glib/gi18n.h>
 
+#include "guri.h"
+
 #include "mongo-client.h"
 #include "mongo-debug.h"
 #include "mongo-manager.h"
@@ -64,6 +66,8 @@ struct _MongoClientPrivate
    guint connect_timeout_ms;
    gchar *replica_set;
    gboolean slave_okay;
+   GUri *uri;
+   gchar *uri_string;
 
    /*
     * Node reconnection manager.
@@ -117,6 +121,7 @@ enum
    PROP_0,
    PROP_REPLICA_SET,
    PROP_SLAVE_OKAY,
+   PROP_URI,
    LAST_PROP
 };
 
@@ -1466,6 +1471,71 @@ mongo_client_set_replica_set (MongoClient *client,
 }
 
 /**
+ * mongo_client_get_uri:
+ * @client: (in): A #MongoClient.
+ *
+ * Fetches the uri for the client.
+ *
+ * Returns: The uri as a string.
+ */
+const gchar *
+mongo_client_get_uri (MongoClient *client)
+{
+   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
+   return client->priv->uri_string;
+}
+
+void
+mongo_client_set_uri (MongoClient *client,
+                      const gchar *uri)
+{
+   MongoClientPrivate *priv;
+   GError *error = NULL;
+   gchar **hosts;
+   guint i;
+   GUri *guri;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(uri);
+
+   priv = client->priv;
+
+   if (!g_str_has_prefix(uri, "mongodb://")) {
+      g_warning("\"uri\" must start with mongodb://");
+      EXIT;
+   }
+
+   if (!(guri = g_uri_new(uri, G_URI_PARSE_STRICT, &error))) {
+      g_warning("Invalid uri: %s", error->message);
+      g_error_free(error);
+      EXIT;
+   }
+
+   if (priv->uri) {
+      g_uri_free(priv->uri);
+      priv->uri = NULL;
+   }
+
+   priv->uri = guri;
+
+   g_free(priv->uri_string);
+   priv->uri_string = g_strdup(uri);
+
+   mongo_manager_clear_seeds(priv->manager);
+   mongo_manager_clear_hosts(priv->manager);
+
+   hosts = g_strsplit(priv->uri->host, ",", -1);
+   for (i = 0; hosts[i]; i++) {
+      mongo_manager_add_seed(priv->manager, hosts[i]);
+   }
+   g_strfreev(hosts);
+
+   EXIT;
+}
+
+/**
  * mongo_client_get_slave_okay:
  * @client: A #MongoClient.
  *
@@ -1534,6 +1604,14 @@ mongo_client_finalize (GObject *object)
    g_clear_object(&priv->socket_client);
    g_clear_object(&priv->protocol);
 
+   if (priv->uri_string) {
+      g_free(priv->uri_string);
+      priv->uri_string = NULL;
+   }
+
+   g_uri_free(priv->uri);
+   priv->uri = NULL;
+
    G_OBJECT_CLASS(mongo_client_parent_class)->finalize(object);
 
    EXIT;
@@ -1554,6 +1632,9 @@ mongo_client_get_property (GObject    *object,
    case PROP_SLAVE_OKAY:
       g_value_set_boolean(value, mongo_client_get_slave_okay(client));
       break;
+   case PROP_URI:
+      g_value_set_string(value, mongo_client_get_uri(client));
+      break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
    }
@@ -1573,6 +1654,9 @@ mongo_client_set_property (GObject      *object,
       break;
    case PROP_SLAVE_OKAY:
       mongo_client_set_slave_okay(client, g_value_get_boolean(value));
+      break;
+   case PROP_URI:
+      mongo_client_set_uri(client, g_value_get_string(value));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1609,6 +1693,15 @@ mongo_client_class_init (MongoClientClass *klass)
                           G_PARAM_READWRITE);
    g_object_class_install_property(object_class, PROP_SLAVE_OKAY,
                                    gParamSpecs[PROP_SLAVE_OKAY]);
+
+   gParamSpecs[PROP_URI] =
+      g_param_spec_string("uri",
+                          _("URI"),
+                          _("The connection URI."),
+                          "mongodb://127.0.0.1:27017/",
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_URI,
+                                   gParamSpecs[PROP_URI]);
 
    EXIT;
 }
