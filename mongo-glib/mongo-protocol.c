@@ -200,6 +200,10 @@ mongo_protocol_fail (MongoProtocol *protocol,
 
    g_error_free(local_error);
 
+   if (priv->io_stream && !g_io_stream_is_closed(priv->io_stream)) {
+      g_io_stream_close(priv->io_stream, NULL, NULL);
+   }
+
    EXIT;
 }
 
