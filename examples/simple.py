@@ -3,21 +3,15 @@
 from gi.repository import Mongo
 from gi.repository import GLib
 
-mainLoop = GLib.MainLoop(None, False)
-
-def count_cb(col, result, data):
+def count_cb(col, result, mainLoop):
     success, count = col.count_finish(result)
-    print 'We received %d documents!' % count
+    print 'Counted %d documents!' % count
     mainLoop.quit()
 
-def connect_cb(client, result, data):
-    client.connect_finish(result)
-    db = client.get_database('dbtest1')
+if __name__ == '__main__':
+    mainLoop = GLib.MainLoop(None, False)
+    conn = Mongo.Connection.new_from_uri('mongodb://127.0.0.1')
+    db = conn.get_database('dbtest1')
     col = db.get_collection('dbcollection1')
-    col.count_async(None, None, count_cb, None)
-
-client = Mongo.Client()
-client.add_seed('localhost', 27017)
-client.connect_async(None, connect_cb, None)
-
-mainLoop.run()
+    col.count_async(None, None, count_cb, mainLoop)
+    mainLoop.run()

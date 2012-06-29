@@ -3,17 +3,14 @@
 const Mongo = imports.gi.Mongo;
 const MainLoop = imports.mainloop;
 
-let client = new Mongo.Client();
+let connection = new Mongo.Connection.new_from_uri('mongodb://127.0.0.1')
+let database = connection.get_database('dbtest1');
+let collection = database.get_collection('dbcollection1');
 
-client.add_seed("localhost", 27017);
-client.connect_async(null, function(client, result, data) {
-	client.connect_finish(result);
-	col = client.get_database("dbtest1").get_collection("dbcollection1");
-	col.count_async(null, null, function(col, result, data) {
-		count = col.count_finish(result)[1];
-		log('*** Found ' + count + ' Documents ***');
-		MainLoop.quit('');
-	}, null);
-}, null);
+collection.count_async(null, null, function(collection, result, data) {
+  let success, count = collection.count_finish(result);
+  log('*** Found ' + count + ' documents ***');
+  MainLoop.quit('');
+});
 
 MainLoop.run('');
