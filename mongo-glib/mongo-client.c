@@ -724,7 +724,8 @@ mongo_client_start_connecting (MongoClient *client)
    ENTRY;
 
    g_return_if_fail(MONGO_IS_CLIENT(client));
-   g_return_if_fail(client->priv->state == STATE_0);
+   g_return_if_fail(client->priv->state == STATE_0 ||
+                    client->priv->state == STATE_CONNECTING);
 
    priv = client->priv;
 
