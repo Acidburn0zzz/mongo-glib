@@ -56,6 +56,10 @@ struct _MongoBsonStream
    MongoBsonStreamPrivate *priv;
 };
 
+/**
+ * MongoBsonStreamClass:
+ * @parent_class: GObject parent class.
+ */
 struct _MongoBsonStreamClass
 {
    GObjectClass parent_class;

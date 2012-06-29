@@ -64,6 +64,11 @@ struct _MongoClient
    MongoClientPrivate *priv;
 };
 
+/**
+ * MongoClientClass:
+ * @parent_class: The parent GObject class.
+ *
+ */
 struct _MongoClientClass
 {
    GObjectClass parent_class;

@@ -59,6 +59,11 @@ struct _MongoCollection
    MongoCollectionPrivate *priv;
 };
 
+/**
+ * MongoCollectionClass:
+ * @parent_class: The parent GObject class.
+ *
+ */
 struct _MongoCollectionClass
 {
    GObjectClass parent_class;

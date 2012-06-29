@@ -46,6 +46,7 @@ mongo_bson_stream_new (void)
  * mongo_bson_stream_load_from_channel:
  * @stream: (in): A #MongoBsonStream.
  * @channel: (in): A #GIOChannel.
+ * @error: (out): A location for a #GError, or %NULL.
  *
  * Enables #MongoBsonStream to use the content of @channel for the
  * underlying BSON stream.

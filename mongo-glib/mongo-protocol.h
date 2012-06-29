@@ -81,6 +81,25 @@ enum _MongoOperation
    MONGO_OPERATION_KILL_CURSORS = 2007,
 };
 
+/**
+ * MongoQueryFlags:
+ * @MONGO_QUERY_NONE: No query flags supplied.
+ * @MONGO_QUERY_TAILABLE_CURSOR: Cursor will not be closed when the last
+ *    data is retrieved. You can resume this cursor later.
+ * @MONGO_QUERY_SLAVE_OK: Allow query of replica slave.
+ * @MONGO_QUERY_OPLOG_REPLAY: Used internally by Mongo.
+ * @MONGO_QUERY_NO_CURSOR_TIMEOUT: The server normally times out idle
+ *    cursors after an inactivity period (10 minutes). This prevents that.
+ * @MONGO_QUERY_AWAIT_DATA: Use with %MONGO_QUERY_TAILABLE_CURSOR. Block
+ *    rather than returning no data. After a period, time out.
+ * @MONGO_QUERY_EXHAUST: Stream the data down full blast in multiple
+ *    "more" packages. Faster when you are pulling a lot of data and
+ *    know you want to pull it all down.
+ * @MONGO_QUERY_PARTIAL: Get partial results from mongos if some shards
+ *    are down (instead of throwing an error).
+ *
+ * #MongoQueryFlags is used for querying a Mongo instance.
+ */
 enum _MongoQueryFlags
 {
    MONGO_QUERY_NONE              = 0,
@@ -93,6 +112,18 @@ enum _MongoQueryFlags
    MONGO_QUERY_PARTIAL           = 1 << 7,
 };
 
+/**
+ * MongoReplyFlags:
+ * @MONGO_REPLY_NONE: No flags set.
+ * @MONGO_REPLY_CURSOR_NOT_FOUND: Cursor was not found.
+ * @MONGO_REPLY_QUERY_FAILURE: Query failed, error document provided.
+ * @MONGO_REPLY_SHARD_CONFIG_STALE: Shard configuration is stale.
+ * @MONGO_REPLY_AWAIT_CAPABLE: Wait for data to be returned until timeout
+ *    has passed. Used with %MONGO_QUERY_TAILABLE_CURSOR.
+ *
+ * #MongoReplyFlags contains flags supplied by the Mongo server in reply
+ * to a request.
+ */
 enum _MongoReplyFlags
 {
    MONGO_REPLY_NONE               = 0,
@@ -109,6 +140,19 @@ enum _MongoUpdateFlags
    MONGO_UPDATE_MULTI_UPDATE = 1 << 1,
 };
 
+/**
+ * MongoReply:
+ * @ref_count: The reference count of the structure.
+ * @flags: Flags for the reply.
+ * @cursor_id: The cursor_id for the reply.
+ * @starting_from: The offset of the first result document.
+ * @n_returned: Number of documents returned.
+ * @documents: (array length=n_returned): Array of documents returned.
+ *
+ * #MongoReply contains the reply from the mongo server. It is not
+ * designed to be used by external applications unless you know exactly
+ * why you need it. Try to use the higher level API when possible.
+ */
 struct _MongoReply
 {
    gint ref_count;
@@ -127,6 +171,11 @@ struct _MongoProtocol
    MongoProtocolPrivate *priv;
 };
 
+/**
+ * MongoProtocolClass:
+ * @parent_class: The parent #GObjectClass.
+ *
+ */
 struct _MongoProtocolClass
 {
    GObjectClass parent_class;

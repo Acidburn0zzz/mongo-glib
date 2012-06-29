@@ -1181,8 +1181,9 @@ mongo_client_update_finish (MongoClient   *client,
  * @client: A #MongoClient.
  * @db_and_collection: A string containing the "db.collection".
  * @flags: A bitwise-or of #MongoInsertFlags.
- * @documents: (array length=n_documents) (element-type MongoBson): Array  of
- * #MongoBson documents to insert.
+ * @documents: (array length=n_documents) (element-type MongoBson*): Array  of
+ *    #MongoBson documents to insert.
+ * @n_documents: (in): The number of elements in @documents.
  * @cancellable: (allow-none): A #GCancellable or %NULL.
  * @callback: A #GAsyncReadyCallback.
  * @user_data: (allow-none): User data for @callback.

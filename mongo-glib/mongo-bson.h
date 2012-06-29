@@ -34,7 +34,6 @@ G_BEGIN_DECLS
 
 typedef struct _MongoBson     MongoBson;
 typedef struct _MongoBsonIter MongoBsonIter;
-typedef enum   _MongoBsonType MongoBsonType;
 
 /**
  * MongoBsonType:
@@ -53,6 +52,8 @@ typedef enum   _MongoBsonType MongoBsonType;
  * These enumerations specify the field type within a #MongoBson.
  * The field type can be retrieved with mongo_bson_iter_get_value_type().
  */
+typedef enum _MongoBsonType MongoBsonType;
+
 enum _MongoBsonType
 {
    MONGO_BSON_DOUBLE    = 0x01,

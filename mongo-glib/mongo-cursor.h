@@ -69,6 +69,11 @@ struct _MongoCursor
    MongoCursorPrivate *priv;
 };
 
+/**
+ * MongoCursorClass:
+ * @parent_class: The parent #GObjectClass.
+ *
+ */
 struct _MongoCursorClass
 {
    GObjectClass parent_class;

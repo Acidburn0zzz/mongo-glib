@@ -57,6 +57,11 @@ struct _MongoDatabase
    MongoDatabasePrivate *priv;
 };
 
+/**
+ * MongoDatabaseClass:
+ * @parent_class: The parent #GObjectClass.
+ *
+ */
 struct _MongoDatabaseClass
 {
    GObjectClass parent_class;

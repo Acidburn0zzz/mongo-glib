@@ -23,8 +23,9 @@ CFILE_GLOB=$(top_srcdir)/mongo-glib/*.c
 
 # Header files to ignore when scanning
 IGNORE_HFILES=		\
-	mongo-glib.h	\
 	mongo-debug.h	\
+	mongo-glib.h	\
+	mongo-source.h	\
 	$(NULL)
 
 # CFLAGS and LDFLAGS for compiling scan program. Only needed
