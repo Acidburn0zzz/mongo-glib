@@ -24,6 +24,16 @@
 #include "mongo-protocol.h"
 #include "mongo-source.h"
 
+/**
+ * SECTION:mongo-database
+ * @title: MongoDatabase
+ * @short_description: Mongo database of collections.
+ *
+ * #MongoDatabase represents a group of #MongoCollection<!-- -->'s in
+ * a Mongo server. It can be used to access collections using
+ * mongo_database_get_collection().
+ */
+
 G_DEFINE_TYPE(MongoDatabase, mongo_database, G_TYPE_OBJECT)
 
 struct _MongoDatabasePrivate

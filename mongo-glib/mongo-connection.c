@@ -27,6 +27,20 @@
 #include "mongo-protocol.h"
 #include "mongo-source.h"
 
+/**
+ * SECTION:mongo-connection
+ * @title: MongoConnection
+ * @short_description: Connection to Mongo DB.
+ */
+
+/*
+ * TODO: Query replica set information occasionally.
+ *       Support the rest of the options currently parsed.
+ *       Resiliency to network partitions.
+ *       Memory leak detection.
+ *
+ */
+
 G_DEFINE_TYPE(MongoConnection, mongo_connection, G_TYPE_OBJECT)
 
 #ifndef MONGO_PORT_DEFAULT
@@ -174,8 +188,8 @@ mongo_connection_update_cb (GObject      *object,
 
 static void
 mongo_connection_insert_cb (GObject      *object,
-                        GAsyncResult *result,
-                        gpointer      user_data)
+                            GAsyncResult *result,
+                            gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
@@ -200,8 +214,8 @@ mongo_connection_insert_cb (GObject      *object,
 
 static void
 mongo_connection_query_cb (GObject      *object,
-                       GAsyncResult *result,
-                       gpointer      user_data)
+                           GAsyncResult *result,
+                           gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
@@ -226,8 +240,8 @@ mongo_connection_query_cb (GObject      *object,
 
 static void
 mongo_connection_getmore_cb (GObject      *object,
-                         GAsyncResult *result,
-                         gpointer      user_data)
+                             GAsyncResult *result,
+                             gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
@@ -254,8 +268,8 @@ mongo_connection_getmore_cb (GObject      *object,
 
 static void
 mongo_connection_delete_cb (GObject      *object,
-                        GAsyncResult *result,
-                        gpointer      user_data)
+                            GAsyncResult *result,
+                            gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
@@ -280,8 +294,8 @@ mongo_connection_delete_cb (GObject      *object,
 
 static void
 mongo_connection_kill_cursors_cb (GObject      *object,
-                              GAsyncResult *result,
-                              gpointer      user_data)
+                                  GAsyncResult *result,
+                                  gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
@@ -468,9 +482,9 @@ request_free (Request *request)
 }
 
 static void
-mongo_connection_protocol_failed (MongoProtocol *protocol,
-                              const GError  *error,
-                              MongoConnection   *connection)
+mongo_connection_protocol_failed (MongoProtocol   *protocol,
+                                  const GError    *error,
+                                  MongoConnection *connection)
 {
    ENTRY;
 
@@ -495,8 +509,8 @@ mongo_connection_protocol_failed (MongoProtocol *protocol,
 
 static void
 mongo_connection_ismaster_cb (GObject      *object,
-                          GAsyncResult *result,
-                          gpointer      user_data)
+                              GAsyncResult *result,
+                              gpointer      user_data)
 {
    MongoConnectionPrivate *priv;
    MongoConnection *connection = user_data;
@@ -645,8 +659,8 @@ failure:
 
 static void
 mongo_connection_connect_to_host_cb (GObject      *object,
-                                 GAsyncResult *result,
-                                 gpointer      user_data)
+                                     GAsyncResult *result,
+                                     gpointer      user_data)
 {
    MongoConnectionPrivate *priv;
    GSocketConnection *conn;
@@ -751,7 +765,7 @@ mongo_connection_start_connecting (MongoConnection *connection)
 
 static void
 mongo_connection_queue (MongoConnection *connection,
-                    Request     *request)
+                        Request         *request)
 {
    MongoConnectionPrivate *priv;
 
@@ -839,7 +853,7 @@ mongo_connection_new_from_uri (const gchar *uri)
  */
 MongoDatabase *
 mongo_connection_get_database (MongoConnection *connection,
-                           const gchar *name)
+                               const gchar     *name)
 {
    MongoConnectionPrivate *priv;
    MongoDatabase *database;
@@ -864,8 +878,8 @@ mongo_connection_get_database (MongoConnection *connection,
 
 static void
 mongo_connection_command_cb (GObject      *object,
-                         GAsyncResult *result,
-                         gpointer      user_data)
+                             GAsyncResult *result,
+                             gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoBsonIter iter;
@@ -948,12 +962,12 @@ finish:
  * @callback MUST execute mongo_connection_command_finish().
  */
 void
-mongo_connection_command_async (MongoConnection         *connection,
-                            const gchar         *db,
-                            const MongoBson     *command,
-                            GCancellable        *cancellable,
-                            GAsyncReadyCallback  callback,
-                            gpointer             user_data)
+mongo_connection_command_async (MongoConnection     *connection,
+                                const gchar         *db,
+                                const MongoBson     *command,
+                                GCancellable        *cancellable,
+                                GAsyncReadyCallback  callback,
+                                gpointer             user_data)
 {
    GSimpleAsyncResult *simple;
    gchar *db_and_cmd;
@@ -997,9 +1011,9 @@ mongo_connection_command_async (MongoConnection         *connection,
  * Returns: (transfer full): A #MongoReply if successful; otherwise %NULL.
  */
 MongoReply *
-mongo_connection_command_finish (MongoConnection   *connection,
-                             GAsyncResult  *result,
-                             GError       **error)
+mongo_connection_command_finish (MongoConnection  *connection,
+                                 GAsyncResult     *result,
+                                 GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoReply *ret;
@@ -1038,13 +1052,13 @@ mongo_connection_command_finish (MongoConnection   *connection,
  * @callback MUST call mongo_connection_delete_finish().
  */
 void
-mongo_connection_delete_async (MongoConnection         *connection,
-                           const gchar         *db_and_collection,
-                           MongoDeleteFlags     flags,
-                           const MongoBson     *selector,
-                           GCancellable        *cancellable,
-                           GAsyncReadyCallback  callback,
-                           gpointer             user_data)
+mongo_connection_delete_async (MongoConnection     *connection,
+                               const gchar         *db_and_collection,
+                               MongoDeleteFlags     flags,
+                               const MongoBson     *selector,
+                               GCancellable        *cancellable,
+                               GAsyncReadyCallback  callback,
+                               gpointer             user_data)
 {
    Request *request;
 
@@ -1080,9 +1094,9 @@ mongo_connection_delete_async (MongoConnection         *connection,
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_connection_delete_finish (MongoConnection   *connection,
-                            GAsyncResult  *result,
-                            GError       **error)
+mongo_connection_delete_finish (MongoConnection  *connection,
+                                GAsyncResult     *result,
+                                GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
@@ -1115,14 +1129,14 @@ mongo_connection_delete_finish (MongoConnection   *connection,
  * @callback MUST call mongo_connection_update_finish().
  */
 void
-mongo_connection_update_async (MongoConnection         *connection,
-                           const gchar         *db_and_collection,
-                           MongoUpdateFlags     flags,
-                           const MongoBson     *selector,
-                           const MongoBson     *update,
-                           GCancellable        *cancellable,
-                           GAsyncReadyCallback  callback,
-                           gpointer             user_data)
+mongo_connection_update_async (MongoConnection     *connection,
+                               const gchar         *db_and_collection,
+                               MongoUpdateFlags     flags,
+                               const MongoBson     *selector,
+                               const MongoBson     *update,
+                               GCancellable        *cancellable,
+                               GAsyncReadyCallback  callback,
+                               gpointer             user_data)
 {
    Request *request;
 
@@ -1158,9 +1172,9 @@ mongo_connection_update_async (MongoConnection         *connection,
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_connection_update_finish (MongoConnection   *connection,
-                            GAsyncResult  *result,
-                            GError       **error)
+mongo_connection_update_finish (MongoConnection  *connection,
+                                GAsyncResult     *result,
+                                GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
@@ -1194,14 +1208,14 @@ mongo_connection_update_finish (MongoConnection   *connection,
  * @callback MUST call mongo_connection_insert_finish().
  */
 void
-mongo_connection_insert_async (MongoConnection          *connection,
-                           const gchar          *db_and_collection,
-                           MongoInsertFlags      flags,
-                           MongoBson           **documents,
-                           gsize                 n_documents,
-                           GCancellable         *cancellable,
-                           GAsyncReadyCallback   callback,
-                           gpointer              user_data)
+mongo_connection_insert_async (MongoConnection      *connection,
+                               const gchar          *db_and_collection,
+                               MongoInsertFlags      flags,
+                               MongoBson           **documents,
+                               gsize                 n_documents,
+                               GCancellable         *cancellable,
+                               GAsyncReadyCallback   callback,
+                               gpointer              user_data)
 {
    Request *request;
    guint i;
@@ -1244,9 +1258,9 @@ mongo_connection_insert_async (MongoConnection          *connection,
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_connection_insert_finish (MongoConnection   *connection,
-                            GAsyncResult  *result,
-                            GError       **error)
+mongo_connection_insert_finish (MongoConnection  *connection,
+                                GAsyncResult     *result,
+                                GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
@@ -1283,16 +1297,16 @@ mongo_connection_insert_finish (MongoConnection   *connection,
  * @callback MUST call mongo_connection_query_finish().
  */
 void
-mongo_connection_query_async (MongoConnection         *connection,
-                          const gchar         *db_and_collection,
-                          MongoQueryFlags      flags,
-                          guint32              skip,
-                          guint32              limit,
-                          const MongoBson     *query,
-                          const MongoBson     *field_selector,
-                          GCancellable        *cancellable,
-                          GAsyncReadyCallback  callback,
-                          gpointer             user_data)
+mongo_connection_query_async (MongoConnection     *connection,
+                              const gchar         *db_and_collection,
+                              MongoQueryFlags      flags,
+                              guint32              skip,
+                              guint32              limit,
+                              const MongoBson     *query,
+                              const MongoBson     *field_selector,
+                              GCancellable        *cancellable,
+                              GAsyncReadyCallback  callback,
+                              gpointer             user_data)
 {
    MongoConnectionPrivate *priv;
    Request *request;
@@ -1336,9 +1350,9 @@ mongo_connection_query_async (MongoConnection         *connection,
  * Returns: (transfer full): A #MongoReply.
  */
 MongoReply *
-mongo_connection_query_finish (MongoConnection   *connection,
-                           GAsyncResult  *result,
-                           GError       **error)
+mongo_connection_query_finish (MongoConnection  *connection,
+                               GAsyncResult     *result,
+                               GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoReply *reply;
@@ -1372,13 +1386,13 @@ mongo_connection_query_finish (MongoConnection   *connection,
  * @callback MUST call mongo_connection_getmore_finish().
  */
 void
-mongo_connection_getmore_async (MongoConnection         *connection,
-                            const gchar         *db_and_collection,
-                            guint32              limit,
-                            guint64              cursor_id,
-                            GCancellable        *cancellable,
-                            GAsyncReadyCallback  callback,
-                            gpointer             user_data)
+mongo_connection_getmore_async (MongoConnection     *connection,
+                                const gchar         *db_and_collection,
+                                guint32              limit,
+                                guint64              cursor_id,
+                                GCancellable        *cancellable,
+                                GAsyncReadyCallback  callback,
+                                gpointer             user_data)
 {
    Request *request;
 
@@ -1410,9 +1424,9 @@ mongo_connection_getmore_async (MongoConnection         *connection,
  * Returns: (transfer full): A #MongoReply.
  */
 MongoReply *
-mongo_connection_getmore_finish (MongoConnection   *connection,
-                             GAsyncResult  *result,
-                             GError       **error)
+mongo_connection_getmore_finish (MongoConnection  *connection,
+                                 GAsyncResult     *result,
+                                 GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoReply *reply;
@@ -1446,12 +1460,12 @@ mongo_connection_getmore_finish (MongoConnection   *connection,
  * @callback MUST call mongo_connection_kill_cursors_finish().
  */
 void
-mongo_connection_kill_cursors_async (MongoConnection         *connection,
-                                 guint64             *cursors,
-                                 gsize                n_cursors,
-                                 GCancellable        *cancellable,
-                                 GAsyncReadyCallback  callback,
-                                 gpointer             user_data)
+mongo_connection_kill_cursors_async (MongoConnection     *connection,
+                                     guint64             *cursors,
+                                     gsize                n_cursors,
+                                     GCancellable        *cancellable,
+                                     GAsyncReadyCallback  callback,
+                                     gpointer             user_data)
 {
    Request *request;
 
@@ -1484,9 +1498,9 @@ mongo_connection_kill_cursors_async (MongoConnection         *connection,
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_connection_kill_cursors_finish (MongoConnection   *connection,
-                                  GAsyncResult  *result,
-                                  GError       **error)
+mongo_connection_kill_cursors_finish (MongoConnection  *connection,
+                                      GAsyncResult     *result,
+                                      GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
@@ -1512,7 +1526,7 @@ mongo_connection_get_replica_set (MongoConnection *connection)
 
 void
 mongo_connection_set_replica_set (MongoConnection *connection,
-                              const gchar *replica_set)
+                                  const gchar     *replica_set)
 {
    g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_free(connection->priv->replica_set);
@@ -1537,7 +1551,7 @@ mongo_connection_get_uri (MongoConnection *connection)
 
 static void
 mongo_connection_set_uri (MongoConnection *connection,
-                      const gchar *uri)
+                          const gchar     *uri)
 {
    MongoConnectionPrivate *priv;
    const gchar *value;
@@ -1688,7 +1702,7 @@ mongo_connection_get_slave_okay (MongoConnection *connection)
  */
 void
 mongo_connection_set_slave_okay (MongoConnection *connection,
-                             gboolean     slave_okay)
+                                 gboolean         slave_okay)
 {
    g_return_if_fail(MONGO_IS_CONNECTION(connection));
    connection->priv->slave_okay = slave_okay;
@@ -1745,9 +1759,9 @@ mongo_connection_finalize (GObject *object)
 
 static void
 mongo_connection_get_property (GObject    *object,
-                           guint       prop_id,
-                           GValue     *value,
-                           GParamSpec *pspec)
+                               guint       prop_id,
+                               GValue     *value,
+                               GParamSpec *pspec)
 {
    MongoConnection *connection = MONGO_CONNECTION(object);
 
@@ -1768,9 +1782,9 @@ mongo_connection_get_property (GObject    *object,
 
 static void
 mongo_connection_set_property (GObject      *object,
-                           guint         prop_id,
-                           const GValue *value,
-                           GParamSpec   *pspec)
+                               guint         prop_id,
+                               const GValue *value,
+                               GParamSpec   *pspec)
 {
    MongoConnection *connection = MONGO_CONNECTION(object);
 

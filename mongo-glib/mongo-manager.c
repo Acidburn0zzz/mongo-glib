@@ -18,6 +18,16 @@
 
 #include "mongo-manager.h"
 
+/**
+ * SECTION:mongo-manager
+ * @title: MongoManager
+ * @short_description: Replica set node management.
+ *
+ * #MongoManager encapsulates the logic required to know who to connect to
+ * upon failure of a replica set. It tracks seeded replica servers as well
+ * as servers that were discovered up connecting to a Mongo server.
+ */
+
 #define MAX_DELAY (1000 * 60)
 
 struct _MongoManager

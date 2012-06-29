@@ -22,6 +22,17 @@
 
 G_DEFINE_TYPE(MongoBsonStream, mongo_bson_stream, G_TYPE_OBJECT)
 
+/**
+ * SECTION:mongo-bson-stream
+ * @title: MongoBsonStream
+ * @short_description: Sequential BSON document streams.
+ *
+ * #MongoBsonStream allows you to read from a file or stream that
+ * contains #MongoBson documents sequentially one after another.
+ * This is the case for backups of Mongo performed with the
+ * mongodump command.
+ */
+
 struct _MongoBsonStreamPrivate
 {
    GInputStream *stream;

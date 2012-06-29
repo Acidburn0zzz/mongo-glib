@@ -23,6 +23,16 @@
 #include "mongo-debug.h"
 #include "mongo-source.h"
 
+/**
+ * SECTION:mongo-collection
+ * @title: MongoCollection
+ * @short_description: A mongo database collection.
+ *
+ * #MongoCollection represents an individual collection found in a
+ * #MongoDatabase. It can be used for querying, inserting, and
+ * deleting documents.
+ */
+
 G_DEFINE_TYPE(MongoCollection, mongo_collection, G_TYPE_OBJECT)
 
 struct _MongoCollectionPrivate

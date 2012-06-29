@@ -23,6 +23,16 @@
 #include "mongo-debug.h"
 #include "mongo-source.h"
 
+/**
+ * SECTION:mongo-cursor
+ * @title: MongoCusor
+ * @short_description: Cursors for mongo queries.
+ *
+ * #MongoCursor is used to iterate through the result set of a query.
+ * It is an asynchronous cursor, meaning you need to request that the items
+ * are fetched from Mongo using mongo_cursor_foreach_async().
+ */
+
 G_DEFINE_TYPE(MongoCursor, mongo_cursor, G_TYPE_OBJECT)
 
 struct _MongoCursorPrivate

@@ -214,6 +214,14 @@ typedef enum
    MONGO_BSON_INT64     = 0x12,
 } MongoBsonType;
 
+/**
+ * MongoBsonIter:
+ *
+ * #MongoBsonIter is used to iterate through the contents of a #MongoBson.
+ * It is meant to be used on the stack and can allow for reading data
+ * directly out of the #MongoBson without having to malloc a copy. This
+ * can be handy when dealing with lots of medium to large sized documents.
+ */
 typedef struct
 {
    /*< private >*/
