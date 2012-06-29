@@ -15,7 +15,7 @@ SCAN_OPTIONS=
 SCANGOBJ_OPTIONS=--type-init-func="g_type_init()" 
 
 # The directory containing the source code. Relative to $(srcdir)
-DOC_SOURCE_DIR=../mongo-glib
+DOC_SOURCE_DIR=$(top_srcdir)/mongo-glib
 
 # Used for dependencies
 HFILE_GLOB=$(top_srcdir)/mongo-glib/*.h
