@@ -724,6 +724,8 @@ mongo_client_start_connecting (MongoClient *client)
 
    priv = client->priv;
 
+   priv->state = STATE_CONNECTING;
+
    if (!(host = mongo_manager_next(priv->manager, &delay))) {
       g_message("No more hosts, delaying for %u milliseconds.", delay);
       g_timeout_add(delay,
