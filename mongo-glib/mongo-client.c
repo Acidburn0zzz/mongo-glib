@@ -550,7 +550,8 @@ mongo_client_ismaster_cb (GObject      *object,
     */
    if (priv->replica_set) {
       mongo_bson_iter_init(&iter, reply->documents[0]);
-      if (mongo_bson_iter_find(&iter, "setName")) {
+      if (mongo_bson_iter_find(&iter, "setName") &&
+          (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8)) {
          replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
          if (!!g_strcmp0(replica_set, priv->replica_set)) {
             g_message("Peer replicaSet does not match: %s", replica_set);
@@ -564,7 +565,8 @@ mongo_client_ismaster_cb (GObject      *object,
     * if this isn't the primary.
     */
    mongo_bson_iter_init(&iter, reply->documents[0]);
-   if (mongo_bson_iter_find(&iter, "primary")) {
+   if (mongo_bson_iter_find(&iter, "primary") &&
+       (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8)) {
       primary = mongo_bson_iter_get_value_string(&iter, NULL);
       mongo_manager_add_host(priv->manager, primary);
    }
@@ -577,8 +579,10 @@ mongo_client_ismaster_cb (GObject      *object,
    if (mongo_bson_iter_find(&iter, "hosts")) {
       mongo_bson_iter_init(&iter2, mongo_bson_iter_get_value_bson(&iter));
       while (mongo_bson_iter_next(&iter2)) {
-         host = mongo_bson_iter_get_value_string(&iter2, NULL);
-         mongo_manager_add_host(priv->manager, host);
+         if (mongo_bson_iter_get_value_type(&iter2) == MONGO_BSON_UTF8) {
+            host = mongo_bson_iter_get_value_string(&iter2, NULL);
+            mongo_manager_add_host(priv->manager, host);
+         }
       }
    }
 
@@ -586,7 +590,8 @@ mongo_client_ismaster_cb (GObject      *object,
     * Check to see if this host is PRIMARY.
     */
    mongo_bson_iter_init(&iter, reply->documents[0]);
-   if (mongo_bson_iter_find(&iter, "ismaster")) {
+   if (mongo_bson_iter_find(&iter, "ismaster") &&
+       (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_BOOLEAN)) {
       if (!(ismaster = mongo_bson_iter_get_value_boolean(&iter))) {
          GOTO(failure);
       }
