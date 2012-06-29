@@ -578,11 +578,12 @@ mongo_client_ismaster_cb (GObject      *object,
    mongo_bson_iter_init(&iter, reply->documents[0]);
    if (mongo_bson_iter_find(&iter, "hosts") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_ARRAY)) {
-      mongo_bson_iter_init(&iter2, mongo_bson_iter_get_value_array(&iter));
-      while (mongo_bson_iter_next(&iter2)) {
-         if (mongo_bson_iter_get_value_type(&iter2) == MONGO_BSON_UTF8) {
-            host = mongo_bson_iter_get_value_string(&iter2, NULL);
-            mongo_manager_add_host(priv->manager, host);
+      if (mongo_bson_iter_recurse(&iter, &iter2)) {
+         while (mongo_bson_iter_next(&iter2)) {
+            if (mongo_bson_iter_get_value_type(&iter2) == MONGO_BSON_UTF8) {
+               host = mongo_bson_iter_get_value_string(&iter2, NULL);
+               mongo_manager_add_host(priv->manager, host);
+            }
          }
       }
    }
