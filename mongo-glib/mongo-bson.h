@@ -36,6 +36,23 @@ typedef struct _MongoBson     MongoBson;
 typedef struct _MongoBsonIter MongoBsonIter;
 typedef enum   _MongoBsonType MongoBsonType;
 
+/**
+ * MongoBsonType:
+ * @MONGO_BSON_DOUBLE: Field contains a #gdouble.
+ * @MONGO_BSON_UTF8: Field contains a UTF-8 string.
+ * @MONGO_BSON_DOCUMENT: Field contains a BSON document.
+ * @MONGO_BSON_ARRAY: Field contains a BSON array.
+ * @MONGO_BSON_UNDEFINED: Field is JavaScript undefined.
+ * @MONGO_BSON_OBJECT_ID: Field contains a #MongoObjectId.
+ * @MONGO_BSON_BOOLEAN: Field contains a #gboolean.
+ * @MONGO_BSON_NULL: Field contains %NULL.
+ * @MONGO_BSON_REGEX: Field contains a #GRegex.
+ * @MONGO_BSON_INT32: Field contains a #gint32.
+ * @MONGO_BSON_INT64: Field contains a #gint64.
+ *
+ * These enumerations specify the field type within a #MongoBson.
+ * The field type can be retrieved with mongo_bson_iter_get_value_type().
+ */
 enum _MongoBsonType
 {
    MONGO_BSON_DOUBLE    = 0x01,
