@@ -85,6 +85,21 @@ enum _MongoInsertFlags
    MONGO_INSERT_CONTINUE_ON_ERROR = 1 << 0,
 };
 
+/**
+ * MongoOperation:
+ * @MONGO_OPERATION_REPLY: OP_REPLY from Mongo.
+ * @MONGO_OPERATION_MSG: Generic message operation.
+ * @MONGO_OPERATION_UPDATE: Operation to update documents.
+ * @MONGO_OPERATION_INSERT: Operation to insert documents.
+ * @MONGO_OPERATION_QUERY: Operation to find documents.
+ * @MONGO_OPERATION_GETMORE: Operation to getmore documents on a cursor.
+ * @MONGO_OPERATION_DELETE: Operation to delete documents.
+ * @MONGO_OPERATION_KILL_CURSORS: Operation to kill an array of cursors.
+ *
+ * #MongoOperation represents the operation command identifiers used by
+ * the Mongo wire protocol. This is mainly provided for completeness sake
+ * and is unlikely to be needed by most consumers of this library.
+ */
 enum _MongoOperation
 {
    MONGO_OPERATION_REPLY        = 1,
