@@ -1075,8 +1075,16 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
     * been filled into the buffer.
     */
    buffer = g_buffered_input_stream_peek_buffer(input_stream, &count);
-   g_assert_cmpint(count, >=, 16);
 
+   /*
+    * If we got no data back, its because we closed the connection from a
+    * failure scenario.
+    */
+   if (!count) {
+      GOTO(cleanup);
+   }
+
+   g_assert_cmpint(count, >=, 16);
    DUMP_BYTES(buffer, buffer, count);
 
    /*
