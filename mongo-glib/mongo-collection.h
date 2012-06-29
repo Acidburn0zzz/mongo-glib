@@ -113,13 +113,13 @@ void         mongo_collection_insert_async    (MongoCollection      *collection,
 gboolean     mongo_collection_insert_finish   (MongoCollection      *collection,
                                                GAsyncResult         *result,
                                                GError              **error);
-void         mongo_collection_remove_async    (MongoCollection      *collection,
+void         mongo_collection_delete_async    (MongoCollection      *collection,
                                                const MongoBson      *selector,
                                                MongoDeleteFlags      flags,
                                                GCancellable         *cancellable,
                                                GAsyncReadyCallback   callback,
                                                gpointer              user_data);
-gboolean     mongo_collection_remove_finish   (MongoCollection      *collection,
+gboolean     mongo_collection_delete_finish   (MongoCollection      *collection,
                                                GAsyncResult         *result,
                                                GError              **error);
 void         mongo_collection_update_async    (MongoCollection      *collection,

@@ -481,7 +481,7 @@ mongo_collection_set_name (MongoCollection *collection,
 }
 
 static void
-mongo_collection_remove_cb (GObject      *object,
+mongo_collection_delete_cb (GObject      *object,
                             GAsyncResult *result,
                             gpointer      user_data)
 {
@@ -504,7 +504,7 @@ mongo_collection_remove_cb (GObject      *object,
 }
 
 void
-mongo_collection_remove_async (MongoCollection      *collection,
+mongo_collection_delete_async (MongoCollection      *collection,
                                const MongoBson      *selector,
                                MongoDeleteFlags      flags,
                                GCancellable         *cancellable,
@@ -535,21 +535,21 @@ mongo_collection_remove_async (MongoCollection      *collection,
    simple = g_simple_async_result_new(G_OBJECT(collection),
                                       callback,
                                       user_data,
-                                      mongo_collection_remove_async);
+                                      mongo_collection_delete_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
    mongo_connection_delete_async(priv->connection,
                              priv->db_and_collection,
                              flags,
                              selector,
                              cancellable,
-                             mongo_collection_remove_cb,
+                             mongo_collection_delete_cb,
                              simple);
 
    EXIT;
 }
 
 gboolean
-mongo_collection_remove_finish (MongoCollection  *collection,
+mongo_collection_delete_finish (MongoCollection  *collection,
                                 GAsyncResult     *result,
                                 GError          **error)
 {
