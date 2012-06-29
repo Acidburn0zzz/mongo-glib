@@ -975,7 +975,7 @@ mongo_bson_iter_get_value_array (MongoBsonIter *iter)
 }
 
 /**
- * mongo_bson_iter_get_value_array:
+ * mongo_bson_iter_get_value_boolean:
  * @iter: (in): A #MongoBsonIter.
  *
  * Fetches the current value pointed to by the iterator, expecting it to
@@ -1021,7 +1021,7 @@ mongo_bson_iter_get_value_boolean (MongoBsonIter *iter)
  * #MongoBson instance. If you simply need to iterate the child document,
  * you may want to use mongo_bson_iter_recurse().
  *
- * Returns: A #MongoBson if successful; otherwise %NULL.
+ * Returns: (transfer full): A #MongoBson if successful; otherwise %NULL.
  */
 MongoBson *
 mongo_bson_iter_get_value_bson (MongoBsonIter *iter)
