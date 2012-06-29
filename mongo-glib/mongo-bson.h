@@ -32,8 +32,7 @@ G_BEGIN_DECLS
 #define MONGO_TYPE_BSON (mongo_bson_get_type())
 #define MONGO_TYPE_BSON_TYPE (mongo_bson_type_get_type())
 
-typedef struct _MongoBson     MongoBson;
-typedef struct _MongoBsonIter MongoBsonIter;
+typedef struct _MongoBson MongoBson;
 
 /**
  * MongoBsonType:
@@ -44,6 +43,7 @@ typedef struct _MongoBsonIter MongoBsonIter;
  * @MONGO_BSON_UNDEFINED: Field is JavaScript undefined.
  * @MONGO_BSON_OBJECT_ID: Field contains a #MongoObjectId.
  * @MONGO_BSON_BOOLEAN: Field contains a #gboolean.
+ * @MONGO_BSON_DATE_TIME: Field contains a #GDateTime.
  * @MONGO_BSON_NULL: Field contains %NULL.
  * @MONGO_BSON_REGEX: Field contains a #GRegex.
  * @MONGO_BSON_INT32: Field contains a #gint32.
@@ -52,28 +52,23 @@ typedef struct _MongoBsonIter MongoBsonIter;
  * These enumerations specify the field type within a #MongoBson.
  * The field type can be retrieved with mongo_bson_iter_get_value_type().
  */
-typedef enum _MongoBsonType MongoBsonType;
-
-enum _MongoBsonType
+typedef enum
 {
    MONGO_BSON_DOUBLE    = 0x01,
    MONGO_BSON_UTF8      = 0x02,
    MONGO_BSON_DOCUMENT  = 0x03,
    MONGO_BSON_ARRAY     = 0x04,
-
    MONGO_BSON_UNDEFINED = 0x06,
    MONGO_BSON_OBJECT_ID = 0x07,
    MONGO_BSON_BOOLEAN   = 0x08,
    MONGO_BSON_DATE_TIME = 0x09,
    MONGO_BSON_NULL      = 0x0A,
    MONGO_BSON_REGEX     = 0x0B,
-
    MONGO_BSON_INT32     = 0x10,
-
    MONGO_BSON_INT64     = 0x12,
-};
+} MongoBsonType;
 
-struct _MongoBsonIter
+typedef struct
 {
    /*< private >*/
    gpointer user_data1; /* Raw data buffer */
@@ -84,7 +79,7 @@ struct _MongoBsonIter
    gpointer user_data6; /* Value1 */
    gpointer user_data7; /* Value2 */
    gint32   flags;
-};
+} MongoBsonIter;
 
 GType          mongo_bson_get_type                 (void) G_GNUC_CONST;
 GType          mongo_bson_type_get_type            (void) G_GNUC_CONST;

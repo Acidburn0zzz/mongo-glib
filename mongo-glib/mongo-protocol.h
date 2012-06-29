@@ -45,12 +45,6 @@ typedef struct _MongoProtocolClass   MongoProtocolClass;
 typedef enum   _MongoProtocolError   MongoProtocolError;
 typedef struct _MongoProtocolPrivate MongoProtocolPrivate;
 typedef struct _MongoReply           MongoReply;
-typedef enum   _MongoDeleteFlags     MongoDeleteFlags;
-typedef enum   _MongoInsertFlags     MongoInsertFlags;
-typedef enum   _MongoOperation       MongoOperation;
-typedef enum   _MongoQueryFlags      MongoQueryFlags;
-typedef enum   _MongoReplyFlags      MongoReplyFlags;
-typedef enum   _MongoUpdateFlags     MongoUpdateFlags;
 
 enum _MongoProtocolError
 {
@@ -65,11 +59,11 @@ enum _MongoProtocolError
  *
  * #MongoDeleteFlags are used when performing a delete operation.
  */
-enum _MongoDeleteFlags
+typedef enum
 {
    MONGO_DELETE_NONE          = 0,
    MONGO_DELETE_SINGLE_REMOVE = 1 << 0,
-};
+} MongoDeleteFlags;
 
 /**
  * MongoInsertFlags:
@@ -79,11 +73,11 @@ enum _MongoDeleteFlags
  *
  * #MongoInsertFlags are used when performing an insert operation.
  */
-enum _MongoInsertFlags
+typedef enum
 {
    MONGO_INSERT_NONE              = 0,
    MONGO_INSERT_CONTINUE_ON_ERROR = 1 << 0,
-};
+} MongoInsertFlags;
 
 /**
  * MongoOperation:
@@ -100,7 +94,7 @@ enum _MongoInsertFlags
  * the Mongo wire protocol. This is mainly provided for completeness sake
  * and is unlikely to be needed by most consumers of this library.
  */
-enum _MongoOperation
+typedef enum
 {
    MONGO_OPERATION_REPLY        = 1,
    MONGO_OPERATION_MSG          = 1000,
@@ -110,7 +104,7 @@ enum _MongoOperation
    MONGO_OPERATION_GETMORE      = 2005,
    MONGO_OPERATION_DELETE       = 2006,
    MONGO_OPERATION_KILL_CURSORS = 2007,
-};
+} MongoOperation;
 
 /**
  * MongoQueryFlags:
@@ -131,7 +125,7 @@ enum _MongoOperation
  *
  * #MongoQueryFlags is used for querying a Mongo instance.
  */
-enum _MongoQueryFlags
+typedef enum
 {
    MONGO_QUERY_NONE              = 0,
    MONGO_QUERY_TAILABLE_CURSOR   = 1 << 1,
@@ -141,7 +135,7 @@ enum _MongoQueryFlags
    MONGO_QUERY_AWAIT_DATA        = 1 << 5,
    MONGO_QUERY_EXHAUST           = 1 << 6,
    MONGO_QUERY_PARTIAL           = 1 << 7,
-};
+} MongoQueryFlags;
 
 /**
  * MongoReplyFlags:
@@ -155,21 +149,29 @@ enum _MongoQueryFlags
  * #MongoReplyFlags contains flags supplied by the Mongo server in reply
  * to a request.
  */
-enum _MongoReplyFlags
+typedef enum
 {
    MONGO_REPLY_NONE               = 0,
    MONGO_REPLY_CURSOR_NOT_FOUND   = 1 << 0,
    MONGO_REPLY_QUERY_FAILURE      = 1 << 1,
    MONGO_REPLY_SHARD_CONFIG_STALE = 1 << 2,
    MONGO_REPLY_AWAIT_CAPABLE      = 1 << 3,
-};
+} MongoReplyFlags;
 
-enum _MongoUpdateFlags
+/**
+ * MongoUpdateFlags:
+ * @MONGO_UPDATE_NONE: No update flags specified.
+ * @MONGO_UPDATE_UPSERT: Perform an upsert.
+ * @MONGO_UPDATE_MULTI_UPDATE: Continue updating after first match.
+ *
+ * #MongoUpdateFlags is used when updating documents found in Mongo.
+ */
+typedef enum
 {
    MONGO_UPDATE_NONE         = 0,
    MONGO_UPDATE_UPSERT       = 1 << 0,
    MONGO_UPDATE_MULTI_UPDATE = 1 << 1,
-};
+} MongoUpdateFlags;
 
 /**
  * MongoReply:
