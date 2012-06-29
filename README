@@ -17,13 +17,10 @@ and many other languages[1].
 Mongo-GLib currently lacks a lot of features. For example, the following needs
 to be implemented in the short term.
 
-  - Auto-reconnect to Mongo server upon connection being lost. Current
-    commands in flight should be completed with an error.
-  - Discovery of replSet from Mongo server. This can help us reconnect
-    to a host that is master faster than iterating through seeds. However,
-    it is only needed when slave-okay is False.
   - Support for sort ordering.
   - Support for creating indexes.
+  - Propagation of connection options such as write quorum, journaling,
+    fsync, and various timeouts. It does however, always enforce safe=true.
 
 
 -------------------------------------------------------------------------------
@@ -37,34 +34,6 @@ things like the "safe" parameter often seen in other drivers. We always call
 getlasterror to check for an error. This is usually not an issue since we
 pipeline the data and are asynchronous already.
 
-Each of the asynchronous functions has a corresponding finish function just
-like how GIO works. For example, to connect to a Mongo server, you need to
-provide a callback to mongo_client_connect_async() that calls
-mongo_client_connect_finish().
-
-For example:
-
-  static void
-  connect_cb (GObject *object, GAsyncResult *result, gpointer user_data)
-  {
-    MongoClient *client = MONGO_CLIENT(object);
-    GError *error = NULL;
-  
-    if (!mongo_client_connect_finish(client, result, &error)) {
-      g_error("%s\n", error->message);
-      g_error_free(error);
-    }
-  }
-
-  static void
-  connect()
-  {
-    MongoClient *client;
-  
-    client = mongo_client_new();
-    mongo_client_add_seed(client, "localhost", 27017);
-    mongo_client_connect_async(client, NULL, connect_cb, NULL);
-  }
 
 -------------------------------------------------------------------------------
   II. CODE OVERVIEW
@@ -77,8 +46,11 @@ The basic gist of using Mongo-GLib can be shown by the object design below.
   mongo-bson-stream.h: Read and write files containing a sequential list
                        of BSON documents, such as those created by mongodump.
   mongo-client.h:      Primary object for accessing a remote Mongo server.
-  mongo-protocol.h:    Implementation of the Mongo wire protocol.
-  mongo-object-id.h:   Routines for ObjectId's, a 12-byte object identifier.
-  mongo-database.h:    Object reprsenting a database on the Mongo server.
   mongo-collection.h:  Object representing a collection within a database.
+  mongo-cursor.h:      Asynchronous database cursor for reading documents.
+  mongo-database.h:    Object reprsenting a database on the Mongo server.
+  mongo-manager.h:     Routines for managing what server to connect to next
+                       in a replica set.
+  mongo-object-id.h:   Routines for ObjectId's, a 12-byte object identifier.
+  mongo-protocol.h:    Implementation of the Mongo wire protocol.
 
