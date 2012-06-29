@@ -205,7 +205,7 @@ iter_tests (void)
    bson = get_bson("test1.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_INT32, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_INT32(&iter));
    g_assert_cmpstr("int", ==, mongo_bson_iter_get_key(&iter));
    g_assert_cmpint(1, ==, mongo_bson_iter_get_value_int(&iter));
    g_assert(!mongo_bson_iter_next(&iter));
@@ -214,7 +214,7 @@ iter_tests (void)
    bson = get_bson("test2.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_INT64, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_INT64(&iter));
    g_assert_cmpstr("int64", ==, mongo_bson_iter_get_key(&iter));
    g_assert_cmpint(1L, ==, mongo_bson_iter_get_value_int64(&iter));
    g_assert(!mongo_bson_iter_next(&iter));
@@ -223,7 +223,7 @@ iter_tests (void)
    bson = get_bson("test3.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_DOUBLE, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_DOUBLE(&iter));
    g_assert_cmpstr("double", ==, mongo_bson_iter_get_key(&iter));
    g_assert_cmpint(1.123, ==, mongo_bson_iter_get_value_double(&iter));
    g_assert(!mongo_bson_iter_next(&iter));
@@ -232,7 +232,7 @@ iter_tests (void)
    bson = get_bson("test4.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_DATE_TIME, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_DATE_TIME(&iter));
    g_assert_cmpstr("utc", ==, mongo_bson_iter_get_key(&iter));
    mongo_bson_iter_get_value_timeval(&iter, &tv);
    g_assert_cmpint(tv.tv_sec, ==, 1319285594);
@@ -252,7 +252,7 @@ iter_tests (void)
    bson = get_bson("test5.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_UTF8, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_UTF8(&iter));
    g_assert_cmpstr("string", ==, mongo_bson_iter_get_key(&iter));
    g_assert_cmpstr("some string", ==, mongo_bson_iter_get_value_string(&iter, NULL));
    g_assert(!mongo_bson_iter_next(&iter));
@@ -261,7 +261,7 @@ iter_tests (void)
    bson = get_bson("test6.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_ARRAY, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_ARRAY(&iter));
    g_assert_cmpstr("array[int]", ==, mongo_bson_iter_get_key(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
@@ -289,7 +289,7 @@ iter_tests (void)
    bson = get_bson("test7.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_ARRAY, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_ARRAY(&iter));
    g_assert_cmpstr("array[double]", ==, mongo_bson_iter_get_key(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
@@ -305,7 +305,7 @@ iter_tests (void)
    bson = get_bson("test8.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_DOCUMENT, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_DOCUMENT(&iter));
    g_assert_cmpstr("document", ==, mongo_bson_iter_get_key(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
@@ -318,7 +318,7 @@ iter_tests (void)
    bson = get_bson("test9.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_NULL, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_NULL(&iter));
    g_assert_cmpstr("null", ==, mongo_bson_iter_get_key(&iter));
    g_assert(!mongo_bson_iter_next(&iter));
    mongo_bson_unref(bson);
@@ -326,7 +326,7 @@ iter_tests (void)
    bson = get_bson("test10.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_REGEX, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_REGEX(&iter));
    mongo_bson_iter_get_value_regex(&iter, &regex, &options);
    g_assert_cmpstr(regex, ==, "1234");
    g_assert_cmpstr(options, ==, "i");
@@ -336,7 +336,7 @@ iter_tests (void)
    bson = get_bson("test11.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_UTF8, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_UTF8(&iter));
    g_assert_cmpstr("hello", ==, mongo_bson_iter_get_key(&iter));
    g_assert_cmpstr("world", ==, mongo_bson_iter_get_value_string(&iter, NULL));
    g_assert(!mongo_bson_iter_next(&iter));
@@ -345,7 +345,7 @@ iter_tests (void)
    bson = get_bson("test12.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_ARRAY, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_ARRAY(&iter));
    g_assert_cmpstr("BSON", ==, mongo_bson_iter_get_key(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
@@ -364,7 +364,7 @@ iter_tests (void)
    bson = get_bson("test13.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_ARRAY, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_ARRAY(&iter));
    g_assert_cmpstr("array[bool]", ==, mongo_bson_iter_get_key(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
@@ -383,7 +383,7 @@ iter_tests (void)
    bson = get_bson("test14.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_ARRAY, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_ARRAY(&iter));
    g_assert_cmpstr("array[string]", ==, mongo_bson_iter_get_key(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
@@ -440,12 +440,12 @@ iter_tests (void)
    bson = get_bson("test17.bson");
    mongo_bson_iter_init(&iter, bson);
    g_assert(mongo_bson_iter_next(&iter));
-   g_assert_cmpint(MONGO_BSON_OBJECT_ID, ==, mongo_bson_iter_get_value_type(&iter));
+   g_assert(MONGO_BSON_ITER_HOLDS_OBJECT_ID(&iter));
    g_assert(mongo_bson_iter_next(&iter));
    g_assert_cmpint(MONGO_BSON_DOCUMENT, ==, mongo_bson_iter_get_value_type(&iter));
    g_assert(mongo_bson_iter_recurse(&iter, &iter2));
    g_assert(mongo_bson_iter_next(&iter2));
-   g_assert_cmpint(MONGO_BSON_OBJECT_ID, ==, mongo_bson_iter_get_value_type(&iter2));
+   g_assert(MONGO_BSON_ITER_HOLDS_OBJECT_ID(&iter2));
    g_assert(mongo_bson_iter_next(&iter2));
    g_assert_cmpint(MONGO_BSON_ARRAY, ==, mongo_bson_iter_get_value_type(&iter2));
    g_assert_cmpstr("tags", ==, mongo_bson_iter_get_key(&iter2));
