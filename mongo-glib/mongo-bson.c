@@ -918,6 +918,8 @@ mongo_bson_iter_get_value_document (MongoBsonIter *iter,
    gpointer endbuf;
    guint32 array_len;
 
+   ENTRY;
+
    g_return_val_if_fail(iter != NULL, NULL);
    g_return_val_if_fail(iter->user_data1 != NULL, NULL);
    g_return_val_if_fail(iter->user_data2 != NULL, NULL);
@@ -948,7 +950,7 @@ mongo_bson_iter_get_value_document (MongoBsonIter *iter,
       g_assert_not_reached();
    }
 
-   return NULL;
+   RETURN(NULL);
 }
 
 /**
@@ -965,7 +967,11 @@ mongo_bson_iter_get_value_document (MongoBsonIter *iter,
 MongoBson *
 mongo_bson_iter_get_value_array (MongoBsonIter *iter)
 {
-   return mongo_bson_iter_get_value_document(iter, MONGO_BSON_ARRAY);
+   MongoBson *ret;
+
+   ENTRY;
+   ret = mongo_bson_iter_get_value_document(iter, MONGO_BSON_ARRAY);
+   RETURN(ret);
 }
 
 /**
@@ -982,23 +988,28 @@ mongo_bson_iter_get_value_boolean (MongoBsonIter *iter)
 {
    guint8 b;
 
-   g_return_val_if_fail(iter != NULL, 0);
-   g_return_val_if_fail(iter->user_data6 != NULL, 0);
+   ENTRY;
+
+   g_return_val_if_fail(iter, 0);
+   g_return_val_if_fail(iter->user_data6, 0);
 
    if (ITER_IS_TYPE(iter, MONGO_BSON_BOOLEAN)) {
       memcpy(&b, iter->user_data6, sizeof b);
-      return !!b;
+      RETURN(!!b);
    } else if (ITER_IS_TYPE(iter, MONGO_BSON_INT32)) {
-      return !!mongo_bson_iter_get_value_int(iter);
+      b = !!mongo_bson_iter_get_value_int(iter);
+      RETURN(b);
    } else if (ITER_IS_TYPE(iter, MONGO_BSON_INT64)) {
-      return !!mongo_bson_iter_get_value_int64(iter);
+      b = !!mongo_bson_iter_get_value_int64(iter);
+      RETURN(b);
    } else if (ITER_IS_TYPE(iter, MONGO_BSON_DOUBLE)) {
-      return (mongo_bson_iter_get_value_double(iter) == 1.0);
+      b = (mongo_bson_iter_get_value_double(iter) == 1.0);
+      RETURN(b);
    }
 
    g_warning("Current key cannot be coerced to boolean.");
 
-   return FALSE;
+   RETURN(FALSE);
 }
 
 /**
@@ -1015,7 +1026,11 @@ mongo_bson_iter_get_value_boolean (MongoBsonIter *iter)
 MongoBson *
 mongo_bson_iter_get_value_bson (MongoBsonIter *iter)
 {
-   return mongo_bson_iter_get_value_document(iter, MONGO_BSON_DOCUMENT);
+   MongoBson *ret;
+
+   ENTRY;
+   ret = mongo_bson_iter_get_value_document(iter, MONGO_BSON_DOCUMENT);
+   RETURN(ret);
 }
 
 #if GLIB_CHECK_VERSION(2, 26, 0)
@@ -1373,6 +1388,8 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    const gchar *end = NULL;
    guint32 max_len;
 
+   ENTRY;
+
    g_return_val_if_fail(iter, FALSE);
 
    /*
@@ -1535,11 +1552,11 @@ success:
    iter->user_data5 = GINT_TO_POINTER(type);
    iter->user_data6 = (gpointer)value1;
    iter->user_data7 = (gpointer)value2;
-   return TRUE;
+   RETURN(TRUE);
 
 failure:
    memset(iter, 0, sizeof *iter);
-   return FALSE;
+   RETURN(FALSE);
 }
 
 /**
