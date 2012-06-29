@@ -22,6 +22,16 @@
 #include "mongo-protocol.h"
 #include "mongo-source.h"
 
+/**
+ * SECTION:mongo-protocol
+ * @title: MongoProtocol
+ * @short_description: Wire protocol communication for Mongo.
+ *
+ * #MongoProtocol encapsulates the wire protocol for Mongo DB.
+ * It uses a #GIOStream for communication. Typically, this
+ * is used by #MongoClient but can be used directly if necessary.
+ */
+
 G_DEFINE_TYPE(MongoProtocol, mongo_protocol, G_TYPE_OBJECT)
 
 static void

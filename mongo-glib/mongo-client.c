@@ -1021,7 +1021,7 @@ mongo_client_command_finish (MongoClient   *client,
  * mongo_client_delete_async:
  * @client: (in): A #MongoClient.
  * @db_and_collection: A string containing the "db.collection".
- * @flags: A bitwise-or of #MongoDeleteFlag.
+ * @flags: A bitwise-or of #MongoDeleteFlags.
  * @selector: A #MongoBson of fields to select for deletion.
  * @cancellable: (allow-none): A #GCancellable or %NULL.
  * @callback: A #GAsyncReadyCallback to execute upon completion.
@@ -1102,7 +1102,7 @@ mongo_client_delete_finish (MongoClient   *client,
  * mongo_client_update_async:
  * @client: A #MongoClient.
  * @db_and_collection: A string containing the "db.collection".
- * @flags: A bitwise-or of #MongoUpdateFlag.
+ * @flags: A bitwise-or of #MongoUpdateFlags.
  * @selector: (allow-none): A #MongoBson or %NULL.
  * @update: A #MongoBson to apply as an update to documents matching @selector.
  * @cancellable: (allow-none): A #GCancellable, or %NULL.

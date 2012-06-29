@@ -57,12 +57,28 @@ enum _MongoProtocolError
    MONGO_PROTOCOL_ERROR_UNEXPECTED = 1,
 };
 
+/**
+ * MongoDeleteFlags:
+ * @MONGO_DELETE_NONE: Specify no delete flags.
+ * @MONGO_DELETE_SINGLE_REMOVE: Only remove the first document matching the
+ *    document selector.
+ *
+ * #MongoDeleteFlags are used when performing a delete operation.
+ */
 enum _MongoDeleteFlags
 {
    MONGO_DELETE_NONE          = 0,
    MONGO_DELETE_SINGLE_REMOVE = 1 << 0,
 };
 
+/**
+ * MongoInsertFlags:
+ * @MONGO_INSERT_NONE: Specify no insert flags.
+ * @MONGO_INSERT_CONTINUE_ON_ERROR: Continue inserting documents from
+ *    the insertion set even if one fails.
+ *
+ * #MongoInsertFlags are used when performing an insert operation.
+ */
 enum _MongoInsertFlags
 {
    MONGO_INSERT_NONE              = 0,
