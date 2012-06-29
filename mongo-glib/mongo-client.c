@@ -530,7 +530,7 @@ mongo_client_ismaster_cb (GObject      *object,
    /*
     * Make sure we got a valid document back.
     */
-   if (!reply->n_returned) {
+   if (!reply->n_returned || !reply->documents[0]) {
       GOTO(failure);
    }
 
