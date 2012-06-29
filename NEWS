@@ -1,3 +1,20 @@
+Mongo-GLib 0.2.0                                                     2012-06-28
+===============================================================================
+
+  • MongoClient has been renamed MongoConnection.
+  • MongoConnection connect and disconnect functions have been removed.
+  • MongoConnection lazily connects to Mongo once necessary. If disconnected,
+    it will reconnect to the server.
+  • MongoConnection queues requests until connection is made.
+  • Upon failure to reconnect to a replica set, other seeds or discovered
+    nodes will be connected to in an attempt to locate the PRIMARY.
+  • MongoConnection performs an exponential backup upon connection failure.
+  • MongoConnection uses mongodb:// URI format.
+  • MongoConnection checks replica-set to ensure it matches upon connection.
+  • mongo_bson_dup() returns NULL if bson is NULL.
+  • MONGO_BSON_ITER_HOLDS*() macros for checking field types.
+  • Improved documentation.
+
 Mongo-GLib 0.1.14                                                    2012-06-13
 ===============================================================================
 
