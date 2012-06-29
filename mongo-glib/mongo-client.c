@@ -630,9 +630,6 @@ failure:
    mongo_protocol_fail(protocol, NULL);
    mongo_reply_unref(reply);
 
-   priv->state = STATE_0;
-   mongo_client_start_connecting(client);
-
    EXIT;
 }
 
