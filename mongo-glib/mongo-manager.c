@@ -61,8 +61,17 @@ void
 mongo_manager_add_host (MongoManager *manager,
                         const gchar  *host)
 {
+   guint i;
+
    g_return_if_fail(manager);
    g_return_if_fail(host);
+
+   for (i = 0; i < manager->hosts->len; i++) {
+      if (!g_strcmp0(host, manager->hosts->pdata[i])) {
+         return;
+      }
+   }
+
    g_ptr_array_add(manager->hosts, g_strdup(host));
 }
 
@@ -78,8 +87,17 @@ void
 mongo_manager_add_seed (MongoManager *manager,
                         const gchar  *seed)
 {
+   guint i;
+
    g_return_if_fail(manager);
    g_return_if_fail(seed);
+
+   for (i = 0; i < manager->seeds->len; i++) {
+      if (!g_strcmp0(seed, manager->seeds->pdata[i])) {
+         return;
+      }
+   }
+
    g_ptr_array_add(manager->seeds, g_strdup(seed));
 }
 
