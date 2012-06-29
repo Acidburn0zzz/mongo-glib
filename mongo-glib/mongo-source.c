@@ -31,7 +31,7 @@ typedef struct
  * TODO: This currently only allows for completions within the default
  *       GMainContext. This might be useful to allow completing in other
  *       contexts (create a new source for each). That would require that
- *       we allow for configuring either protocol or client with an
+ *       we allow for configuring either protocol or connection with an
  *       async context.
  */
 

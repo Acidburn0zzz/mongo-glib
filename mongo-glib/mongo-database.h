@@ -46,7 +46,7 @@ typedef struct _MongoDatabasePrivate MongoDatabasePrivate;
 
 enum _MongoDatabaseError
 {
-   MONGO_DATABASE_ERROR_NO_CLIENT = 1,
+   MONGO_DATABASE_ERROR_NO_CONNECTION = 1,
 };
 
 struct _MongoDatabase

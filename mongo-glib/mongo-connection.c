@@ -1,4 +1,4 @@
-/* mongo-client.c
+/* mongo-connection.c
  *
  * Copyright (C) 2012 Christian Hergert <chris@dronelabs.com>
  *
@@ -21,19 +21,19 @@
 
 #include "guri.h"
 
-#include "mongo-client.h"
+#include "mongo-connection.h"
 #include "mongo-debug.h"
 #include "mongo-manager.h"
 #include "mongo-protocol.h"
 #include "mongo-source.h"
 
-G_DEFINE_TYPE(MongoClient, mongo_client, G_TYPE_OBJECT)
+G_DEFINE_TYPE(MongoConnection, mongo_connection, G_TYPE_OBJECT)
 
 #ifndef MONGO_PORT_DEFAULT
 #define MONGO_PORT_DEFAULT 27017
 #endif
 
-struct _MongoClientPrivate
+struct _MongoConnectionPrivate
 {
    /*
     * Hashtable of databases opened.
@@ -52,7 +52,7 @@ struct _MongoClientPrivate
    GCancellable *dispose_cancel;
 
    /*
-    * Current client state.
+    * Current connection state.
     */
    guint state;
 
@@ -144,12 +144,12 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
-static void mongo_client_start_connecting (MongoClient *client);
+static void mongo_connection_start_connecting (MongoConnection *connection);
 
 static void
-mongo_client_update_cb (GObject      *object,
-                        GAsyncResult *result,
-                        gpointer      user_data)
+mongo_connection_update_cb (GObject      *object,
+                            GAsyncResult *result,
+                            gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
@@ -173,7 +173,7 @@ mongo_client_update_cb (GObject      *object,
 }
 
 static void
-mongo_client_insert_cb (GObject      *object,
+mongo_connection_insert_cb (GObject      *object,
                         GAsyncResult *result,
                         gpointer      user_data)
 {
@@ -199,7 +199,7 @@ mongo_client_insert_cb (GObject      *object,
 }
 
 static void
-mongo_client_query_cb (GObject      *object,
+mongo_connection_query_cb (GObject      *object,
                        GAsyncResult *result,
                        gpointer      user_data)
 {
@@ -225,7 +225,7 @@ mongo_client_query_cb (GObject      *object,
 }
 
 static void
-mongo_client_getmore_cb (GObject      *object,
+mongo_connection_getmore_cb (GObject      *object,
                          GAsyncResult *result,
                          gpointer      user_data)
 {
@@ -253,7 +253,7 @@ mongo_client_getmore_cb (GObject      *object,
 }
 
 static void
-mongo_client_delete_cb (GObject      *object,
+mongo_connection_delete_cb (GObject      *object,
                         GAsyncResult *result,
                         gpointer      user_data)
 {
@@ -279,7 +279,7 @@ mongo_client_delete_cb (GObject      *object,
 }
 
 static void
-mongo_client_kill_cursors_cb (GObject      *object,
+mongo_connection_kill_cursors_cb (GObject      *object,
                               GAsyncResult *result,
                               gpointer      user_data)
 {
@@ -325,7 +325,7 @@ request_run (Request       *request,
             request->u.update.selector,
             request->u.update.update,
             request->cancellable,
-            mongo_client_update_cb,
+            mongo_connection_update_cb,
             g_object_ref(request->simple));
       break;
    case MONGO_OPERATION_INSERT:
@@ -336,7 +336,7 @@ request_run (Request       *request,
             (MongoBson **)request->u.insert.documents->pdata,
             request->u.insert.documents->len,
             request->cancellable,
-            mongo_client_insert_cb,
+            mongo_connection_insert_cb,
             g_object_ref(request->simple));
       break;
    case MONGO_OPERATION_QUERY:
@@ -349,7 +349,7 @@ request_run (Request       *request,
             request->u.query.query,
             request->u.query.field_selector,
             request->cancellable,
-            mongo_client_query_cb,
+            mongo_connection_query_cb,
             g_object_ref(request->simple));
       break;
    case MONGO_OPERATION_GETMORE:
@@ -359,7 +359,7 @@ request_run (Request       *request,
             request->u.getmore.limit,
             request->u.getmore.cursor_id,
             request->cancellable,
-            mongo_client_getmore_cb,
+            mongo_connection_getmore_cb,
             g_object_ref(request->simple));
       break;
    case MONGO_OPERATION_DELETE:
@@ -369,7 +369,7 @@ request_run (Request       *request,
             request->u.delete.flags,
             request->u.delete.selector,
             request->cancellable,
-            mongo_client_delete_cb,
+            mongo_connection_delete_cb,
             g_object_ref(request->simple));
       break;
    case MONGO_OPERATION_KILL_CURSORS:
@@ -378,7 +378,7 @@ request_run (Request       *request,
             (guint64 *)request->u.kill_cursors.cursors->data,
             request->u.kill_cursors.cursors->len,
             request->cancellable,
-            mongo_client_kill_cursors_cb,
+            mongo_connection_kill_cursors_cb,
             g_object_ref(request->simple));
       break;
    case MONGO_OPERATION_REPLY:
@@ -468,41 +468,41 @@ request_free (Request *request)
 }
 
 static void
-mongo_client_protocol_failed (MongoProtocol *protocol,
+mongo_connection_protocol_failed (MongoProtocol *protocol,
                               const GError  *error,
-                              MongoClient   *client)
+                              MongoConnection   *connection)
 {
    ENTRY;
 
    g_assert(MONGO_IS_PROTOCOL(protocol));
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
 
    /*
     * Clear the protocol so we can connect to the next host.
     */
-   client->priv->state = STATE_0;
-   g_clear_object(&client->priv->protocol);
+   connection->priv->state = STATE_0;
+   g_clear_object(&connection->priv->protocol);
 
    /*
     * Start connecting to the next configured host.
     */
-   if (!g_cancellable_is_cancelled(client->priv->dispose_cancel)) {
-      mongo_client_start_connecting(client);
+   if (!g_cancellable_is_cancelled(connection->priv->dispose_cancel)) {
+      mongo_connection_start_connecting(connection);
    }
 
    EXIT;
 }
 
 static void
-mongo_client_ismaster_cb (GObject      *object,
+mongo_connection_ismaster_cb (GObject      *object,
                           GAsyncResult *result,
                           gpointer      user_data)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
+   MongoConnection *connection = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
    MongoBsonIter iter;
    MongoBsonIter iter2;
-   MongoClient *client = user_data;
    const gchar *host;
    const gchar *primary;
    const gchar *replica_set;
@@ -514,9 +514,9 @@ mongo_client_ismaster_cb (GObject      *object,
    ENTRY;
 
    g_assert(MONGO_IS_PROTOCOL(protocol));
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
 
-   priv = client->priv;
+   priv = connection->priv;
 
    /*
     * Complete asynchronous protocol query.
@@ -606,7 +606,7 @@ mongo_client_ismaster_cb (GObject      *object,
 
    /*
     * This is the master and we are connected, so lets store the
-    * protocol for use by the client and change the state to
+    * protocol for use by the connection and change the state to
     * connected.
     */
    priv->protocol = g_object_ref(protocol);
@@ -617,8 +617,8 @@ mongo_client_ismaster_cb (GObject      *object,
     * the next host.
     */
    g_signal_connect(protocol, "failed",
-                    G_CALLBACK(mongo_client_protocol_failed),
-                    client);
+                    G_CALLBACK(mongo_connection_protocol_failed),
+                    connection);
 
    /*
     * Flush any pending requests.
@@ -638,30 +638,30 @@ failure:
    mongo_reply_unref(reply);
 
    priv->state = STATE_0;
-   mongo_client_start_connecting(client);
+   mongo_connection_start_connecting(connection);
 
    EXIT;
 }
 
 static void
-mongo_client_connect_to_host_cb (GObject      *object,
+mongo_connection_connect_to_host_cb (GObject      *object,
                                  GAsyncResult *result,
                                  gpointer      user_data)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
    GSocketConnection *conn;
+   MongoConnection *connection = user_data;
    GSocketClient *socket_client = (GSocketClient *)object;
    MongoProtocol *protocol;
-   MongoClient *client = user_data;
    MongoBson *command;
    GError *error = NULL;
 
    ENTRY;
 
    g_assert(G_IS_SOCKET_CLIENT(socket_client));
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
 
-   priv = client->priv;
+   priv = connection->priv;
 
    /*
     * Complete the asynchronous connection attempt.
@@ -671,7 +671,7 @@ mongo_client_connect_to_host_cb (GObject      *object,
                                                        &error))) {
       g_message("Failed to connect to host: %s", error->message);
       priv->state = STATE_0;
-      mongo_client_start_connecting(client);
+      mongo_connection_start_connecting(connection);
       g_error_free(error);
       EXIT;
    }
@@ -697,8 +697,8 @@ mongo_client_connect_to_host_cb (GObject      *object,
                               command,
                               NULL,
                               priv->dispose_cancel,
-                              mongo_client_ismaster_cb,
-                              client);
+                              mongo_connection_ismaster_cb,
+                              connection);
    mongo_bson_unref(command);
    g_object_unref(protocol);
    g_object_unref(conn);
@@ -707,35 +707,35 @@ mongo_client_connect_to_host_cb (GObject      *object,
 }
 
 static gboolean
-mongo_client_start_connecting_timeout (gpointer data)
+mongo_connection_start_connecting_timeout (gpointer data)
 {
-   mongo_client_start_connecting(data);
+   mongo_connection_start_connecting(data);
    g_object_unref(data);
    return FALSE;
 }
 
 static void
-mongo_client_start_connecting (MongoClient *client)
+mongo_connection_start_connecting (MongoConnection *connection)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
    const gchar *host;
    guint delay = 0;
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
-   g_return_if_fail(client->priv->state == STATE_0 ||
-                    client->priv->state == STATE_CONNECTING);
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
+   g_return_if_fail(connection->priv->state == STATE_0 ||
+                    connection->priv->state == STATE_CONNECTING);
 
-   priv = client->priv;
+   priv = connection->priv;
 
    priv->state = STATE_CONNECTING;
 
    if (!(host = mongo_manager_next(priv->manager, &delay))) {
       g_message("No more hosts, delaying for %u milliseconds.", delay);
       g_timeout_add(delay,
-                    mongo_client_start_connecting_timeout,
-                    g_object_ref(client));
+                    mongo_connection_start_connecting_timeout,
+                    g_object_ref(connection));
       EXIT;
    }
 
@@ -743,27 +743,27 @@ mongo_client_start_connecting (MongoClient *client)
                                          host,
                                          MONGO_PORT_DEFAULT,
                                          priv->dispose_cancel,
-                                         mongo_client_connect_to_host_cb,
-                                         client);
+                                         mongo_connection_connect_to_host_cb,
+                                         connection);
 
    EXIT;
 }
 
 static void
-mongo_client_queue (MongoClient *client,
+mongo_connection_queue (MongoConnection *connection,
                     Request     *request)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(request);
 
-   priv = client->priv;
+   priv = connection->priv;
 
    switch (priv->state) {
    case STATE_0:
       g_queue_push_tail(priv->queue, request);
-      mongo_client_start_connecting(client);
+      mongo_connection_start_connecting(connection);
       break;
    case STATE_CONNECTING:
       g_queue_push_tail(priv->queue, request);
@@ -780,28 +780,28 @@ mongo_client_queue (MongoClient *client,
 }
 
 /**
- * mongo_client_new:
+ * mongo_connection_new:
  *
- * Creates a new instance of #MongoClient which will connect to
+ * Creates a new instance of #MongoConnection which will connect to
  * mongodb://127.0.0.1:27017.
  *
- * Returns: A newly allocated #MongoClient.
+ * Returns: A newly allocated #MongoConnection.
  */
-MongoClient *
-mongo_client_new (void)
+MongoConnection *
+mongo_connection_new (void)
 {
-   MongoClient *ret;
+   MongoConnection *ret;
 
    ENTRY;
-   ret = g_object_new(MONGO_TYPE_CLIENT, NULL);
+   ret = g_object_new(MONGO_TYPE_CONNECTION, NULL);
    RETURN(ret);
 }
 
 /**
- * mongo_client_new_from_uri:
+ * mongo_connection_new_from_uri:
  * @uri: (in): A URI string.
  *
- * Creates a new #MongoClient using the URI provided. The URI should be in
+ * Creates a new #MongoConnection using the URI provided. The URI should be in
  * the mongodb://host:port form.
  *
  * Currently, mongodb:// style URIs that contain multiple hosts must all
@@ -815,45 +815,45 @@ mongo_client_new (void)
  *
  * And will result in %NULL being returned.
  *
- * Returns: (transfer full): A newly created #MongoClient.
+ * Returns: (transfer full): A newly created #MongoConnection.
  */
-MongoClient *
-mongo_client_new_from_uri (const gchar *uri)
+MongoConnection *
+mongo_connection_new_from_uri (const gchar *uri)
 {
-   MongoClient *ret;
+   MongoConnection *ret;
 
    ENTRY;
    g_return_val_if_fail(uri, NULL);
-   ret = g_object_new(MONGO_TYPE_CLIENT, "uri", uri, NULL);
+   ret = g_object_new(MONGO_TYPE_CONNECTION, "uri", uri, NULL);
    RETURN(ret);
 }
 
 /**
- * mongo_client_get_database:
- * @client: (in): A #MongoClient.
+ * mongo_connection_get_database:
+ * @connection: (in): A #MongoConnection.
  * @name: (in): The database name.
  *
- * Fetches a #MongoDatabase for the database available via @client.
+ * Fetches a #MongoDatabase for the database available via @connection.
  *
  * Returns: (transfer none): #MongoDatabase.
  */
 MongoDatabase *
-mongo_client_get_database (MongoClient *client,
+mongo_connection_get_database (MongoConnection *connection,
                            const gchar *name)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
    MongoDatabase *database;
 
    ENTRY;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), NULL);
    g_return_val_if_fail(name, NULL);
 
-   priv = client->priv;
+   priv = connection->priv;
 
    if (!(database = g_hash_table_lookup(priv->databases, name))) {
       database = g_object_new(MONGO_TYPE_DATABASE,
-                              "client", client,
+                              "connection", connection,
                               "name", name,
                               NULL);
       g_hash_table_insert(priv->databases, g_strdup(name), database);
@@ -863,26 +863,26 @@ mongo_client_get_database (MongoClient *client,
 }
 
 static void
-mongo_client_command_cb (GObject      *object,
+mongo_connection_command_cb (GObject      *object,
                          GAsyncResult *result,
                          gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
    MongoBsonIter iter;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    const gchar *errmsg;
    MongoReply *reply = NULL;
    GError *error = NULL;
 
    ENTRY;
 
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
    /*
     * Get the query reply, which may contain an error document.
     */
-   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
       GOTO(finish);
    }
@@ -903,15 +903,15 @@ mongo_client_command_cb (GObject      *object,
                errmsg = mongo_bson_iter_get_value_string(&iter, NULL);
                g_simple_async_result_set_error(
                      simple,
-                     MONGO_CLIENT_ERROR,
-                     MONGO_CLIENT_ERROR_COMMAND_FAILED,
+                     MONGO_CONNECTION_ERROR,
+                     MONGO_CONNECTION_ERROR_COMMAND_FAILED,
                      _("Command failed: %s"),
                      errmsg);
             } else {
                g_simple_async_result_set_error(
                      simple,
-                     MONGO_CLIENT_ERROR,
-                     MONGO_CLIENT_ERROR_COMMAND_FAILED,
+                     MONGO_CONNECTION_ERROR,
+                     MONGO_CONNECTION_ERROR_COMMAND_FAILED,
                      _("Command failed."));
             }
             GOTO(finish);
@@ -934,8 +934,8 @@ finish:
 }
 
 /**
- * mongo_client_command_async:
- * @client: A #MongoClient.
+ * mongo_connection_command_async:
+ * @connection: A #MongoConnection.
  * @db: The database execute the command within.
  * @command: (transfer none): A #MongoBson containing the command.
  * @cancellable: (allow-none): A #GCancellable or %NULL.
@@ -945,10 +945,10 @@ finish:
  * Asynchronously requests that a command is executed on the remote Mongo
  * server.
  *
- * @callback MUST execute mongo_client_command_finish().
+ * @callback MUST execute mongo_connection_command_finish().
  */
 void
-mongo_client_command_async (MongoClient         *client,
+mongo_connection_command_async (MongoConnection         *connection,
                             const gchar         *db,
                             const MongoBson     *command,
                             GCancellable        *cancellable,
@@ -960,17 +960,17 @@ mongo_client_command_async (MongoClient         *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(db);
    g_return_if_fail(command);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   simple = g_simple_async_result_new(G_OBJECT(client), callback, user_data,
-                                      mongo_client_command_async);
+   simple = g_simple_async_result_new(G_OBJECT(connection), callback, user_data,
+                                      mongo_connection_command_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
    db_and_cmd = g_strdup_printf("%s.$cmd", db);
-   mongo_client_query_async(client,
+   mongo_connection_query_async(connection,
                             db_and_cmd,
                             MONGO_QUERY_EXHAUST,
                             0,
@@ -978,7 +978,7 @@ mongo_client_command_async (MongoClient         *client,
                             command,
                             NULL,
                             cancellable,
-                            mongo_client_command_cb,
+                            mongo_connection_command_cb,
                             simple);
    g_free(db_and_cmd);
 
@@ -986,8 +986,8 @@ mongo_client_command_async (MongoClient         *client,
 }
 
 /**
- * mongo_client_command_finish:
- * @client: A #MongoClient.
+ * mongo_connection_command_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (out) (allow-none): A location for a #GError, or %NULL.
  *
@@ -997,7 +997,7 @@ mongo_client_command_async (MongoClient         *client,
  * Returns: (transfer full): A #MongoReply if successful; otherwise %NULL.
  */
 MongoReply *
-mongo_client_command_finish (MongoClient   *client,
+mongo_connection_command_finish (MongoConnection   *connection,
                              GAsyncResult  *result,
                              GError       **error)
 {
@@ -1006,7 +1006,7 @@ mongo_client_command_finish (MongoClient   *client,
 
    ENTRY;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
 
    if (!(ret = g_simple_async_result_get_op_res_gpointer(simple))) {
@@ -1019,8 +1019,8 @@ mongo_client_command_finish (MongoClient   *client,
 }
 
 /**
- * mongo_client_delete_async:
- * @client: (in): A #MongoClient.
+ * mongo_connection_delete_async:
+ * @connection: (in): A #MongoConnection.
  * @db_and_collection: A string containing the "db.collection".
  * @flags: A bitwise-or of #MongoDeleteFlags.
  * @selector: A #MongoBson of fields to select for deletion.
@@ -1035,10 +1035,10 @@ mongo_client_command_finish (MongoClient   *client,
  *
  * Selector should be a #MongoBson containing the fields to match.
  *
- * @callback MUST call mongo_client_delete_finish().
+ * @callback MUST call mongo_connection_delete_finish().
  */
 void
-mongo_client_delete_async (MongoClient         *client,
+mongo_connection_delete_async (MongoConnection         *connection,
                            const gchar         *db_and_collection,
                            MongoDeleteFlags     flags,
                            const MongoBson     *selector,
@@ -1050,27 +1050,27 @@ mongo_client_delete_async (MongoClient         *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(db_and_collection);
    g_return_if_fail(strstr(db_and_collection, "."));
    g_return_if_fail(selector);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   request = request_new(client, cancellable, callback, user_data,
-                         mongo_client_delete_async);
+   request = request_new(connection, cancellable, callback, user_data,
+                         mongo_connection_delete_async);
    request->oper = MONGO_OPERATION_DELETE;
    request->u.delete.db_and_collection = g_strdup(db_and_collection);
    request->u.delete.flags = flags;
    request->u.delete.selector = mongo_bson_dup(selector);
-   mongo_client_queue(client, request);
+   mongo_connection_queue(connection, request);
 
    EXIT;
 }
 
 /**
- * mongo_client_delete_finish:
- * @client: A #MongoClient.
+ * mongo_connection_delete_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (out) (allow-none): A location for a #GError, or %NULL.
  *
@@ -1080,14 +1080,14 @@ mongo_client_delete_async (MongoClient         *client,
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_client_delete_finish (MongoClient   *client,
+mongo_connection_delete_finish (MongoConnection   *connection,
                             GAsyncResult  *result,
                             GError       **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
 
    ENTRY;
@@ -1100,8 +1100,8 @@ mongo_client_delete_finish (MongoClient   *client,
 }
 
 /**
- * mongo_client_update_async:
- * @client: A #MongoClient.
+ * mongo_connection_update_async:
+ * @connection: A #MongoConnection.
  * @db_and_collection: A string containing the "db.collection".
  * @flags: A bitwise-or of #MongoUpdateFlags.
  * @selector: (allow-none): A #MongoBson or %NULL.
@@ -1112,10 +1112,10 @@ mongo_client_delete_finish (MongoClient   *client,
  *
  * Asynchronously requests an update to all documents matching @selector.
  *
- * @callback MUST call mongo_client_update_finish().
+ * @callback MUST call mongo_connection_update_finish().
  */
 void
-mongo_client_update_async (MongoClient         *client,
+mongo_connection_update_async (MongoConnection         *connection,
                            const gchar         *db_and_collection,
                            MongoUpdateFlags     flags,
                            const MongoBson     *selector,
@@ -1128,44 +1128,44 @@ mongo_client_update_async (MongoClient         *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(db_and_collection);
    g_return_if_fail(strstr(db_and_collection, "."));
    g_return_if_fail(selector);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   request = request_new(client, cancellable, callback, user_data,
-                         mongo_client_update_async);
+   request = request_new(connection, cancellable, callback, user_data,
+                         mongo_connection_update_async);
    request->oper = MONGO_OPERATION_UPDATE;
    request->u.update.db_and_collection = g_strdup(db_and_collection);
    request->u.update.flags = flags;
    request->u.update.selector = mongo_bson_dup(selector);
    request->u.update.update = mongo_bson_dup(update);
-   mongo_client_queue(client, request);
+   mongo_connection_queue(connection, request);
 
    EXIT;
 }
 
 /**
- * mongo_client_update_finish:
- * @client: A #MongoClient.
+ * mongo_connection_update_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (allow-none) (out): A location for a #GError, or %NULL.
  *
- * Completes an asynchronous request to mongo_client_update_async().
+ * Completes an asynchronous request to mongo_connection_update_async().
  *
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_client_update_finish (MongoClient   *client,
+mongo_connection_update_finish (MongoConnection   *connection,
                             GAsyncResult  *result,
                             GError       **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
 
    ENTRY;
@@ -1178,8 +1178,8 @@ mongo_client_update_finish (MongoClient   *client,
 }
 
 /**
- * mongo_client_insert_async:
- * @client: A #MongoClient.
+ * mongo_connection_insert_async:
+ * @connection: A #MongoConnection.
  * @db_and_collection: A string containing the "db.collection".
  * @flags: A bitwise-or of #MongoInsertFlags.
  * @documents: (array length=n_documents) (element-type MongoBson*): Array  of
@@ -1191,10 +1191,10 @@ mongo_client_update_finish (MongoClient   *client,
  *
  * Asynchronously requests the insertion of a document into the Mongo server.
  *
- * @callback MUST call mongo_client_insert_finish().
+ * @callback MUST call mongo_connection_insert_finish().
  */
 void
-mongo_client_insert_async (MongoClient          *client,
+mongo_connection_insert_async (MongoConnection          *connection,
                            const gchar          *db_and_collection,
                            MongoInsertFlags      flags,
                            MongoBson           **documents,
@@ -1208,7 +1208,7 @@ mongo_client_insert_async (MongoClient          *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(db_and_collection);
    g_return_if_fail(strstr(db_and_collection, "."));
    g_return_if_fail(documents);
@@ -1216,8 +1216,8 @@ mongo_client_insert_async (MongoClient          *client,
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   request = request_new(client, cancellable, callback, user_data,
-                         mongo_client_insert_async);
+   request = request_new(connection, cancellable, callback, user_data,
+                         mongo_connection_insert_async);
    request->oper = MONGO_OPERATION_INSERT;
    request->u.insert.db_and_collection = g_strdup(db_and_collection);
    request->u.insert.flags = flags;
@@ -1228,14 +1228,14 @@ mongo_client_insert_async (MongoClient          *client,
       g_ptr_array_add(request->u.insert.documents,
                       mongo_bson_dup(documents[i]));
    }
-   mongo_client_queue(client, request);
+   mongo_connection_queue(connection, request);
 
    EXIT;
 }
 
 /**
- * mongo_client_insert_finish:
- * @client: A #MongoClient.
+ * mongo_connection_insert_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (out) (allow-none): A location for a #GError, or %NULL.
  *
@@ -1244,14 +1244,14 @@ mongo_client_insert_async (MongoClient          *client,
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_client_insert_finish (MongoClient   *client,
+mongo_connection_insert_finish (MongoConnection   *connection,
                             GAsyncResult  *result,
                             GError       **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
 
    ENTRY;
@@ -1264,8 +1264,8 @@ mongo_client_insert_finish (MongoClient   *client,
 }
 
 /**
- * mongo_client_query_async:
- * @client: A #MongoClient.
+ * mongo_connection_query_async:
+ * @connection: A #MongoConnection.
  * @db_and_collection: A string containing "db.collection".
  * @flags: A bitwise-or of #MongoQueryFlags.
  * @skip: The number of documents to skip in the result set.
@@ -1278,12 +1278,12 @@ mongo_client_insert_finish (MongoClient   *client,
  *
  * Asynchronously queries Mongo for the documents that match. This retrieves
  * the first reply from the server side cursor. Further replies can be
- * retrieved with mongo_client_getmore_async().
+ * retrieved with mongo_connection_getmore_async().
  *
- * @callback MUST call mongo_client_query_finish().
+ * @callback MUST call mongo_connection_query_finish().
  */
 void
-mongo_client_query_async (MongoClient         *client,
+mongo_connection_query_async (MongoConnection         *connection,
                           const gchar         *db_and_collection,
                           MongoQueryFlags      flags,
                           guint32              skip,
@@ -1294,24 +1294,24 @@ mongo_client_query_async (MongoClient         *client,
                           GAsyncReadyCallback  callback,
                           gpointer             user_data)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
    Request *request;
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(db_and_collection);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   priv = client->priv;
+   priv = connection->priv;
 
    if (priv->slave_okay) {
       flags |= MONGO_QUERY_SLAVE_OK;
    }
 
-   request = request_new(client, cancellable, callback, user_data,
-                         mongo_client_query_async);
+   request = request_new(connection, cancellable, callback, user_data,
+                         mongo_connection_query_async);
    request->oper = MONGO_OPERATION_QUERY;
    request->u.query.db_and_collection = g_strdup(db_and_collection);
    request->u.query.flags = flags;
@@ -1320,23 +1320,23 @@ mongo_client_query_async (MongoClient         *client,
    request->u.query.query =
       query ? mongo_bson_dup(query) : mongo_bson_new_empty();
    request->u.query.field_selector = mongo_bson_dup(field_selector);
-   mongo_client_queue(client, request);
+   mongo_connection_queue(connection, request);
 
    EXIT;
 }
 
 /**
- * mongo_client_query_finish:
- * @client: A #MongoClient.
+ * mongo_connection_query_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (out) (allow-none): A location for a #GError, or %NULL.
  *
- * Completes an asynchronous request to mongo_client_query_async().
+ * Completes an asynchronous request to mongo_connection_query_async().
  *
  * Returns: (transfer full): A #MongoReply.
  */
 MongoReply *
-mongo_client_query_finish (MongoClient   *client,
+mongo_connection_query_finish (MongoConnection   *connection,
                            GAsyncResult  *result,
                            GError       **error)
 {
@@ -1345,7 +1345,7 @@ mongo_client_query_finish (MongoClient   *client,
 
    ENTRY;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), NULL);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), NULL);
 
    if (!(reply = g_simple_async_result_get_op_res_gpointer(simple))) {
@@ -1358,8 +1358,8 @@ mongo_client_query_finish (MongoClient   *client,
 }
 
 /**
- * mongo_client_getmore_async:
- * @client: A #MongoClient.
+ * mongo_connection_getmore_async:
+ * @connection: A #MongoConnection.
  * @db_and_collection: A string containing the 'db.collection".
  * @limit: The maximum number of documents to return in the cursor.
  * @cursor_id: The cursor_id provided by the server.
@@ -1369,10 +1369,10 @@ mongo_client_query_finish (MongoClient   *client,
  *
  * Asynchronously requests more results from a cursor on the Mongo server.
  *
- * @callback MUST call mongo_client_getmore_finish().
+ * @callback MUST call mongo_connection_getmore_finish().
  */
 void
-mongo_client_getmore_async (MongoClient         *client,
+mongo_connection_getmore_async (MongoConnection         *connection,
                             const gchar         *db_and_collection,
                             guint32              limit,
                             guint64              cursor_id,
@@ -1384,33 +1384,33 @@ mongo_client_getmore_async (MongoClient         *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   request = request_new(client, cancellable, callback, user_data,
-                         mongo_client_getmore_async);
+   request = request_new(connection, cancellable, callback, user_data,
+                         mongo_connection_getmore_async);
    request->oper = MONGO_OPERATION_GETMORE;
    request->u.getmore.db_and_collection = g_strdup(db_and_collection);
    request->u.getmore.limit = limit;
    request->u.getmore.cursor_id = cursor_id;
-   mongo_client_queue(client, request);
+   mongo_connection_queue(connection, request);
 
    EXIT;
 }
 
 /**
- * mongo_client_getmore_finish:
- * @client: A #MongoClient.
+ * mongo_connection_getmore_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (allow-none) (out): A location for a #GError, or %NULL.
  *
- * Completes an asynchronous request to mongo_client_getmore_finish().
+ * Completes an asynchronous request to mongo_connection_getmore_finish().
  *
  * Returns: (transfer full): A #MongoReply.
  */
 MongoReply *
-mongo_client_getmore_finish (MongoClient   *client,
+mongo_connection_getmore_finish (MongoConnection   *connection,
                              GAsyncResult  *result,
                              GError       **error)
 {
@@ -1419,7 +1419,7 @@ mongo_client_getmore_finish (MongoClient   *client,
 
    ENTRY;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), NULL);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), NULL);
 
    if (!(reply = g_simple_async_result_get_op_res_gpointer(simple))) {
@@ -1432,8 +1432,8 @@ mongo_client_getmore_finish (MongoClient   *client,
 }
 
 /**
- * mongo_client_kill_cursors_async:
- * @client: A #MongoClient.
+ * mongo_connection_kill_cursors_async:
+ * @connection: A #MongoConnection.
  * @cursors: (array length=n_cursors) (element-type guint64): Array of cursors.
  * @n_cursors: Number of elements in @cursors.
  * @cancellable: (allow-none): A #GCancellable or %NULL.
@@ -1443,10 +1443,10 @@ mongo_client_getmore_finish (MongoClient   *client,
  * Asynchronously requests that a series of cursors are killed on the Mongo
  * server.
  *
- * @callback MUST call mongo_client_kill_cursors_finish().
+ * @callback MUST call mongo_connection_kill_cursors_finish().
  */
 void
-mongo_client_kill_cursors_async (MongoClient         *client,
+mongo_connection_kill_cursors_async (MongoConnection         *connection,
                                  guint64             *cursors,
                                  gsize                n_cursors,
                                  GCancellable        *cancellable,
@@ -1457,34 +1457,34 @@ mongo_client_kill_cursors_async (MongoClient         *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(cursors);
    g_return_if_fail(n_cursors);
    g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
    g_return_if_fail(callback);
 
-   request = request_new(client, cancellable, callback, user_data,
-                         mongo_client_kill_cursors_async);
+   request = request_new(connection, cancellable, callback, user_data,
+                         mongo_connection_kill_cursors_async);
    request->oper = MONGO_OPERATION_KILL_CURSORS;
    request->u.kill_cursors.cursors = g_array_new(FALSE, FALSE, sizeof(guint64));
    g_array_append_vals(request->u.kill_cursors.cursors, cursors, n_cursors);
-   mongo_client_queue(client, request);
+   mongo_connection_queue(connection, request);
 
    EXIT;
 }
 
 /**
- * mongo_client_kill_cursors_finish:
- * @client: A #MongoClient.
+ * mongo_connection_kill_cursors_finish:
+ * @connection: A #MongoConnection.
  * @result: A #GAsyncResult.
  * @error: (out) (allow-none): A location for a #GError, or %NULL.
  *
- * Completes an asynchronous request to mongo_client_kill_cursors_async().
+ * Completes an asynchronous request to mongo_connection_kill_cursors_async().
  *
  * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
  */
 gboolean
-mongo_client_kill_cursors_finish (MongoClient   *client,
+mongo_connection_kill_cursors_finish (MongoConnection   *connection,
                                   GAsyncResult  *result,
                                   GError       **error)
 {
@@ -1493,7 +1493,7 @@ mongo_client_kill_cursors_finish (MongoClient   *client,
 
    ENTRY;
 
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
 
    if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
@@ -1504,42 +1504,42 @@ mongo_client_kill_cursors_finish (MongoClient   *client,
 }
 
 const gchar *
-mongo_client_get_replica_set (MongoClient *client)
+mongo_connection_get_replica_set (MongoConnection *connection)
 {
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
-   return client->priv->replica_set;
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), NULL);
+   return connection->priv->replica_set;
 }
 
 void
-mongo_client_set_replica_set (MongoClient *client,
+mongo_connection_set_replica_set (MongoConnection *connection,
                               const gchar *replica_set)
 {
-   g_return_if_fail(MONGO_IS_CLIENT(client));
-   g_free(client->priv->replica_set);
-   client->priv->replica_set = g_strdup(replica_set);
-   g_object_notify_by_pspec(G_OBJECT(client), gParamSpecs[PROP_REPLICA_SET]);
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
+   g_free(connection->priv->replica_set);
+   connection->priv->replica_set = g_strdup(replica_set);
+   g_object_notify_by_pspec(G_OBJECT(connection), gParamSpecs[PROP_REPLICA_SET]);
 }
 
 /**
- * mongo_client_get_uri:
- * @client: (in): A #MongoClient.
+ * mongo_connection_get_uri:
+ * @connection: (in): A #MongoConnection.
  *
- * Fetches the uri for the client.
+ * Fetches the uri for the connection.
  *
  * Returns: The uri as a string.
  */
 const gchar *
-mongo_client_get_uri (MongoClient *client)
+mongo_connection_get_uri (MongoConnection *connection)
 {
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), NULL);
-   return client->priv->uri_string;
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), NULL);
+   return connection->priv->uri_string;
 }
 
 static void
-mongo_client_set_uri (MongoClient *client,
+mongo_connection_set_uri (MongoConnection *connection,
                       const gchar *uri)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
    const gchar *value;
    GHashTable *params;
    GError *error = NULL;
@@ -1551,10 +1551,10 @@ mongo_client_set_uri (MongoClient *client,
 
    ENTRY;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(uri);
 
-   priv = client->priv;
+   priv = connection->priv;
 
    if (!g_str_has_prefix(uri, "mongodb://")) {
       g_warning("\"uri\" must start with mongodb://");
@@ -1662,8 +1662,8 @@ mongo_client_set_uri (MongoClient *client,
 }
 
 /**
- * mongo_client_get_slave_okay:
- * @client: A #MongoClient.
+ * mongo_connection_get_slave_okay:
+ * @connection: A #MongoConnection.
  *
  * Retrieves the "slave-okay" property. If "slave-okay" is %TRUE, then
  * %MONGO_QUERY_SLAVE_OK will be set on all outgoing queries.
@@ -1671,15 +1671,15 @@ mongo_client_set_uri (MongoClient *client,
  * Returns: %TRUE if "slave-okay" is set.
  */
 gboolean
-mongo_client_get_slave_okay (MongoClient *client)
+mongo_connection_get_slave_okay (MongoConnection *connection)
 {
-   g_return_val_if_fail(MONGO_IS_CLIENT(client), FALSE);
-   return client->priv->slave_okay;
+   g_return_val_if_fail(MONGO_IS_CONNECTION(connection), FALSE);
+   return connection->priv->slave_okay;
 }
 
 /**
- * mongo_client_set_slave_okay:
- * @client: A #MongoClient.
+ * mongo_connection_set_slave_okay:
+ * @connection: A #MongoConnection.
  * @slave_okay: A #gboolean.
  *
  * Sets the "slave-okay" property. If @slave_okay is %TRUE, then all queries
@@ -1687,25 +1687,25 @@ mongo_client_get_slave_okay (MongoClient *client)
  * on slave servers.
  */
 void
-mongo_client_set_slave_okay (MongoClient *client,
+mongo_connection_set_slave_okay (MongoConnection *connection,
                              gboolean     slave_okay)
 {
-   g_return_if_fail(MONGO_IS_CLIENT(client));
-   client->priv->slave_okay = slave_okay;
-   g_object_notify_by_pspec(G_OBJECT(client),
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
+   connection->priv->slave_okay = slave_okay;
+   g_object_notify_by_pspec(G_OBJECT(connection),
                             gParamSpecs[PROP_SLAVE_OKAY]);
 }
 
 static void
-mongo_client_finalize (GObject *object)
+mongo_connection_finalize (GObject *object)
 {
-   MongoClientPrivate *priv;
+   MongoConnectionPrivate *priv;
    GHashTable *hash;
    Request *request;
 
    ENTRY;
 
-   priv = MONGO_CLIENT(object)->priv;
+   priv = MONGO_CONNECTION(object)->priv;
 
    if ((hash = priv->databases)) {
       priv->databases = NULL;
@@ -1738,28 +1738,28 @@ mongo_client_finalize (GObject *object)
    g_uri_free(priv->uri);
    priv->uri = NULL;
 
-   G_OBJECT_CLASS(mongo_client_parent_class)->finalize(object);
+   G_OBJECT_CLASS(mongo_connection_parent_class)->finalize(object);
 
    EXIT;
 }
 
 static void
-mongo_client_get_property (GObject    *object,
+mongo_connection_get_property (GObject    *object,
                            guint       prop_id,
                            GValue     *value,
                            GParamSpec *pspec)
 {
-   MongoClient *client = MONGO_CLIENT(object);
+   MongoConnection *connection = MONGO_CONNECTION(object);
 
    switch (prop_id) {
    case PROP_REPLICA_SET:
-      g_value_set_string(value, mongo_client_get_replica_set(client));
+      g_value_set_string(value, mongo_connection_get_replica_set(connection));
       break;
    case PROP_SLAVE_OKAY:
-      g_value_set_boolean(value, mongo_client_get_slave_okay(client));
+      g_value_set_boolean(value, mongo_connection_get_slave_okay(connection));
       break;
    case PROP_URI:
-      g_value_set_string(value, mongo_client_get_uri(client));
+      g_value_set_string(value, mongo_connection_get_uri(connection));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1767,22 +1767,22 @@ mongo_client_get_property (GObject    *object,
 }
 
 static void
-mongo_client_set_property (GObject      *object,
+mongo_connection_set_property (GObject      *object,
                            guint         prop_id,
                            const GValue *value,
                            GParamSpec   *pspec)
 {
-   MongoClient *client = MONGO_CLIENT(object);
+   MongoConnection *connection = MONGO_CONNECTION(object);
 
    switch (prop_id) {
    case PROP_REPLICA_SET:
-      mongo_client_set_replica_set(client, g_value_get_string(value));
+      mongo_connection_set_replica_set(connection, g_value_get_string(value));
       break;
    case PROP_SLAVE_OKAY:
-      mongo_client_set_slave_okay(client, g_value_get_boolean(value));
+      mongo_connection_set_slave_okay(connection, g_value_get_boolean(value));
       break;
    case PROP_URI:
-      mongo_client_set_uri(client, g_value_get_string(value));
+      mongo_connection_set_uri(connection, g_value_get_string(value));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1790,17 +1790,17 @@ mongo_client_set_property (GObject      *object,
 }
 
 static void
-mongo_client_class_init (MongoClientClass *klass)
+mongo_connection_class_init (MongoConnectionClass *klass)
 {
    GObjectClass *object_class;
 
    ENTRY;
 
    object_class = G_OBJECT_CLASS(klass);
-   object_class->finalize = mongo_client_finalize;
-   object_class->get_property = mongo_client_get_property;
-   object_class->set_property = mongo_client_set_property;
-   g_type_class_add_private(object_class, sizeof(MongoClientPrivate));
+   object_class->finalize = mongo_connection_finalize;
+   object_class->get_property = mongo_connection_get_property;
+   object_class->set_property = mongo_connection_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoConnectionPrivate));
 
    gParamSpecs[PROP_REPLICA_SET] =
       g_param_spec_string("replica-set",
@@ -1833,19 +1833,19 @@ mongo_client_class_init (MongoClientClass *klass)
 }
 
 static void
-mongo_client_init (MongoClient *client)
+mongo_connection_init (MongoConnection *connection)
 {
    ENTRY;
 
-   client->priv = G_TYPE_INSTANCE_GET_PRIVATE(client,
-                                              MONGO_TYPE_CLIENT,
-                                              MongoClientPrivate);
-   client->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
+   connection->priv = G_TYPE_INSTANCE_GET_PRIVATE(connection,
+                                              MONGO_TYPE_CONNECTION,
+                                              MongoConnectionPrivate);
+   connection->priv->databases = g_hash_table_new_full(g_str_hash, g_str_equal,
                                                    g_free, g_object_unref);
-   client->priv->manager = mongo_manager_new();
-   mongo_manager_add_seed(client->priv->manager, "127.0.0.1:27017");
-   client->priv->queue = g_queue_new();
-   client->priv->socket_client =
+   connection->priv->manager = mongo_manager_new();
+   mongo_manager_add_seed(connection->priv->manager, "127.0.0.1:27017");
+   connection->priv->queue = g_queue_new();
+   connection->priv->socket_client =
          g_object_new(G_TYPE_SOCKET_CLIENT,
                       "timeout", 0,
                       "family", G_SOCKET_FAMILY_IPV4,
@@ -1857,7 +1857,7 @@ mongo_client_init (MongoClient *client)
 }
 
 GQuark
-mongo_client_error_quark (void)
+mongo_connection_error_quark (void)
 {
-   return g_quark_from_static_string("mongo-client-error-quark");
+   return g_quark_from_static_string("mongo-connection-error-quark");
 }

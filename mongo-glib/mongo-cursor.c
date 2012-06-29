@@ -18,7 +18,7 @@
 
 #include <glib/gi18n.h>
 
-#include "mongo-client.h"
+#include "mongo-connection.h"
 #include "mongo-cursor.h"
 #include "mongo-debug.h"
 #include "mongo-source.h"
@@ -27,7 +27,7 @@ G_DEFINE_TYPE(MongoCursor, mongo_cursor, G_TYPE_OBJECT)
 
 struct _MongoCursorPrivate
 {
-   MongoClient *client;
+   MongoConnection *connection;
    MongoBson *fields;
    MongoBson *query;
    gchar *database;
@@ -42,7 +42,7 @@ enum
 {
    PROP_0,
    PROP_BATCH_SIZE,
-   PROP_CLIENT,
+   PROP_CONNECTION,
    PROP_COLLECTION,
    PROP_DATABASE,
    PROP_FIELDS,
@@ -67,18 +67,18 @@ mongo_cursor_get_batch_size (MongoCursor *cursor)
 }
 
 /**
- * mongo_cursor_get_client:
+ * mongo_cursor_get_connection:
  * @cursor: (in): A #MongoCursor.
  *
- * Fetches the client the cursor is using.
+ * Fetches the connection the cursor is using.
  *
- * Returns: (transfer none): A #MongoClient.
+ * Returns: (transfer none): A #MongoConnection.
  */
-MongoClient *
-mongo_cursor_get_client (MongoCursor *cursor)
+MongoConnection *
+mongo_cursor_get_connection (MongoCursor *cursor)
 {
    g_return_val_if_fail(MONGO_IS_CURSOR(cursor), NULL);
-   return cursor->priv->client;
+   return cursor->priv->connection;
 }
 
 const gchar *
@@ -157,15 +157,15 @@ mongo_cursor_set_batch_size (MongoCursor *cursor,
 }
 
 static void
-mongo_cursor_set_client (MongoCursor *cursor,
-                         MongoClient *client)
+mongo_cursor_set_connection (MongoCursor     *cursor,
+                             MongoConnection *connection)
 {
    g_return_if_fail(MONGO_IS_CURSOR(cursor));
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
 
-   cursor->priv->client = client;
-   g_object_add_weak_pointer(G_OBJECT(client),
-                             (gpointer *)&cursor->priv->client);
+   cursor->priv->connection = connection;
+   g_object_add_weak_pointer(G_OBJECT(connection),
+                             (gpointer *)&cursor->priv->connection);
 }
 
 static void
@@ -234,14 +234,14 @@ mongo_cursor_count_cb (GObject      *object,
                        gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
       g_simple_async_result_set_op_res_gpointer(
@@ -272,13 +272,13 @@ mongo_cursor_count_async (MongoCursor         *cursor,
 
    priv = cursor->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(cursor),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Cursor is missing MongoClient."));
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
+                                          _("Cursor is missing MongoConnection."));
       EXIT;
    }
 
@@ -291,12 +291,12 @@ mongo_cursor_count_async (MongoCursor         *cursor,
    if (priv->query) {
       mongo_bson_append_bson(command, "query", priv->query);
    }
-   mongo_client_command_async(priv->client,
-                              priv->database,
-                              command,
-                              cancellable,
-                              mongo_cursor_count_cb,
-                              simple);
+   mongo_connection_command_async(priv->connection,
+                                  priv->database,
+                                  command,
+                                  cancellable,
+                                  mongo_cursor_count_cb,
+                                  simple);
    mongo_bson_unref(command);
 
    EXIT;
@@ -346,12 +346,13 @@ mongo_cursor_kill_cursors_cb (GObject      *object,
                               gpointer      user_data)
 {
    ENTRY;
-   mongo_client_kill_cursors_finish(MONGO_CLIENT(object), result, NULL);
+   mongo_connection_kill_cursors_finish(MONGO_CONNECTION(object),
+                                        result, NULL);
    EXIT;
 }
 
 static void
-mongo_cursor_foreach_dispatch (MongoClient        *client,
+mongo_cursor_foreach_dispatch (MongoConnection        *connection,
                                MongoReply         *reply,
                                GSimpleAsyncResult *simple)
 {
@@ -365,7 +366,7 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
 
    ENTRY;
 
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
    g_assert(reply);
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
@@ -405,7 +406,7 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
       db_and_collection = g_strdup_printf("%s.%s",
                                           cursor->priv->database,
                                           cursor->priv->collection);
-      mongo_client_getmore_async(client,
+      mongo_connection_getmore_async(connection,
                                  db_and_collection,
                                  cursor->priv->batch_size,
                                  reply->cursor_id,
@@ -421,12 +422,12 @@ mongo_cursor_foreach_dispatch (MongoClient        *client,
 
 stop:
    if (reply->cursor_id) {
-      mongo_client_kill_cursors_async(client,
-                                      &reply->cursor_id,
-                                      1,
-                                      cancellable,
-                                      mongo_cursor_kill_cursors_cb,
-                                      NULL);
+      mongo_connection_kill_cursors_async(connection,
+                                          &reply->cursor_id,
+                                          1,
+                                          cancellable,
+                                          mongo_cursor_kill_cursors_cb,
+                                          NULL);
    }
 
    g_simple_async_result_set_op_res_gboolean(simple, TRUE);
@@ -443,23 +444,23 @@ mongo_cursor_foreach_getmore_cb (GObject      *object,
                                  gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
    ENTRY;
 
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_getmore_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_getmore_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
       mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }
 
-   mongo_cursor_foreach_dispatch(client, reply, simple);
+   mongo_cursor_foreach_dispatch(connection, reply, simple);
    mongo_reply_unref(reply);
 
    EXIT;
@@ -471,23 +472,23 @@ mongo_cursor_foreach_query_cb (GObject      *object,
                                gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
    ENTRY;
 
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_query_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_query_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
       mongo_simple_async_result_complete_in_idle(simple);
       g_object_unref(simple);
       EXIT;
    }
 
-   mongo_cursor_foreach_dispatch(client, reply, simple);
+   mongo_cursor_foreach_dispatch(connection, reply, simple);
    mongo_reply_unref(reply);
 
    EXIT;
@@ -515,12 +516,12 @@ mongo_cursor_foreach_async (MongoCursor         *cursor,
 
    priv = cursor->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(cursor),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
                                           _("Not currently connected."));
       GOTO(failure);
    }
@@ -546,16 +547,16 @@ mongo_cursor_foreach_async (MongoCursor         *cursor,
                                        priv->database,
                                        priv->collection);
 
-   mongo_client_query_async(priv->client,
-                            db_and_collection,
-                            priv->flags,
-                            priv->skip,
-                            priv->limit,
-                            priv->query,
-                            priv->fields,
-                            cancellable,
-                            mongo_cursor_foreach_query_cb,
-                            simple);
+   mongo_connection_query_async(priv->connection,
+                                db_and_collection,
+                                priv->flags,
+                                priv->skip,
+                                priv->limit,
+                                priv->query,
+                                priv->fields,
+                                cancellable,
+                                mongo_cursor_foreach_query_cb,
+                                simple);
 
    g_free(db_and_collection);
 
@@ -581,10 +582,10 @@ mongo_cursor_finalize (GObject *object)
 
    priv = MONGO_CURSOR(object)->priv;
 
-   if (priv->client) {
-      g_object_remove_weak_pointer(G_OBJECT(priv->client),
-                                   (gpointer *)&priv->client);
-      priv->client = NULL;
+   if (priv->connection) {
+      g_object_remove_weak_pointer(G_OBJECT(priv->connection),
+                                   (gpointer *)&priv->connection);
+      priv->connection = NULL;
    }
 
    g_free(priv->collection);
@@ -617,8 +618,8 @@ mongo_cursor_get_property (GObject    *object,
    case PROP_BATCH_SIZE:
       g_value_set_uint(value, mongo_cursor_get_batch_size(cursor));
       break;
-   case PROP_CLIENT:
-      g_value_set_object(value, mongo_cursor_get_client(cursor));
+   case PROP_CONNECTION:
+      g_value_set_object(value, mongo_cursor_get_connection(cursor));
       break;
    case PROP_COLLECTION:
       g_value_set_string(value, mongo_cursor_get_collection(cursor));
@@ -658,8 +659,8 @@ mongo_cursor_set_property (GObject      *object,
    case PROP_BATCH_SIZE:
       mongo_cursor_set_batch_size(cursor, g_value_get_uint(value));
       break;
-   case PROP_CLIENT:
-      mongo_cursor_set_client(cursor, g_value_get_object(value));
+   case PROP_CONNECTION:
+      mongo_cursor_set_connection(cursor, g_value_get_object(value));
       break;
    case PROP_COLLECTION:
       mongo_cursor_set_collection(cursor, g_value_get_string(value));
@@ -711,14 +712,14 @@ mongo_cursor_class_init (MongoCursorClass *klass)
    g_object_class_install_property(object_class, PROP_BATCH_SIZE,
                                    gParamSpecs[PROP_BATCH_SIZE]);
 
-   gParamSpecs[PROP_CLIENT] =
-      g_param_spec_object("client",
-                          _("Client"),
-                          _("A MongoClient to communicate with."),
-                          MONGO_TYPE_CLIENT,
+   gParamSpecs[PROP_CONNECTION] =
+      g_param_spec_object("connection",
+                          _("Connection"),
+                          _("A MongoConnection to communicate with."),
+                          MONGO_TYPE_CONNECTION,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-   g_object_class_install_property(object_class, PROP_CLIENT,
-                                   gParamSpecs[PROP_CLIENT]);
+   g_object_class_install_property(object_class, PROP_CONNECTION,
+                                   gParamSpecs[PROP_CONNECTION]);
 
    gParamSpecs[PROP_COLLECTION] =
       g_param_spec_string("collection",

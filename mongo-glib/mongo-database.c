@@ -18,7 +18,7 @@
 
 #include <glib/gi18n.h>
 
-#include "mongo-client.h"
+#include "mongo-connection.h"
 #include "mongo-database.h"
 #include "mongo-debug.h"
 #include "mongo-protocol.h"
@@ -30,13 +30,13 @@ struct _MongoDatabasePrivate
 {
    gchar *name;
    GHashTable *collections;
-   MongoClient *client;
+   MongoConnection *connection;
 };
 
 enum
 {
    PROP_0,
-   PROP_CLIENT,
+   PROP_CONNECTION,
    PROP_NAME,
    LAST_PROP
 };
@@ -68,7 +68,7 @@ mongo_database_get_collection (MongoDatabase *database,
 
    if (!(collection = g_hash_table_lookup(priv->collections, name))) {
       collection = g_object_new(MONGO_TYPE_COLLECTION,
-                                "client", priv->client,
+                                "connection", priv->connection,
                                 "database", database,
                                 "name", name,
                                 NULL);
@@ -79,37 +79,37 @@ mongo_database_get_collection (MongoDatabase *database,
 }
 
 /**
- * mongo_database_get_client:
+ * mongo_database_get_connection:
  * @database: (in): A #MongoDatabase.
  *
- * Fetches the client that @database communicates over.
+ * Fetches the connection that @database communicates over.
  *
- * Returns: (transfer none): A #MongoClient.
+ * Returns: (transfer none): A #MongoConnection.
  */
-MongoClient *
-mongo_database_get_client (MongoDatabase *database)
+MongoConnection *
+mongo_database_get_connection (MongoDatabase *database)
 {
    g_return_val_if_fail(MONGO_IS_DATABASE(database), NULL);
-   return database->priv->client;
+   return database->priv->connection;
 }
 
 static void
-mongo_database_set_client (MongoDatabase *database,
-                           MongoClient   *client)
+mongo_database_set_connection (MongoDatabase *database,
+                           MongoConnection   *connection)
 {
    MongoDatabasePrivate *priv;
 
    ENTRY;
 
    g_return_if_fail(MONGO_IS_DATABASE(database));
-   g_return_if_fail(MONGO_IS_CLIENT(client));
-   g_return_if_fail(!database->priv->client);
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
+   g_return_if_fail(!database->priv->connection);
 
    priv = database->priv;
 
-   priv->client = client;
-   g_object_add_weak_pointer(G_OBJECT(client),
-                             (gpointer *)&priv->client);
+   priv->connection = connection;
+   g_object_add_weak_pointer(G_OBJECT(connection),
+                             (gpointer *)&priv->connection);
 
    EXIT;
 }
@@ -142,7 +142,7 @@ mongo_database_drop_cb (GObject      *object,
                         gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
@@ -150,7 +150,7 @@ mongo_database_drop_cb (GObject      *object,
 
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    }
 
@@ -183,13 +183,13 @@ mongo_database_drop_async (MongoDatabase       *database,
 
    priv = database->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(database),
                                           callback,
                                           user_data,
                                           MONGO_DATABASE_ERROR,
-                                          MONGO_DATABASE_ERROR_NO_CLIENT,
-                                          _("The client has been lost."));
+                                          MONGO_DATABASE_ERROR_NO_CONNECTION,
+                                          _("The connection has been lost."));
       EXIT;
    }
 
@@ -198,12 +198,12 @@ mongo_database_drop_async (MongoDatabase       *database,
 
    bson = mongo_bson_new_empty();
    mongo_bson_append_int(bson, "dropDatabase", 1);
-   mongo_client_command_async(priv->client,
-                              priv->name,
-                              bson,
-                              cancellable,
-                              mongo_database_drop_cb,
-                              simple);
+   mongo_connection_command_async(priv->connection,
+                                  priv->name,
+                                  bson,
+                                  cancellable,
+                                  mongo_database_drop_cb,
+                                  simple);
    mongo_bson_unref(bson);
 
    EXIT;
@@ -239,10 +239,10 @@ mongo_database_finalize (GObject *object)
 
    g_free(priv->name);
 
-   if (priv->client) {
-      g_object_remove_weak_pointer(G_OBJECT(priv->client),
-                                   (gpointer *)&priv->client);
-      priv->client = NULL;
+   if (priv->connection) {
+      g_object_remove_weak_pointer(G_OBJECT(priv->connection),
+                                   (gpointer *)&priv->connection);
+      priv->connection = NULL;
    }
 
    if ((hash = priv->collections)) {
@@ -264,8 +264,8 @@ mongo_database_get_property (GObject    *object,
    MongoDatabase *database = MONGO_DATABASE(object);
 
    switch (prop_id) {
-   case PROP_CLIENT:
-      g_value_set_object(value, mongo_database_get_client(database));
+   case PROP_CONNECTION:
+      g_value_set_object(value, mongo_database_get_connection(database));
       break;
    case PROP_NAME:
       g_value_set_string(value, mongo_database_get_name(database));
@@ -284,8 +284,8 @@ mongo_database_set_property (GObject      *object,
    MongoDatabase *database = MONGO_DATABASE(object);
 
    switch (prop_id) {
-   case PROP_CLIENT:
-      mongo_database_set_client(database, g_value_get_object(value));
+   case PROP_CONNECTION:
+      mongo_database_set_connection(database, g_value_get_object(value));
       break;
    case PROP_NAME:
       mongo_database_set_name(database, g_value_get_string(value));
@@ -308,14 +308,14 @@ mongo_database_class_init (MongoDatabaseClass *klass)
    object_class->set_property = mongo_database_set_property;
    g_type_class_add_private(object_class, sizeof(MongoDatabasePrivate));
 
-   gParamSpecs[PROP_CLIENT] =
-      g_param_spec_object("client",
-                          _("Client"),
-                          _("The client owning this MongoDatabase instance."),
-                          MONGO_TYPE_CLIENT,
+   gParamSpecs[PROP_CONNECTION] =
+      g_param_spec_object("connection",
+                          _("Connection"),
+                          _("The connection owning this MongoDatabase instance."),
+                          MONGO_TYPE_CONNECTION,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-   g_object_class_install_property(object_class, PROP_CLIENT,
-                                   gParamSpecs[PROP_CLIENT]);
+   g_object_class_install_property(object_class, PROP_CONNECTION,
+                                   gParamSpecs[PROP_CONNECTION]);
 
    gParamSpecs[PROP_NAME] =
       g_param_spec_string("name",

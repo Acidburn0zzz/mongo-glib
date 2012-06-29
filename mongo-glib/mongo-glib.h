@@ -27,7 +27,7 @@ G_BEGIN_DECLS
 
 #include "mongo-bson.h"
 #include "mongo-bson-stream.h"
-#include "mongo-client.h"
+#include "mongo-connection.h"
 #include "mongo-collection.h"
 #include "mongo-cursor.h"
 #include "mongo-database.h"

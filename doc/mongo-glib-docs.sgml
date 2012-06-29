@@ -40,8 +40,8 @@
     <title>Mongo API Reference</title>
     <xi:include href="xml/mongo-bson.xml"/>
     <xi:include href="xml/mongo-bson-stream.xml"/>
-    <xi:include href="xml/mongo-client.xml"/>
     <xi:include href="xml/mongo-collection.xml"/>
+    <xi:include href="xml/mongo-connection.xml"/>
     <xi:include href="xml/mongo-cursor.xml"/>
     <xi:include href="xml/mongo-database.xml"/>
     <xi:include href="xml/mongo-manager.xml"/>

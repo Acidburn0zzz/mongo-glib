@@ -18,7 +18,7 @@
 
 #include <glib/gi18n.h>
 
-#include "mongo-client.h"
+#include "mongo-connection.h"
 #include "mongo-collection.h"
 #include "mongo-debug.h"
 #include "mongo-source.h"
@@ -27,8 +27,8 @@ G_DEFINE_TYPE(MongoCollection, mongo_collection, G_TYPE_OBJECT)
 
 struct _MongoCollectionPrivate
 {
+   MongoConnection *connection;
    MongoDatabase *database;
-   MongoClient *client;
    gchar *db_and_collection;
    gchar *name;
 };
@@ -36,7 +36,7 @@ struct _MongoCollectionPrivate
 enum
 {
    PROP_0,
-   PROP_CLIENT,
+   PROP_CONNECTION,
    PROP_DATABASE,
    PROP_NAME,
    LAST_PROP
@@ -78,7 +78,7 @@ mongo_collection_find (MongoCollection *collection,
 
    db_name = mongo_database_get_name(priv->database);
    cursor = g_object_new(MONGO_TYPE_CURSOR,
-                         "client", priv->client,
+                         "connection", priv->connection,
                          "collection", priv->name,
                          "database", db_name,
                          "query", query,
@@ -97,14 +97,14 @@ mongo_collection_find_one_cb (GObject      *object,
                               gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
-   g_return_if_fail(MONGO_IS_CLIENT(client));
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
    g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_query_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_query_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
       g_simple_async_result_set_op_res_gpointer(
@@ -152,12 +152,12 @@ mongo_collection_find_one_async (MongoCollection     *collection,
 
    priv = collection->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(collection),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
                                           _("Not currently connected."));
       EXIT;
    }
@@ -170,16 +170,16 @@ mongo_collection_find_one_async (MongoCollection     *collection,
       query = q = mongo_bson_new_empty();
    }
 
-   mongo_client_query_async(priv->client,
-                            priv->db_and_collection,
-                            flags | MONGO_QUERY_EXHAUST,
-                            0,
-                            1,
-                            query,
-                            field_selector,
-                            cancellable,
-                            mongo_collection_find_one_cb,
-                            simple);
+   mongo_connection_query_async(priv->connection,
+                                priv->db_and_collection,
+                                flags | MONGO_QUERY_EXHAUST,
+                                0,
+                                1,
+                                query,
+                                field_selector,
+                                cancellable,
+                                mongo_collection_find_one_cb,
+                                simple);
 
    if (q) {
       mongo_bson_unref(q);
@@ -237,16 +237,16 @@ mongo_collection_count_cb (GObject      *object,
                            gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
    ENTRY;
 
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
       g_simple_async_result_set_op_res_gpointer(
@@ -289,12 +289,12 @@ mongo_collection_count_async (MongoCollection     *collection,
 
    priv = collection->priv;
 
-   if (!priv->client || !priv->database) {
+   if (!priv->connection || !priv->database) {
       g_simple_async_report_error_in_idle(G_OBJECT(collection),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
                                           _("Not currently connected."));
       EXIT;
    }
@@ -308,12 +308,12 @@ mongo_collection_count_async (MongoCollection     *collection,
    if (query) {
       mongo_bson_append_bson(command, "query", query);
    }
-   mongo_client_command_async(priv->client,
-                              mongo_database_get_name(priv->database),
-                              command,
-                              cancellable,
-                              mongo_collection_count_cb,
-                              simple);
+   mongo_connection_command_async(priv->connection,
+                                  mongo_database_get_name(priv->database),
+                                  command,
+                                  cancellable,
+                                  mongo_collection_count_cb,
+                                  simple);
    mongo_bson_unref(command);
 
    EXIT;
@@ -371,35 +371,35 @@ failure:
 }
 
 /**
- * mongo_collection_get_client:
+ * mongo_collection_get_connection:
  * @collection: (in): A #MongoCollection.
  *
- * Fetches the client the collection communicates over.
+ * Fetches the connection the collection communicates over.
  *
- * Returns: (transfer none): A #MongoClient.
+ * Returns: (transfer none): A #MongoConnection.
  */
-MongoClient *
-mongo_collection_get_client (MongoCollection *collection)
+MongoConnection *
+mongo_collection_get_connection (MongoCollection *collection)
 {
    g_return_val_if_fail(MONGO_IS_COLLECTION(collection), NULL);
-   return collection->priv->client;
+   return collection->priv->connection;
 }
 
 static void
-mongo_collection_set_client (MongoCollection *collection,
-                             MongoClient     *client)
+mongo_collection_set_connection (MongoCollection *collection,
+                             MongoConnection     *connection)
 {
    MongoCollectionPrivate *priv;
 
    g_return_if_fail(MONGO_IS_COLLECTION(collection));
-   g_return_if_fail(MONGO_IS_CLIENT(client));
-   g_return_if_fail(!collection->priv->client);
+   g_return_if_fail(MONGO_IS_CONNECTION(connection));
+   g_return_if_fail(!collection->priv->connection);
 
    priv = collection->priv;
 
-   priv->client = client;
-   g_object_add_weak_pointer(G_OBJECT(priv->client),
-                             (gpointer *)&priv->client);
+   priv->connection = connection;
+   g_object_add_weak_pointer(G_OBJECT(priv->connection),
+                             (gpointer *)&priv->connection);
 }
 
 static void
@@ -476,13 +476,13 @@ mongo_collection_remove_cb (GObject      *object,
                             gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    gboolean ret;
    GError *error = NULL;
 
    ENTRY;
 
-   if (!(ret = mongo_client_delete_finish(client, result, &error))) {
+   if (!(ret = mongo_connection_delete_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    }
 
@@ -512,13 +512,13 @@ mongo_collection_remove_async (MongoCollection      *collection,
 
    priv = collection->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(collection),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Missing Mongo client"));
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
+                                          _("Missing Mongo connection"));
       EXIT;
    }
 
@@ -527,7 +527,7 @@ mongo_collection_remove_async (MongoCollection      *collection,
                                       user_data,
                                       mongo_collection_remove_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
-   mongo_client_delete_async(priv->client,
+   mongo_connection_delete_async(priv->connection,
                              priv->db_and_collection,
                              flags,
                              selector,
@@ -562,13 +562,13 @@ mongo_collection_update_cb (GObject      *object,
                             gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    gboolean ret;
    GError *error = NULL;
 
    ENTRY;
 
-   if (!(ret = mongo_client_update_finish(client, result, &error))) {
+   if (!(ret = mongo_connection_update_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    }
 
@@ -599,13 +599,13 @@ mongo_collection_update_async (MongoCollection      *collection,
 
    priv = collection->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(collection),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Missing Mongo client"));
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
+                                          _("Missing Mongo connection"));
       EXIT;
    }
 
@@ -614,7 +614,7 @@ mongo_collection_update_async (MongoCollection      *collection,
                                       user_data,
                                       mongo_collection_update_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
-   mongo_client_update_async(priv->client,
+   mongo_connection_update_async(priv->connection,
                              priv->db_and_collection,
                              flags,
                              selector,
@@ -650,13 +650,13 @@ mongo_collection_insert_cb (GObject      *object,
                             gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    gboolean ret;
    GError *error = NULL;
 
    ENTRY;
 
-   if (!(ret = mongo_client_insert_finish(client, result, &error))) {
+   if (!(ret = mongo_connection_insert_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    }
 
@@ -687,13 +687,13 @@ mongo_collection_insert_async (MongoCollection      *collection,
 
    priv = collection->priv;
 
-   if (!priv->client) {
+   if (!priv->connection) {
       g_simple_async_report_error_in_idle(G_OBJECT(collection),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("Missing Mongo client"));
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
+                                          _("Missing Mongo connection"));
       EXIT;
    }
 
@@ -702,7 +702,7 @@ mongo_collection_insert_async (MongoCollection      *collection,
                                       user_data,
                                       mongo_collection_insert_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
-   mongo_client_insert_async(priv->client,
+   mongo_connection_insert_async(priv->connection,
                              priv->db_and_collection,
                              flags,
                              documents,
@@ -738,16 +738,16 @@ mongo_collection_drop_cb (GObject      *object,
                           gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoClient *client = (MongoClient *)object;
+   MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
    GError *error = NULL;
 
    ENTRY;
 
-   g_assert(MONGO_IS_CLIENT(client));
+   g_assert(MONGO_IS_CONNECTION(connection));
    g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
 
-   if (!(reply = mongo_client_command_finish(client, result, &error))) {
+   if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    }
 
@@ -780,13 +780,13 @@ mongo_collection_drop_async (MongoCollection     *collection,
 
    priv = collection->priv;
 
-   if (!priv->client || !priv->database) {
+   if (!priv->connection || !priv->database) {
       g_simple_async_report_error_in_idle(G_OBJECT(collection),
                                           callback,
                                           user_data,
-                                          MONGO_CLIENT_ERROR,
-                                          MONGO_CLIENT_ERROR_NOT_CONNECTED,
-                                          _("The client has been lost."));
+                                          MONGO_CONNECTION_ERROR,
+                                          MONGO_CONNECTION_ERROR_NOT_CONNECTED,
+                                          _("The connection has been lost."));
       EXIT;
    }
 
@@ -795,12 +795,12 @@ mongo_collection_drop_async (MongoCollection     *collection,
 
    bson = mongo_bson_new_empty();
    mongo_bson_append_string(bson, "drop", priv->name);
-   mongo_client_command_async(priv->client,
-                              mongo_database_get_name(priv->database),
-                              bson,
-                              cancellable,
-                              mongo_collection_drop_cb,
-                              simple);
+   mongo_connection_command_async(priv->connection,
+                                  mongo_database_get_name(priv->database),
+                                  bson,
+                                  cancellable,
+                                  mongo_collection_drop_cb,
+                                  simple);
 
    mongo_bson_unref(bson);
 }
@@ -834,10 +834,10 @@ mongo_collection_finalize (GObject *object)
    g_free(priv->db_and_collection);
    g_free(priv->name);
 
-   if (priv->client) {
-      g_object_remove_weak_pointer(G_OBJECT(priv->client),
-                                   (gpointer *)&priv->client);
-      priv->client = NULL;
+   if (priv->connection) {
+      g_object_remove_weak_pointer(G_OBJECT(priv->connection),
+                                   (gpointer *)&priv->connection);
+      priv->connection = NULL;
    }
 
    if (priv->database) {
@@ -860,8 +860,8 @@ mongo_collection_get_property (GObject    *object,
    MongoCollection *collection = MONGO_COLLECTION(object);
 
    switch (prop_id) {
-   case PROP_CLIENT:
-      g_value_set_object(value, mongo_collection_get_client(collection));
+   case PROP_CONNECTION:
+      g_value_set_object(value, mongo_collection_get_connection(collection));
       break;
    case PROP_DATABASE:
       g_value_set_object(value, mongo_collection_get_database(collection));
@@ -883,8 +883,8 @@ mongo_collection_set_property (GObject      *object,
    MongoCollection *collection = MONGO_COLLECTION(object);
 
    switch (prop_id) {
-   case PROP_CLIENT:
-      mongo_collection_set_client(collection, g_value_get_object(value));
+   case PROP_CONNECTION:
+      mongo_collection_set_connection(collection, g_value_get_object(value));
       break;
    case PROP_DATABASE:
       mongo_collection_set_database(collection, g_value_get_object(value));
@@ -910,14 +910,14 @@ mongo_collection_class_init (MongoCollectionClass *klass)
    object_class->set_property = mongo_collection_set_property;
    g_type_class_add_private(object_class, sizeof(MongoCollectionPrivate));
 
-   gParamSpecs[PROP_CLIENT] =
-      g_param_spec_object("client",
-                          _("Client"),
-                          _("The client that owns the collection."),
-                          MONGO_TYPE_CLIENT,
+   gParamSpecs[PROP_CONNECTION] =
+      g_param_spec_object("connection",
+                          _("Connection"),
+                          _("The connection that owns the collection."),
+                          MONGO_TYPE_CONNECTION,
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
-   g_object_class_install_property(object_class, PROP_CLIENT,
-                                   gParamSpecs[PROP_CLIENT]);
+   g_object_class_install_property(object_class, PROP_CONNECTION,
+                                   gParamSpecs[PROP_CONNECTION]);
 
    gParamSpecs[PROP_DATABASE] =
       g_param_spec_object("database",

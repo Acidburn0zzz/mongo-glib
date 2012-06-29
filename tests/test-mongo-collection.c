@@ -3,7 +3,7 @@
 #include <mongo-glib/mongo-glib.h>
 
 static GMainLoop *gMainLoop;
-static MongoClient *gClient;
+static MongoConnection *gConnection;
 
 static void
 test1_count_cb (GObject      *object,
@@ -32,9 +32,9 @@ test1 (void)
    MongoBson *query = NULL;
    gboolean success = FALSE;
 
-   gClient = mongo_client_new();
+   gConnection = mongo_connection_new();
 
-   db = mongo_client_get_database(gClient, "dbtest1");
+   db = mongo_connection_get_database(gConnection, "dbtest1");
    g_assert(db);
 
    col = mongo_database_get_collection(db, "dbcollection1");
@@ -71,9 +71,9 @@ test2 (void)
    MongoBson *doc;
    gboolean success = FALSE;
 
-   gClient = mongo_client_new();
+   gConnection = mongo_connection_new();
 
-   db = mongo_client_get_database(gClient, "dbtest1");
+   db = mongo_connection_get_database(gConnection, "dbtest1");
    g_assert(db);
 
    col = mongo_database_get_collection(db, "dbcollection1");
@@ -122,9 +122,9 @@ test3 (void)
    MongoBson *query = NULL;
    gboolean success = FALSE;
 
-   gClient = mongo_client_new();
+   gConnection = mongo_connection_new();
 
-   db = mongo_client_get_database(gClient, "dbtest1");
+   db = mongo_connection_get_database(gConnection, "dbtest1");
    g_assert(db);
 
    col = mongo_database_get_collection(db, "dbcollection1");

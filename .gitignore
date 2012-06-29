@@ -24,8 +24,8 @@ stamp-h1
 *.swp
 *.typelib
 test-mongo-bson
-test-mongo-client
 test-mongo-collection
+test-mongo-connection
 test-mongo-cursor
 test-mongo-manager
 test-mongo-object-id
