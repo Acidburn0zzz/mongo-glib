@@ -750,6 +750,7 @@ mongo_collection_drop_cb (GObject      *object,
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
+   gboolean ret = TRUE;
    GError *error = NULL;
 
    ENTRY;
@@ -759,9 +760,10 @@ mongo_collection_drop_cb (GObject      *object,
 
    if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
+      ret = FALSE;
    }
 
-   g_simple_async_result_set_op_res_gboolean(simple, !!reply);
+   g_simple_async_result_set_op_res_gboolean(simple, ret);
    mongo_simple_async_result_complete_in_idle(simple);
    g_object_unref(simple);
 
@@ -811,7 +813,6 @@ mongo_collection_drop_async (MongoCollection     *collection,
                                   cancellable,
                                   mongo_collection_drop_cb,
                                   simple);
-
    mongo_bson_unref(bson);
 }
 

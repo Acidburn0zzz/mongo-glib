@@ -25,11 +25,46 @@ test1_count_cb (GObject      *object,
 }
 
 static void
+test1_drop_cb (GObject      *object,
+               GAsyncResult *result,
+               gpointer      user_data)
+{
+   MongoCollection *col = (MongoCollection *)object;
+   MongoBson *bson = NULL;
+   gboolean *success = user_data;
+   GError *error = NULL;
+
+   *success = mongo_collection_drop_finish(col, result, &error);
+   g_assert_no_error(error);
+   g_assert(*success);
+   *success = FALSE;
+
+   mongo_collection_count_async(col, bson, NULL, test1_count_cb, success);
+}
+
+static void
+test1_insert_cb (GObject      *object,
+                 GAsyncResult *result,
+                 gpointer      user_data)
+{
+   MongoCollection *col = (MongoCollection *)object;
+   gboolean *success = user_data;
+   GError *error = NULL;
+
+   *success = mongo_collection_insert_finish(col, result, &error);
+   g_assert_no_error(error);
+   g_assert(*success);
+   *success = FALSE;
+
+   mongo_collection_drop_async(col, NULL, test1_drop_cb, success);
+}
+
+static void
 test1 (void)
 {
    MongoCollection *col;
    MongoDatabase *db;
-   MongoBson *query = NULL;
+   MongoBson *bson = NULL;
    gboolean success = FALSE;
 
    gConnection = mongo_connection_new();
@@ -40,7 +75,10 @@ test1 (void)
    col = mongo_database_get_collection(db, "dbcollection1");
    g_assert(col);
 
-   mongo_collection_count_async(col, query, NULL, test1_count_cb, &success);
+   bson = mongo_bson_new();
+   mongo_collection_insert_async(col, &bson, 1, MONGO_INSERT_NONE, NULL,
+                                 test1_insert_cb, &success);
+   mongo_bson_unref(bson);
 
    g_main_loop_run(gMainLoop);
 
