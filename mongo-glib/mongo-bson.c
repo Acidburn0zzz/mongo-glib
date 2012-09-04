@@ -532,9 +532,10 @@ mongo_bson_append_array (MongoBson   *bson,
                          const gchar *key,
                          MongoBson   *value)
 {
-   g_return_if_fail(bson != NULL);
-   g_return_if_fail(key != NULL);
-   g_return_if_fail(value != NULL);
+   g_return_if_fail(bson);
+   g_return_if_fail(bson != value);
+   g_return_if_fail(key);
+   g_return_if_fail(value);
 
    mongo_bson_append(bson, MONGO_BSON_ARRAY, key,
                      value->buf->data, value->buf->len,
@@ -579,9 +580,10 @@ mongo_bson_append_bson (MongoBson       *bson,
    const guint8 *data;
    gsize data_len;
 
-   g_return_if_fail(bson != NULL);
-   g_return_if_fail(key != NULL);
-   g_return_if_fail(value != NULL);
+   g_return_if_fail(bson);
+   g_return_if_fail(bson != value);
+   g_return_if_fail(key);
+   g_return_if_fail(value);
 
    data = mongo_bson_get_data(value, &data_len);
    mongo_bson_append(bson, MONGO_BSON_DOCUMENT, key,
