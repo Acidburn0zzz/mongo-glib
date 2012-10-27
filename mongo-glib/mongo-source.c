@@ -119,7 +119,7 @@ mongo_source_finalize (MongoSource *source)
 
    ENTRY;
 
-   g_mutex_free(&source->mutex);
+   g_mutex_clear(&source->mutex);
 
    list = source->head;
    source->head = NULL;
