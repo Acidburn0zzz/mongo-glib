@@ -1,3 +1,5 @@
+#include "mongo-query.h"
+#include "mongo-reply.h"
 #include "mongo-server.h"
 
 static void
@@ -5,16 +7,28 @@ query_cb (MongoServer        *server,
           MongoClientContext *client,
           MongoMessage       *message)
 {
-   g_print("QUERY [%d] [%d]\n",
-           mongo_message_get_request_id(message),
-           mongo_message_get_response_to(message));
+   MongoQuery *query = (MongoQuery *)message;
+   MongoBson *doc;
+   gchar *str;
+
+   g_assert(MONGO_IS_QUERY(query));
+
+   g_print("collection = %s\n", mongo_query_get_collection(query));
+
+   str = mongo_client_context_get_peer(client);
+   doc = mongo_bson_new_empty();
+   mongo_bson_append_string(doc, "you", str);
+   mongo_bson_append_int(doc, "ok", 1);
+   mongo_message_reply_one(message, MONGO_REPLY_NONE, doc);
+   mongo_bson_unref(doc);
+   g_free(str);
 }
 
 gint
 main (gint   argc,
       gchar *argv[])
 {
-   MongoServer *server;
+   GSocketListener *server;
    GMainLoop *main_loop;
    GError *error = NULL;
 
@@ -23,7 +37,7 @@ main (gint   argc,
    main_loop = g_main_loop_new(NULL, FALSE);
    server = g_object_new(MONGO_TYPE_SERVER, NULL);
    g_signal_connect(server, "request-query", G_CALLBACK(query_cb), NULL);
-   if (!g_socket_listener_add_inet_port(G_SOCKET_LISTENER(server), 5201, NULL, &error)) {
+   if (!g_socket_listener_add_inet_port(server, 5201, NULL, &error)) {
       g_printerr("%s\n", error->message);
       return 1;
    }

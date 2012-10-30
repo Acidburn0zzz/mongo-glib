@@ -292,25 +292,3 @@ mongo_reply_init (MongoReply *reply)
                                   MONGO_TYPE_REPLY,
                                   MongoReplyPrivate);
 }
-
-GType
-mongo_reply_flags_get_type (void)
-{
-   static gsize initialized;
-   static GType type_id;
-   static const GFlagsValue values[] = {
-      { MONGO_REPLY_NONE, "MONGO_REPLY_NONE", "NONE" },
-      { MONGO_REPLY_CURSOR_NOT_FOUND, "MONGO_REPLY_CURSOR_NOT_FOUND", "CURSOR_NOT_FOUND" },
-      { MONGO_REPLY_QUERY_FAILURE, "MONGO_REPLY_QUERY_FAILURE", "QUERY_FAILURE" },
-      { MONGO_REPLY_SHARD_CONFIG_STALE, "MONGO_REPLY_SHARD_CONFIG_STALE", "SHARD_CONFIG_STALE" },
-      { MONGO_REPLY_AWAIT_CAPABLE, "MONGO_REPLY_AWAIT_CAPABLE", "AWAIT_CAPABLE" },
-      { 0 }
-   };
-
-   if (g_once_init_enter(&initialized)) {
-      type_id = g_flags_register_static("MongoReplyFlags", values);
-      g_once_init_leave(&initialized, TRUE);
-   }
-
-   return type_id;
-}

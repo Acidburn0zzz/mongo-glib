@@ -75,6 +75,9 @@ enum
 static GParamSpec *gParamSpecs[LAST_PROP];
 static guint       gSignals[LAST_SIGNAL];
 
+extern gboolean
+_mongo_message_is_ready (MongoMessage *message);
+
 static MongoClientContext *
 mongo_client_context_new (MongoServer       *server,
                           GSocketConnection *connection);
@@ -589,10 +592,47 @@ mongo_client_context_dispatch (MongoClientContext *client)
     *       the send path, however.
     */
 
+   if (_mongo_message_is_ready(message)) {
+      g_print("Ready to send a reply.\n");
+   }
+
    g_object_unref(message);
    g_free(data);
 
    EXIT;
+}
+
+gchar *
+mongo_client_context_get_peer (MongoClientContext *client)
+{
+   GInetSocketAddress *saddr;
+   GSocketAddress *addr;
+   GInetAddress *iaddr;
+   gchar *str;
+   gchar *str2;
+   guint port;
+
+   g_assert(client);
+
+   if (!(addr = g_socket_connection_get_remote_address(client->connection,
+                                                       NULL))) {
+      return NULL;
+   }
+
+   if ((saddr = G_INET_SOCKET_ADDRESS(addr))) {
+      iaddr = g_inet_socket_address_get_address(saddr);
+      str = g_inet_address_to_string(iaddr);
+      port = g_inet_socket_address_get_port(saddr);
+      str2 = g_strdup_printf("%s:%u", str, port);
+      g_free(str);
+      return str2;
+   }
+
+   /*
+    * TODO: Support socket addresses.
+    */
+
+   return NULL;
 }
 
 /**

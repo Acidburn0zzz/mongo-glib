@@ -21,6 +21,9 @@
 
 #include <glib-object.h>
 
+#include "mongo-bson.h"
+#include "mongo-flags.h"
+
 G_BEGIN_DECLS
 
 #define MONGO_TYPE_MESSAGE            (mongo_message_get_type())
@@ -53,15 +56,18 @@ struct _MongoMessageClass
 };
 
 GType    mongo_message_get_type        (void) G_GNUC_CONST;
-gint     mongo_message_get_request_id  (MongoMessage *message);
-gint     mongo_message_get_response_to (MongoMessage *message);
-gboolean mongo_message_load_from_data  (MongoMessage *message,
-                                        const guint8 *data,
-                                        gsize         length);
-void     mongo_message_set_request_id  (MongoMessage *message,
-                                        gint          request_id);
-void     mongo_message_set_response_to (MongoMessage *message,
-                                        gint          response_to);
+gint     mongo_message_get_request_id  (MongoMessage    *message);
+gint     mongo_message_get_response_to (MongoMessage    *message);
+gboolean mongo_message_load_from_data  (MongoMessage    *message,
+                                        const guint8    *data,
+                                        gsize            length);
+void     mongo_message_reply_one       (MongoMessage    *message,
+                                        MongoReplyFlags  flags,
+                                        MongoBson       *bson);
+void     mongo_message_set_request_id  (MongoMessage    *message,
+                                        gint             request_id);
+void     mongo_message_set_response_to (MongoMessage    *message,
+                                        gint             response_to);
 
 G_END_DECLS
 

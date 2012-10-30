@@ -430,28 +430,3 @@ mongo_query_init (MongoQuery *query)
                                   MONGO_TYPE_QUERY,
                                   MongoQueryPrivate);
 }
-
-GType
-mongo_query_flags_get_type (void)
-{
-   static gsize initialized;
-   static GType type_id;
-   static const GFlagsValue values[] = {
-      { MONGO_QUERY_NONE, "MONGO_QUERY_NONE", "NONE" },
-      { MONGO_QUERY_TAILABLE_CURSOR, "MONGO_QUERY_TAILABLE_CURSOR", "TAILABLE_CURSOR" },
-      { MONGO_QUERY_SLAVE_OK, "MONGO_QUERY_SLAVE_OK", "SLAVE_OK" },
-      { MONGO_QUERY_OPLOG_REPLAY, "MONGO_QUERY_OPLOG_REPLAY", "OPLOG_REPLAY" },
-      { MONGO_QUERY_NO_CURSOR_TIMEOUT, "MONGO_QUERY_NO_CURSOR_TIMEOUT", "NO_CURSOR_TIMEOUT" },
-      { MONGO_QUERY_AWAIT_DATA, "MONGO_QUERY_AWAIT_DATA", "AWAIT_DATA" },
-      { MONGO_QUERY_EXHAUST, "MONGO_QUERY_EXHAUST", "EXHAUST" },
-      { MONGO_QUERY_PARTIAL, "MONGO_QUERY_PARTIAL", "PARTIAL" },
-      { 0 }
-   };
-
-   if (g_once_init_enter(&initialized)) {
-      type_id = g_flags_register_static("MongoQueryFlags", values);
-      g_once_init_leave(&initialized, TRUE);
-   }
-
-   return type_id;
-}

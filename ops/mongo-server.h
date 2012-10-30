@@ -106,13 +106,14 @@ struct _MongoServerClass
 };
 
 GType        mongo_client_context_get_type (void) G_GNUC_CONST;
+gchar       *mongo_client_context_get_peer (MongoClientContext *client);
 GType        mongo_server_get_type         (void) G_GNUC_CONST;
-MongoServer *mongo_server_new              (const gchar *first_property,
+MongoServer *mongo_server_new              (const gchar        *first_property,
                                             ...) G_GNUC_NULL_TERMINATED;
-void         mongo_server_pause_message    (MongoServer  *server,
-                                            MongoMessage *message);
-void         mongo_server_unpause_message  (MongoServer  *server,
-                                            MongoMessage *message);
+void         mongo_server_pause_message    (MongoServer         *server,
+                                            MongoMessage        *message);
+void         mongo_server_unpause_message  (MongoServer         *server,
+                                            MongoMessage        *message);
 
 G_END_DECLS
 

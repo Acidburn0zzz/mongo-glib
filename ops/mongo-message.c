@@ -27,6 +27,13 @@ struct _MongoMessagePrivate
 {
    gint32 request_id;
    gint32 response_to;
+
+   gboolean          one_shot;
+   MongoReplyFlags   reply_flags;
+   MongoBson       **reply_docs;
+   guint64           reply_cursor;
+   guint             reply_count;
+   guint             reply_skip;
 };
 
 enum
@@ -38,6 +45,39 @@ enum
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
+
+gboolean
+_mongo_message_is_ready (MongoMessage *message)
+{
+   g_return_val_if_fail(MONGO_IS_MESSAGE(message), FALSE);
+   return message->priv->one_shot;
+}
+
+void
+mongo_message_reply_one (MongoMessage    *message,
+                         MongoReplyFlags  flags,
+                         MongoBson       *document)
+{
+   MongoMessagePrivate *priv;
+
+   g_return_if_fail(MONGO_IS_MESSAGE(message));
+   g_return_if_fail(document);
+
+   priv = message->priv;
+
+   if (priv->one_shot) {
+      g_warning("Cannot call %s() after setting reply.\n", G_STRFUNC);
+      return;
+   }
+
+   priv->one_shot = TRUE;
+   priv->reply_flags = flags;
+   priv->reply_docs = g_new0(MongoBson*, 1);
+   priv->reply_docs[0] = mongo_bson_ref(document);
+   priv->reply_count = 1;
+   priv->reply_cursor = 0;
+   priv->reply_skip = 0;
+}
 
 gint
 mongo_message_get_request_id (MongoMessage *message)
@@ -94,7 +134,20 @@ mongo_message_load_from_data (MongoMessage *message,
 static void
 mongo_message_finalize (GObject *object)
 {
+   MongoMessagePrivate *priv;
+   guint i;
+
    ENTRY;
+
+   priv = MONGO_MESSAGE(object)->priv;
+
+   if (priv->reply_docs) {
+      for (i = 0; i < priv->reply_count; i++) {
+         mongo_bson_unref(priv->reply_docs[i]);
+      }
+      g_free(priv->reply_docs);
+   }
+
    G_OBJECT_CLASS(mongo_message_parent_class)->finalize(object);
    EXIT;
 }
