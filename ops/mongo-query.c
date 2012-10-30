@@ -89,6 +89,40 @@ mongo_query_get_skip (MongoQuery *query)
    return query->priv->skip;
 }
 
+gboolean
+mongo_query_is_command (MongoQuery *query)
+{
+   g_return_val_if_fail(MONGO_IS_QUERY(query), FALSE);
+
+   if (query->priv->collection) {
+      return g_str_has_suffix(query->priv->collection, ".$cmd");
+   }
+
+   return FALSE;
+}
+
+const gchar *
+mongo_query_get_command_name (MongoQuery *query)
+{
+   MongoQueryPrivate *priv;
+   MongoBsonIter iter;
+
+   g_return_val_if_fail(MONGO_IS_QUERY(query), NULL);
+
+   priv = query->priv;
+
+   if (mongo_query_is_command(query)) {
+      if (priv->query) {
+         mongo_bson_iter_init(&iter, priv->query);
+         if (mongo_bson_iter_next(&iter)) {
+            return mongo_bson_iter_get_key(&iter);
+         }
+      }
+   }
+
+   return NULL;
+}
+
 void
 mongo_query_set_collection (MongoQuery  *query,
                             const gchar *collection)

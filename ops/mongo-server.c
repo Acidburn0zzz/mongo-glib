@@ -18,10 +18,12 @@
 
 #include <glib/gi18n.h>
 
+#include "mongo-bson.h"
 #include "mongo-debug.h"
 #include "mongo-message.h"
 #include "mongo-operation.h"
 #include "mongo-query.h"
+#include "mongo-reply.h"
 #include "mongo-server.h"
 
 G_DEFINE_TYPE(MongoServer, mongo_server, G_TYPE_SOCKET_SERVICE)
@@ -76,8 +78,9 @@ enum
 static GParamSpec *gParamSpecs[LAST_PROP];
 static guint       gSignals[LAST_SIGNAL];
 
-extern gboolean
-_mongo_message_is_ready (MongoMessage *message);
+extern gboolean _mongo_message_get_paused (MongoMessage *message);
+extern gboolean _mongo_message_set_paused (MongoMessage *message,
+                                           gboolean      _paused);
 
 static MongoClientContext *
 mongo_client_context_new (MongoServer       *server,
@@ -572,6 +575,7 @@ static void
 mongo_client_context_dispatch (MongoClientContext *client)
 {
    MongoMessage *message;
+   MongoMessage *reply;
    guint8 *data;
    gsize data_len;
    GType type_id = G_TYPE_NONE;
@@ -650,8 +654,28 @@ mongo_client_context_dispatch (MongoClientContext *client)
     *       the send path, however.
     */
 
-   if (_mongo_message_is_ready(message)) {
-      mongo_client_context_write(client, mongo_message_get_reply(message));
+   if (!_mongo_message_get_paused(message)) {
+      if ((reply = mongo_message_get_reply(message))) {
+         mongo_client_context_write(client, reply);
+      } else {
+         MongoBson **documents;
+
+         g_print("no reply, generating.\n");
+
+         reply = g_object_new(MONGO_TYPE_REPLY,
+                              "cursor-id", 0UL,
+                              "flags", MONGO_REPLY_QUERY_FAILURE,
+                              "request-id", -1,
+                              "response-to", client->header.request_id,
+                              NULL);
+         documents = g_new0(MongoBson*, 1);
+         documents[0] = mongo_bson_new_empty();
+         mongo_bson_append_string(documents[0], "$err", "Server did not handle query.");
+         mongo_bson_append_int(documents[0], "code", 1234);
+         mongo_reply_set_documents(MONGO_REPLY(reply), documents, 1);
+         mongo_bson_unref(documents[0]);
+         g_object_unref(reply);
+      }
    }
 
    g_object_unref(message);

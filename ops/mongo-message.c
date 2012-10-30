@@ -29,6 +29,7 @@ struct _MongoMessagePrivate
    gint32        request_id;
    gint32        response_to;
    MongoMessage *reply;
+   gboolean      _paused;
 };
 
 enum
@@ -42,11 +43,19 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 
-gboolean
-_mongo_message_is_ready (MongoMessage *message)
+void
+_mongo_message_set_paused (MongoMessage *message,
+                           gboolean      _paused)
 {
-   g_return_val_if_fail(MONGO_IS_MESSAGE(message), FALSE);
-   return !!message->priv->reply;
+   g_assert(message);
+   message->priv->_paused = _paused;
+}
+
+gboolean
+_mongo_message_get_paused (MongoMessage *message)
+{
+   g_assert(message);
+   return message->priv->_paused;
 }
 
 MongoMessage *

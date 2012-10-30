@@ -50,29 +50,31 @@ struct _MongoQueryClass
    MongoMessageClass parent_class;
 };
 
-const gchar     *mongo_query_get_collection (MongoQuery      *query);
-MongoQueryFlags  mongo_query_get_flags      (MongoQuery      *query);
-guint            mongo_query_get_limit      (MongoQuery      *query);
-const MongoBson *mongo_query_get_query      (MongoQuery      *query);
-const MongoBson *mongo_query_get_selector   (MongoQuery      *query);
-guint            mongo_query_get_skip       (MongoQuery      *query);
-GType            mongo_query_get_type       (void) G_GNUC_CONST;
-void             mongo_query_set_collection (MongoQuery      *query,
-                                             const gchar     *collection);
-void             mongo_query_set_flags      (MongoQuery      *query,
-                                             MongoQueryFlags  flags);
-void             mongo_query_set_limit      (MongoQuery      *query,
-                                             guint            limit);
-void             mongo_query_set_query      (MongoQuery      *query,
-                                             const MongoBson *bson);
-void             mongo_query_set_selector   (MongoQuery      *query,
-                                             const MongoBson *bson);
-void             mongo_query_set_skip       (MongoQuery      *query,
-                                             guint            skip);
-void             mongo_query_take_query     (MongoQuery      *query,
-                                             MongoBson       *bson);
-void             mongo_query_take_selector  (MongoQuery      *query,
-                                             MongoBson       *bson);
+const gchar     *mongo_query_get_collection   (MongoQuery      *query);
+const gchar     *mongo_query_get_command_name (MongoQuery      *query);
+MongoQueryFlags  mongo_query_get_flags        (MongoQuery      *query);
+guint            mongo_query_get_limit        (MongoQuery      *query);
+const MongoBson *mongo_query_get_query        (MongoQuery      *query);
+const MongoBson *mongo_query_get_selector     (MongoQuery      *query);
+guint            mongo_query_get_skip         (MongoQuery      *query);
+GType            mongo_query_get_type         (void) G_GNUC_CONST;
+gboolean         mongo_query_is_command       (MongoQuery      *query);
+void             mongo_query_set_collection   (MongoQuery      *query,
+                                               const gchar     *collection);
+void             mongo_query_set_flags        (MongoQuery      *query,
+                                               MongoQueryFlags  flags);
+void             mongo_query_set_limit        (MongoQuery      *query,
+                                               guint            limit);
+void             mongo_query_set_query        (MongoQuery      *query,
+                                               const MongoBson *bson);
+void             mongo_query_set_selector     (MongoQuery      *query,
+                                               const MongoBson *bson);
+void             mongo_query_set_skip         (MongoQuery      *query,
+                                               guint            skip);
+void             mongo_query_take_query       (MongoQuery      *query,
+                                               MongoBson       *bson);
+void             mongo_query_take_selector    (MongoQuery      *query,
+                                               MongoBson       *bson);
 
 G_END_DECLS
 
