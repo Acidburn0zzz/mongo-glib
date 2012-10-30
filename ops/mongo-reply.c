@@ -189,19 +189,19 @@ mongo_reply_save_to_data (MongoMessage *message,
    v32 = GINT32_TO_LE(mongo_message_get_response_to(message));
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
-   v32 = GINT32_TO_LE(MONGO_OPERATION_REPLY);
+   v32 = GUINT32_TO_LE(MONGO_OPERATION_REPLY);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
-   v32 = GINT32_TO_LE(priv->flags);
+   v32 = GUINT32_TO_LE(priv->flags);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
-   v64 = GINT64_TO_LE(priv->cursor_id);
+   v64 = GUINT64_TO_LE(priv->cursor_id);
    g_byte_array_append(bytes, (guint8 *)&v64, sizeof v64);
 
    v32 = GINT32_TO_LE(priv->offset);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
-   v32 = GINT32_TO_LE(priv->count);
+   v32 = GUINT32_TO_LE(priv->count);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
    for (i = 0; i < priv->count; i++) {
@@ -214,6 +214,8 @@ mongo_reply_save_to_data (MongoMessage *message,
    memcpy(bytes->data, &v32, sizeof v32);
 
    *length = bytes->len;
+
+   DUMP_BYTES(buf, bytes->data, bytes->len);
 
    return g_byte_array_free(bytes, FALSE);
 }

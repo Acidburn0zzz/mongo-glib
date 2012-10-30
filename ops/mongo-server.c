@@ -85,6 +85,11 @@ mongo_client_context_new (MongoServer       *server,
 static void
 mongo_client_context_dispatch (MongoClientContext *client);
 
+static void
+mongo_server_read_header_cb (GInputStream *stream,
+                             GAsyncResult *result,
+                             gpointer      user_data);
+
 GMainContext *
 mongo_server_get_async_context (MongoServer *server)
 {
@@ -124,8 +129,16 @@ mongo_server_read_msg_cb (GInputStream *stream,
    }
 
    /*
-    * TODO: Start reading next header.
+    * Start reading next message header.
     */
+   memset((guint8 *)&client->header, 0, sizeof client->header);
+   g_input_stream_read_async(stream,
+                             (guint8 *)&client->header,
+                             sizeof client->header,
+                             G_PRIORITY_DEFAULT,
+                             client->cancellable,
+                             (GAsyncReadyCallback)mongo_server_read_header_cb,
+                             mongo_client_context_ref(client));
 
    mongo_client_context_unref(client);
 
@@ -542,6 +555,7 @@ mongo_client_context_write (MongoClientContext  *client,
                                     &written,
                                     client->cancellable,
                                     NULL)) {
+         g_output_stream_flush(client->output, client->cancellable, NULL);
          g_free(buf);
          EXIT;
       }

@@ -64,9 +64,7 @@ mongo_message_set_reply (MongoMessage *message,
    g_clear_object(&message->priv->reply);
    if (reply) {
       message->priv->reply = g_object_ref(reply);
-      g_object_set(reply,
-                   "response-to", message->priv->response_to,
-                   NULL);
+      mongo_message_set_response_to(reply, message->priv->request_id);
    }
 }
 
