@@ -37,6 +37,7 @@ struct _MongoClientContext
    volatile gint      ref_count;
    GCancellable      *cancellable;
    GSocketConnection *connection;
+   GOutputStream     *output;
    MongoServer       *server;
    guint8            *incoming;
 
@@ -121,6 +122,10 @@ mongo_server_read_msg_cb (GInputStream *stream,
       mongo_client_context_dispatch(client);
       break;
    }
+
+   /*
+    * TODO: Start reading next header.
+    */
 
    mongo_client_context_unref(client);
 
@@ -484,6 +489,7 @@ mongo_client_context_dispose (MongoClientContext *context)
    ENTRY;
 
    g_clear_object(&context->cancellable);
+   g_clear_object(&context->output);
 
    if (context->server) {
       g_object_remove_weak_pointer(G_OBJECT(context->server),
@@ -498,6 +504,7 @@ mongo_client_context_new (MongoServer       *server,
                           GSocketConnection *connection)
 {
    MongoClientContext *context;
+   GOutputStream *output_stream;
 
    ENTRY;
    context = g_slice_new0(MongoClientContext);
@@ -505,9 +512,46 @@ mongo_client_context_new (MongoServer       *server,
    context->cancellable = g_cancellable_new();
    context->server = server;
    context->connection = g_object_ref(connection);
+   output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
+   context->output = g_buffered_output_stream_new(output_stream);
+   g_buffered_output_stream_set_auto_grow(
+         G_BUFFERED_OUTPUT_STREAM(context->output),
+         TRUE);
    g_object_add_weak_pointer(G_OBJECT(context->server),
                              (gpointer *)&context->server);
    RETURN(context);
+}
+
+void
+mongo_client_context_write (MongoClientContext  *client,
+                            MongoMessage        *message)
+{
+   guint8 *buf;
+   gsize buflen;
+   gsize written;
+
+   ENTRY;
+
+   g_assert(client);
+   g_assert(message);
+
+   if ((buf = mongo_message_save_to_data(message, &buflen))) {
+      if (g_output_stream_write_all(client->output,
+                                    buf,
+                                    buflen,
+                                    &written,
+                                    client->cancellable,
+                                    NULL)) {
+         g_free(buf);
+         EXIT;
+      }
+   }
+
+   g_free(buf);
+
+   /*
+    * TODO: Fail the client since we could not write all data.
+    */
 }
 
 static void
@@ -593,7 +637,7 @@ mongo_client_context_dispatch (MongoClientContext *client)
     */
 
    if (_mongo_message_is_ready(message)) {
-      g_print("Ready to send a reply.\n");
+      mongo_client_context_write(client, mongo_message_get_reply(message));
    }
 
    g_object_unref(message);

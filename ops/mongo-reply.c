@@ -19,6 +19,7 @@
 #include <glib/gi18n.h>
 
 #include "mongo-debug.h"
+#include "mongo-operation.h"
 #include "mongo-reply.h"
 
 G_DEFINE_TYPE(MongoReply, mongo_reply, MONGO_TYPE_MESSAGE)
@@ -159,6 +160,64 @@ mongo_reply_set_offset (MongoReply *reply,
    g_object_notify_by_pspec(G_OBJECT(reply), gParamSpecs[PROP_OFFSET]);
 }
 
+static guint8 *
+mongo_reply_save_to_data (MongoMessage *message,
+                          gsize        *length)
+{
+   MongoReplyPrivate *priv;
+   const guint8 *buf;
+   MongoReply *reply = (MongoReply *)message;
+   GByteArray *bytes;
+   gint32 v32;
+   gint64 v64;
+   gsize buflen;
+   guint i;
+
+   g_assert(MONGO_IS_REPLY(reply));
+   g_assert(length);
+
+   priv = reply->priv;
+
+   bytes = g_byte_array_sized_new(64);
+
+   v32 = 0;
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(mongo_message_get_request_id(message));
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(mongo_message_get_response_to(message));
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(MONGO_OPERATION_REPLY);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(priv->flags);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v64 = GINT64_TO_LE(priv->cursor_id);
+   g_byte_array_append(bytes, (guint8 *)&v64, sizeof v64);
+
+   v32 = GINT32_TO_LE(priv->offset);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(priv->count);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   for (i = 0; i < priv->count; i++) {
+      if ((buf = mongo_bson_get_data(priv->documents[i], &buflen))) {
+         g_byte_array_append(bytes, buf, buflen);
+      }
+   }
+
+   v32 = GUINT32_TO_LE(bytes->len);
+   memcpy(bytes->data, &v32, sizeof v32);
+
+   *length = bytes->len;
+
+   return g_byte_array_free(bytes, FALSE);
+}
+
 static void
 mongo_reply_finalize (GObject *object)
 {
@@ -216,7 +275,7 @@ mongo_reply_set_property (GObject      *object,
 
    switch (prop_id) {
    case PROP_CURSOR_ID:
-      mongo_reply_set_cursor_id(reply, g_value_get_int64(value));
+      mongo_reply_set_cursor_id(reply, g_value_get_uint64(value));
       break;
    case PROP_FLAGS:
       mongo_reply_set_flags(reply, g_value_get_flags(value));
@@ -233,12 +292,16 @@ static void
 mongo_reply_class_init (MongoReplyClass *klass)
 {
    GObjectClass *object_class;
+   MongoMessageClass *message_class;
 
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = mongo_reply_finalize;
    object_class->get_property = mongo_reply_get_property;
    object_class->set_property = mongo_reply_set_property;
    g_type_class_add_private(object_class, sizeof(MongoReplyPrivate));
+
+   message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->save_to_data = mongo_reply_save_to_data;
 
    gParamSpecs[PROP_COUNT] =
       g_param_spec_uint("count",

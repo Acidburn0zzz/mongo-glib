@@ -50,24 +50,31 @@ struct _MongoMessageClass
 {
    GInitiallyUnownedClass parent_class;
 
-   gboolean (*load_from_data) (MongoMessage *message,
-                               const guint8 *data,
-                               gsize         length);
+   gboolean  (*load_from_data) (MongoMessage *message,
+                                const guint8 *data,
+                                gsize         length);
+   guint8   *(*save_to_data)   (MongoMessage *message,
+                                gsize        *length);
 };
 
-GType    mongo_message_get_type        (void) G_GNUC_CONST;
-gint     mongo_message_get_request_id  (MongoMessage    *message);
-gint     mongo_message_get_response_to (MongoMessage    *message);
-gboolean mongo_message_load_from_data  (MongoMessage    *message,
-                                        const guint8    *data,
-                                        gsize            length);
-void     mongo_message_reply_one       (MongoMessage    *message,
-                                        MongoReplyFlags  flags,
-                                        MongoBson       *bson);
-void     mongo_message_set_request_id  (MongoMessage    *message,
-                                        gint             request_id);
-void     mongo_message_set_response_to (MongoMessage    *message,
-                                        gint             response_to);
+GType         mongo_message_get_type        (void) G_GNUC_CONST;
+gint          mongo_message_get_request_id  (MongoMessage    *message);
+MongoMessage *mongo_message_get_reply       (MongoMessage    *message);
+gint          mongo_message_get_response_to (MongoMessage    *message);
+gboolean      mongo_message_load_from_data  (MongoMessage    *message,
+                                             const guint8    *data,
+                                             gsize            length);
+guint8       *mongo_message_save_to_data    (MongoMessage    *message,
+                                             gsize           *length);
+void          mongo_message_set_request_id  (MongoMessage    *message,
+                                             gint             request_id);
+void          mongo_message_set_reply       (MongoMessage    *message,
+                                             MongoMessage    *reply);
+void          mongo_message_set_reply_bson  (MongoMessage    *message,
+                                             MongoReplyFlags  flags,
+                                             MongoBson       *bson);
+void          mongo_message_set_response_to (MongoMessage    *message,
+                                             gint             response_to);
 
 G_END_DECLS
 

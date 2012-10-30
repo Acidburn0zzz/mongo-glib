@@ -20,26 +20,22 @@
 
 #include "mongo-debug.h"
 #include "mongo-message.h"
+#include "mongo-reply.h"
 
 G_DEFINE_ABSTRACT_TYPE(MongoMessage, mongo_message, G_TYPE_INITIALLY_UNOWNED)
 
 struct _MongoMessagePrivate
 {
-   gint32 request_id;
-   gint32 response_to;
-
-   gboolean          one_shot;
-   MongoReplyFlags   reply_flags;
-   MongoBson       **reply_docs;
-   guint64           reply_cursor;
-   guint             reply_count;
-   guint             reply_skip;
+   gint32        request_id;
+   gint32        response_to;
+   MongoMessage *reply;
 };
 
 enum
 {
    PROP_0,
    PROP_REQUEST_ID,
+   PROP_REPLY,
    PROP_RESPONSE_TO,
    LAST_PROP
 };
@@ -50,33 +46,55 @@ gboolean
 _mongo_message_is_ready (MongoMessage *message)
 {
    g_return_val_if_fail(MONGO_IS_MESSAGE(message), FALSE);
-   return message->priv->one_shot;
+   return !!message->priv->reply;
+}
+
+MongoMessage *
+mongo_message_get_reply (MongoMessage *message)
+{
+   g_return_val_if_fail(MONGO_IS_MESSAGE(message), NULL);
+   return message->priv->reply;
 }
 
 void
-mongo_message_reply_one (MongoMessage    *message,
-                         MongoReplyFlags  flags,
-                         MongoBson       *document)
+mongo_message_set_reply (MongoMessage *message,
+                         MongoMessage *reply)
+{
+   g_return_if_fail(MONGO_IS_MESSAGE(message));
+   g_clear_object(&message->priv->reply);
+   if (reply) {
+      message->priv->reply = g_object_ref(reply);
+      g_object_set(reply,
+                   "response-to", message->priv->response_to,
+                   NULL);
+   }
+}
+
+void
+mongo_message_set_reply_bson (MongoMessage    *message,
+                              MongoReplyFlags  flags,
+                              MongoBson       *bson)
 {
    MongoMessagePrivate *priv;
+   MongoMessage *reply;
+   MongoBson **docs;
 
    g_return_if_fail(MONGO_IS_MESSAGE(message));
-   g_return_if_fail(document);
 
    priv = message->priv;
 
-   if (priv->one_shot) {
-      g_warning("Cannot call %s() after setting reply.\n", G_STRFUNC);
-      return;
-   }
-
-   priv->one_shot = TRUE;
-   priv->reply_flags = flags;
-   priv->reply_docs = g_new0(MongoBson*, 1);
-   priv->reply_docs[0] = mongo_bson_ref(document);
-   priv->reply_count = 1;
-   priv->reply_cursor = 0;
-   priv->reply_skip = 0;
+   reply = g_object_new(MONGO_TYPE_REPLY,
+                        "cursor-id", 0UL,
+                        "offset", 0,
+                        "request-id", -1,
+                        "response-to", priv->request_id,
+                        "flags", flags,
+                        NULL);
+   docs = g_new0(MongoBson*, 1);
+   docs[0] = mongo_bson_ref(bson);
+   mongo_reply_set_documents(MONGO_REPLY(reply), docs, 1);
+   mongo_message_set_reply(message, reply);
+   g_object_unref(reply);
 }
 
 gint
@@ -131,23 +149,27 @@ mongo_message_load_from_data (MongoMessage *message,
    return ret;
 }
 
-static void
-mongo_message_finalize (GObject *object)
+guint8 *
+mongo_message_save_to_data (MongoMessage *message,
+                            gsize        *length)
 {
-   MongoMessagePrivate *priv;
-   guint i;
+   guint8 *ret;
 
    ENTRY;
 
-   priv = MONGO_MESSAGE(object)->priv;
+   g_return_val_if_fail(MONGO_IS_MESSAGE(message), NULL);
+   g_return_val_if_fail(length, NULL);
 
-   if (priv->reply_docs) {
-      for (i = 0; i < priv->reply_count; i++) {
-         mongo_bson_unref(priv->reply_docs[i]);
-      }
-      g_free(priv->reply_docs);
-   }
+   *length = 0;
+   ret = MONGO_MESSAGE_GET_CLASS(message)->save_to_data(message, length);
+   RETURN(ret);
+}
 
+static void
+mongo_message_finalize (GObject *object)
+{
+   ENTRY;
+   g_clear_object(&MONGO_MESSAGE(object)->priv->reply);
    G_OBJECT_CLASS(mongo_message_parent_class)->finalize(object);
    EXIT;
 }

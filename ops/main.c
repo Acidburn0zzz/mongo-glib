@@ -19,7 +19,7 @@ query_cb (MongoServer        *server,
    doc = mongo_bson_new_empty();
    mongo_bson_append_string(doc, "you", str);
    mongo_bson_append_int(doc, "ok", 1);
-   mongo_message_reply_one(message, MONGO_REPLY_NONE, doc);
+   mongo_message_set_reply_bson(message, MONGO_REPLY_NONE, doc);
    mongo_bson_unref(doc);
    g_free(str);
 }
