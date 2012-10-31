@@ -49,7 +49,7 @@
 #define MONGO_MICRO_VERSION (@MONGO_MICRO_VERSION@)
 
 /**
- * MONGO_VERSION
+ * MONGO_VERSION:
  *
  * Mongo version.
  */

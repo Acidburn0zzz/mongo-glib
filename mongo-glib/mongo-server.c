@@ -89,6 +89,12 @@ mongo_server_read_header_cb (GInputStream *stream,
                              GAsyncResult *result,
                              gpointer      user_data);
 
+MongoServer *
+mongo_server_new (void)
+{
+   return g_object_new(MONGO_TYPE_SERVER, NULL);
+}
+
 static void
 mongo_server_read_msg_cb (GInputStream *stream,
                           GAsyncResult *result,

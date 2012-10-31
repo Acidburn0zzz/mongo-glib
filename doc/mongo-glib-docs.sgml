@@ -3,67 +3,56 @@
                "http://www.oasis-open.org/docbook/xml/4.3/docbookx.dtd"
 [
   <!ENTITY % local.common.attrib "xmlns:xi  CDATA  #FIXED 'http://www.w3.org/2003/XInclude'">
-  <!ENTITY version SYSTEM "version.xml">
 ]>
 <book id="index">
   <bookinfo>
-    <title>Mongo-GLib Reference Manual</title>
-    <releaseinfo>Version &version;</releaseinfo>
-    <copyright>
-      <year>2012</year>
-      <holder>Christian Hergert</holder>
-    </copyright>
-    <legalnotice>
-      <para>
-        Permission is granted to copy, distribute and/or modify this
-        document under the terms of the <citetitle>GNU Free
-        Documentation License</citetitle>, Version 1.1 or any later
-        version published by the Free Software Foundation with no
-        Invariant Sections, no Front-Cover Texts, and no Back-Cover
-        Texts. You may obtain a copy of the <citetitle>GNU Free
-        Documentation License</citetitle> from the Free Software
-        Foundation by visiting <ulink type="http"
-        url="http://www.fsf.org">their Web site</ulink> or by writing
-        to:
-
-        <address>
-          The Free Software Foundation, Inc.,
-          <street>59 Temple Place</street> - Suite 330,
-          <city>Boston</city>, <state>MA</state> <postcode>02111-1307</postcode>,
-          <country>USA</country>
-        </address>
-      </para>
-    </legalnotice>
+    <title>mongo-glib Reference Manual</title>
+    <releaseinfo>
+      for mongo-glib [VERSION].
+      The latest version of this documentation can be found on-line at
+      <ulink role="online-location" url="http://[SERVER]/mongo-glib/index.html">http://[SERVER]/mongo-glib/</ulink>.
+    </releaseinfo>
   </bookinfo>
 
   <chapter>
-    <title>Mongo API Reference</title>
-    <xi:include href="xml/mongo-bson.xml"/>
+    <title>[Insert title here]</title>
+        <xi:include href="xml/mongo-bson.xml"/>
     <xi:include href="xml/mongo-bson-stream.xml"/>
+    <xi:include href="xml/mongo-client-context.xml"/>
     <xi:include href="xml/mongo-collection.xml"/>
     <xi:include href="xml/mongo-connection.xml"/>
     <xi:include href="xml/mongo-cursor.xml"/>
     <xi:include href="xml/mongo-database.xml"/>
+    <xi:include href="xml/mongo-flags.xml"/>
     <xi:include href="xml/mongo-manager.xml"/>
+    <xi:include href="xml/mongo-message.xml"/>
+    <xi:include href="xml/mongo-message-delete.xml"/>
+    <xi:include href="xml/mongo-message-getmore.xml"/>
+    <xi:include href="xml/mongo-message-insert.xml"/>
+    <xi:include href="xml/mongo-message-kill-cursors.xml"/>
+    <xi:include href="xml/mongo-message-msg.xml"/>
+    <xi:include href="xml/mongo-message-query.xml"/>
+    <xi:include href="xml/mongo-message-reply.xml"/>
+    <xi:include href="xml/mongo-message-update.xml"/>
     <xi:include href="xml/mongo-object-id.xml"/>
+    <xi:include href="xml/mongo-operation.xml"/>
     <xi:include href="xml/mongo-protocol.xml"/>
+    <xi:include href="xml/mongo-server.xml"/>
+    <xi:include href="xml/mongo-version.xml"/>
+
   </chapter>
-
-  <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
-
+  <chapter id="object-tree">
+    <title>Object Hierarchy</title>
+     <xi:include href="xml/tree_index.sgml"/>
+  </chapter>
   <index id="api-index-full">
     <title>API Index</title>
     <xi:include href="xml/api-index-full.xml"><xi:fallback /></xi:include>
   </index>
-
   <index id="deprecated-api-index" role="deprecated">
     <title>Index of deprecated API</title>
     <xi:include href="xml/api-index-deprecated.xml"><xi:fallback /></xi:include>
   </index>
 
-  <chapter id="object-tree">
-    <title>Object Hierarchy</title>
-    <xi:include href="xml/tree_index.sgml"/>
-  </chapter>
-
+  <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
 </book>

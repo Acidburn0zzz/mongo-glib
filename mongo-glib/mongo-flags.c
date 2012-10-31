@@ -96,7 +96,7 @@ mongo_reply_flags_get_type (void)
    };
 
    if (g_once_init_enter(&initialized)) {
-      type_id = g_flags_register_static("MongoMessageReplyFlags", values);
+      type_id = g_flags_register_static("MongoReplyFlags", values);
       g_once_init_leave(&initialized, TRUE);
    }
 

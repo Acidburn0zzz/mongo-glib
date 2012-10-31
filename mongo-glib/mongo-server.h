@@ -35,10 +35,6 @@ G_BEGIN_DECLS
 #define MONGO_IS_SERVER_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass),  MONGO_TYPE_SERVER))
 #define MONGO_SERVER_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  MONGO_TYPE_SERVER, MongoServerClass))
 
-#define MONGO_SERVER_ASYNC_CONTEXT "async-context"
-#define MONGO_SERVER_INTERFACE     "interface"
-#define MONGO_SERVER_PORT          "port"
-
 typedef struct _MongoServer        MongoServer;
 typedef struct _MongoServerClass   MongoServerClass;
 typedef struct _MongoServerPrivate MongoServerPrivate;
@@ -110,8 +106,7 @@ struct _MongoServerClass
 };
 
 GType        mongo_server_get_type         (void) G_GNUC_CONST;
-MongoServer *mongo_server_new              (const gchar        *first_property,
-                                            ...) G_GNUC_NULL_TERMINATED;
+MongoServer *mongo_server_new              (void);
 void         mongo_server_pause_message    (MongoServer         *server,
                                             MongoMessage        *message);
 void         mongo_server_unpause_message  (MongoServer         *server,
