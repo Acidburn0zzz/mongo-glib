@@ -27,13 +27,26 @@ G_BEGIN_DECLS
 
 #include "mongo-bson.h"
 #include "mongo-bson-stream.h"
-#include "mongo-connection.h"
+#include "mongo-client-context.h"
 #include "mongo-collection.h"
+#include "mongo-connection.h"
 #include "mongo-cursor.h"
 #include "mongo-database.h"
+#include "mongo-delete.h"
+#include "mongo-flags.h"
+#include "mongo-getmore.h"
+#include "mongo-insert.h"
+#include "mongo-kill-cursors.h"
 #include "mongo-manager.h"
+#include "mongo-message.h"
+#include "mongo-msg.h"
 #include "mongo-object-id.h"
+#include "mongo-operation.h"
 #include "mongo-protocol.h"
+#include "mongo-query.h"
+#include "mongo-reply.h"
+#include "mongo-server.h"
+#include "mongo-update.h"
 
 #undef MONGO_INSIDE
 
