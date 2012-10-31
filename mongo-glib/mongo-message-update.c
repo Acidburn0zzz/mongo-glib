@@ -1,4 +1,4 @@
-/* mongo-delete.c
+/* mongo-message-update.c
  *
  * Copyright (C) 2012 Christian Hergert <christian@hergert.me>
  *
@@ -18,11 +18,11 @@
 
 #include <glib/gi18n.h>
 
-#include "mongo-delete.h"
+#include "mongo-message-update.h"
 
-G_DEFINE_TYPE(MongoDelete, mongo_delete, MONGO_TYPE_MESSAGE)
+G_DEFINE_TYPE(MongoMessageUpdate, mongo_message_update, MONGO_TYPE_MESSAGE)
 
-struct _MongoDeletePrivate
+struct _MongoMessageUpdatePrivate
 {
    gpointer dummy;
 };
@@ -36,18 +36,18 @@ enum
 //static GParamSpec *gParamSpecs[LAST_PROP];
 
 static void
-mongo_delete_finalize (GObject *object)
+mongo_message_update_finalize (GObject *object)
 {
-   G_OBJECT_CLASS(mongo_delete_parent_class)->finalize(object);
+   G_OBJECT_CLASS(mongo_message_update_parent_class)->finalize(object);
 }
 
 static void
-mongo_delete_get_property (GObject    *object,
+mongo_message_update_get_property (GObject    *object,
                            guint       prop_id,
                            GValue     *value,
                            GParamSpec *pspec)
 {
-   //MongoDelete *delete = MONGO_DELETE(object);
+   //MongoMessageUpdate *update = MONGO_MESSAGE_UPDATE(object);
 
    switch (prop_id) {
    default:
@@ -56,12 +56,12 @@ mongo_delete_get_property (GObject    *object,
 }
 
 static void
-mongo_delete_set_property (GObject      *object,
+mongo_message_update_set_property (GObject      *object,
                            guint         prop_id,
                            const GValue *value,
                            GParamSpec   *pspec)
 {
-   //MongoDelete *delete = MONGO_DELETE(object);
+   //MongoMessageUpdate *update = MONGO_MESSAGE_UPDATE(object);
 
    switch (prop_id) {
    default:
@@ -70,22 +70,22 @@ mongo_delete_set_property (GObject      *object,
 }
 
 static void
-mongo_delete_class_init (MongoDeleteClass *klass)
+mongo_message_update_class_init (MongoMessageUpdateClass *klass)
 {
    GObjectClass *object_class;
 
    object_class = G_OBJECT_CLASS(klass);
-   object_class->finalize = mongo_delete_finalize;
-   object_class->get_property = mongo_delete_get_property;
-   object_class->set_property = mongo_delete_set_property;
-   g_type_class_add_private(object_class, sizeof(MongoDeletePrivate));
+   object_class->finalize = mongo_message_update_finalize;
+   object_class->get_property = mongo_message_update_get_property;
+   object_class->set_property = mongo_message_update_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoMessageUpdatePrivate));
 }
 
 static void
-mongo_delete_init (MongoDelete *delete)
+mongo_message_update_init (MongoMessageUpdate *update)
 {
-   delete->priv =
-      G_TYPE_INSTANCE_GET_PRIVATE(delete,
-                                  MONGO_TYPE_DELETE,
-                                  MongoDeletePrivate);
+   update->priv =
+      G_TYPE_INSTANCE_GET_PRIVATE(update,
+                                  MONGO_TYPE_MESSAGE_UPDATE,
+                                  MongoMessageUpdatePrivate);
 }

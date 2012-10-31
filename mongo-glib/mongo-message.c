@@ -20,7 +20,7 @@
 
 #include "mongo-debug.h"
 #include "mongo-message.h"
-#include "mongo-reply.h"
+#include "mongo-message-reply.h"
 
 G_DEFINE_ABSTRACT_TYPE(MongoMessage, mongo_message, G_TYPE_INITIALLY_UNOWNED)
 
@@ -99,7 +99,7 @@ mongo_message_set_reply_bson (MongoMessage    *message,
 
    priv = message->priv;
 
-   reply = g_object_new(MONGO_TYPE_REPLY,
+   reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
                         "cursor-id", 0UL,
                         "offset", 0,
                         "request-id", -1,
@@ -108,7 +108,7 @@ mongo_message_set_reply_bson (MongoMessage    *message,
                         NULL);
    docs = g_new0(MongoBson*, 1);
    docs[0] = mongo_bson_ref(bson);
-   mongo_reply_set_documents(MONGO_REPLY(reply), docs, 1);
+   mongo_message_reply_set_documents(MONGO_MESSAGE_REPLY(reply), docs, 1);
    mongo_message_set_reply(message, reply);
    g_object_unref(reply);
 }
@@ -246,7 +246,7 @@ mongo_message_class_init (MongoMessageClass *klass)
     *
     * The "request-id" property is the client generated identifier for the
     * message delivered to the mongo server. The mongo server replies with
-    * a #MongoReply placing "request-id" as the "response-to".
+    * a #MongoMessageReply placing "request-id" as the "response-to".
     */
    gParamSpecs[PROP_REQUEST_ID] =
       g_param_spec_int("request-id",

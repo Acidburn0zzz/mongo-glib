@@ -1,4 +1,4 @@
-/* mongo-reply.c
+/* mongo-message-reply.c
  *
  * Copyright (C) 2012 Christian Hergert <christian@hergert.me>
  *
@@ -20,11 +20,11 @@
 
 #include "mongo-debug.h"
 #include "mongo-operation.h"
-#include "mongo-reply.h"
+#include "mongo-message-reply.h"
 
-G_DEFINE_TYPE(MongoReply, mongo_reply, MONGO_TYPE_MESSAGE)
+G_DEFINE_TYPE(MongoMessageReply, mongo_message_reply, MONGO_TYPE_MESSAGE)
 
-struct _MongoReplyPrivate
+struct _MongoMessageReplyPrivate
 {
    guint32           count;
    guint64           cursor_id;
@@ -46,31 +46,31 @@ enum
 static GParamSpec *gParamSpecs[LAST_PROP];
 
 gsize
-mongo_reply_get_count (MongoReply *reply)
+mongo_message_reply_get_count (MongoMessageReply *reply)
 {
-   g_return_val_if_fail(MONGO_IS_REPLY(reply), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), 0);
    return reply->priv->count;
 }
 
 guint64
-mongo_reply_get_cursor_id (MongoReply *reply)
+mongo_message_reply_get_cursor_id (MongoMessageReply *reply)
 {
-   g_return_val_if_fail(MONGO_IS_REPLY(reply), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), 0);
    return reply->priv->cursor_id;
 }
 
 void
-mongo_reply_set_cursor_id (MongoReply *reply,
+mongo_message_reply_set_cursor_id (MongoMessageReply *reply,
                            guint64     cursor_id)
 {
-   g_return_if_fail(MONGO_IS_REPLY(reply));
+   g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
    reply->priv->cursor_id = cursor_id;
    g_object_notify_by_pspec(G_OBJECT(reply), gParamSpecs[PROP_CURSOR_ID]);
 }
 
 /**
- * mongo_reply_get_documents:
- * @reply: (in): A #MongoReply.
+ * mongo_message_reply_get_documents:
+ * @reply: (in): A #MongoMessageReply.
  * @count: (out): Location for number of documents.
  *
  * Returns an array of documents for the reply. @count is set to the
@@ -79,10 +79,10 @@ mongo_reply_set_cursor_id (MongoReply *reply,
  * Returns: (transfer none) (array length=count): An array of MongoBson.
  */
 MongoBson **
-mongo_reply_get_documents (MongoReply *reply,
+mongo_message_reply_get_documents (MongoMessageReply *reply,
                            gsize      *count)
 {
-   g_return_val_if_fail(MONGO_IS_REPLY(reply), NULL);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), NULL);
 
    if (count) {
       *count = reply->priv->count;
@@ -92,8 +92,8 @@ mongo_reply_get_documents (MongoReply *reply,
 }
 
 /**
- * mongo_reply_set_documents:
- * @reply: (in): A #MongoReply.
+ * mongo_message_reply_set_documents:
+ * @reply: (in): A #MongoMessageReply.
  * @documents: (in) (array length=count) (transfer full): Array of #MongoBson.
  * @count: (in): The number of #MongoBson in @documents.
  *
@@ -104,14 +104,14 @@ mongo_reply_get_documents (MongoReply *reply,
  * Count should be set to the number of documents in @documents.
  */
 void
-mongo_reply_set_documents (MongoReply  *reply,
+mongo_message_reply_set_documents (MongoMessageReply  *reply,
                            MongoBson  **documents,
                            gsize        count)
 {
-   MongoReplyPrivate *priv;
+   MongoMessageReplyPrivate *priv;
    guint i;
 
-   g_return_if_fail(MONGO_IS_REPLY(reply));
+   g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
 
    priv = reply->priv;
 
@@ -129,51 +129,51 @@ mongo_reply_set_documents (MongoReply  *reply,
 }
 
 MongoReplyFlags
-mongo_reply_get_flags (MongoReply *reply)
+mongo_message_reply_get_flags (MongoMessageReply *reply)
 {
-   g_return_val_if_fail(MONGO_IS_REPLY(reply), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), 0);
    return reply->priv->flags;
 }
 
 void
-mongo_reply_set_flags (MongoReply      *reply,
-                       MongoReplyFlags  flags)
+mongo_message_reply_set_flags (MongoMessageReply *reply,
+                       MongoReplyFlags    flags)
 {
-   g_return_if_fail(MONGO_IS_REPLY(reply));
+   g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
    reply->priv->flags = flags;
    g_object_notify_by_pspec(G_OBJECT(reply), gParamSpecs[PROP_FLAGS]);
 }
 
 guint
-mongo_reply_get_offset (MongoReply *reply)
+mongo_message_reply_get_offset (MongoMessageReply *reply)
 {
-   g_return_val_if_fail(MONGO_IS_REPLY(reply), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), 0);
    return reply->priv->offset;
 }
 
 void
-mongo_reply_set_offset (MongoReply *reply,
+mongo_message_reply_set_offset (MongoMessageReply *reply,
                         guint       offset)
 {
-   g_return_if_fail(MONGO_IS_REPLY(reply));
+   g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
    reply->priv->offset = offset;
    g_object_notify_by_pspec(G_OBJECT(reply), gParamSpecs[PROP_OFFSET]);
 }
 
 static guint8 *
-mongo_reply_save_to_data (MongoMessage *message,
+mongo_message_reply_save_to_data (MongoMessage *message,
                           gsize        *length)
 {
-   MongoReplyPrivate *priv;
+   MongoMessageReplyPrivate *priv;
    const guint8 *buf;
-   MongoReply *reply = (MongoReply *)message;
+   MongoMessageReply *reply = (MongoMessageReply *)message;
    GByteArray *bytes;
    gint32 v32;
    gint64 v64;
    gsize buflen;
    guint i;
 
-   g_assert(MONGO_IS_REPLY(reply));
+   g_assert(MONGO_IS_MESSAGE_REPLY(reply));
    g_assert(length);
 
    priv = reply->priv;
@@ -221,12 +221,12 @@ mongo_reply_save_to_data (MongoMessage *message,
 }
 
 static gboolean
-mongo_reply_load_from_data (MongoMessage *message,
+mongo_message_reply_load_from_data (MongoMessage *message,
                             const guint8 *data,
                             gsize         length)
 {
-   MongoReplyPrivate *priv;
-   MongoReply *reply = (MongoReply *)message;
+   MongoMessageReplyPrivate *priv;
+   MongoMessageReply *reply = (MongoMessageReply *)message;
    GPtrArray *docs = NULL;
    MongoBson *bson;
    guint64 cursor;
@@ -239,7 +239,7 @@ mongo_reply_load_from_data (MongoMessage *message,
 
    ENTRY;
 
-   g_assert(MONGO_IS_REPLY(reply));
+   g_assert(MONGO_IS_MESSAGE_REPLY(reply));
    g_assert(data);
    g_assert(len);
 
@@ -302,14 +302,14 @@ failure:
 }
 
 static void
-mongo_reply_finalize (GObject *object)
+mongo_message_reply_finalize (GObject *object)
 {
-   MongoReplyPrivate *priv;
+   MongoMessageReplyPrivate *priv;
    guint i;
 
    ENTRY;
 
-   priv = MONGO_REPLY(object)->priv;
+   priv = MONGO_MESSAGE_REPLY(object)->priv;
 
    for (i = 0; i < priv->count; i++) {
       mongo_bson_unref(priv->documents[i]);
@@ -317,31 +317,31 @@ mongo_reply_finalize (GObject *object)
 
    g_free(priv->documents);
 
-   G_OBJECT_CLASS(mongo_reply_parent_class)->finalize(object);
+   G_OBJECT_CLASS(mongo_message_reply_parent_class)->finalize(object);
 
    EXIT;
 }
 
 static void
-mongo_reply_get_property (GObject    *object,
+mongo_message_reply_get_property (GObject    *object,
                           guint       prop_id,
                           GValue     *value,
                           GParamSpec *pspec)
 {
-   MongoReply *reply = MONGO_REPLY(object);
+   MongoMessageReply *reply = MONGO_MESSAGE_REPLY(object);
 
    switch (prop_id) {
    case PROP_COUNT:
-      g_value_set_uint(value, mongo_reply_get_count(reply));
+      g_value_set_uint(value, mongo_message_reply_get_count(reply));
       break;
    case PROP_CURSOR_ID:
-      g_value_set_uint64(value, mongo_reply_get_cursor_id(reply));
+      g_value_set_uint64(value, mongo_message_reply_get_cursor_id(reply));
       break;
    case PROP_FLAGS:
-      g_value_set_flags(value, mongo_reply_get_flags(reply));
+      g_value_set_flags(value, mongo_message_reply_get_flags(reply));
       break;
    case PROP_OFFSET:
-      g_value_set_uint(value, mongo_reply_get_offset(reply));
+      g_value_set_uint(value, mongo_message_reply_get_offset(reply));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -349,22 +349,22 @@ mongo_reply_get_property (GObject    *object,
 }
 
 static void
-mongo_reply_set_property (GObject      *object,
+mongo_message_reply_set_property (GObject      *object,
                           guint         prop_id,
                           const GValue *value,
                           GParamSpec   *pspec)
 {
-   MongoReply *reply = MONGO_REPLY(object);
+   MongoMessageReply *reply = MONGO_MESSAGE_REPLY(object);
 
    switch (prop_id) {
    case PROP_CURSOR_ID:
-      mongo_reply_set_cursor_id(reply, g_value_get_uint64(value));
+      mongo_message_reply_set_cursor_id(reply, g_value_get_uint64(value));
       break;
    case PROP_FLAGS:
-      mongo_reply_set_flags(reply, g_value_get_flags(value));
+      mongo_message_reply_set_flags(reply, g_value_get_flags(value));
       break;
    case PROP_OFFSET:
-      mongo_reply_set_offset(reply, g_value_get_uint(value));
+      mongo_message_reply_set_offset(reply, g_value_get_uint(value));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -372,21 +372,21 @@ mongo_reply_set_property (GObject      *object,
 }
 
 static void
-mongo_reply_class_init (MongoReplyClass *klass)
+mongo_message_reply_class_init (MongoMessageReplyClass *klass)
 {
    GObjectClass *object_class;
    MongoMessageClass *message_class;
 
    object_class = G_OBJECT_CLASS(klass);
-   object_class->finalize = mongo_reply_finalize;
-   object_class->get_property = mongo_reply_get_property;
-   object_class->set_property = mongo_reply_set_property;
-   g_type_class_add_private(object_class, sizeof(MongoReplyPrivate));
+   object_class->finalize = mongo_message_reply_finalize;
+   object_class->get_property = mongo_message_reply_get_property;
+   object_class->set_property = mongo_message_reply_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoMessageReplyPrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
-   message_class->load_from_data = mongo_reply_load_from_data;
+   message_class->load_from_data = mongo_message_reply_load_from_data;
    message_class->operation = MONGO_OPERATION_REPLY;
-   message_class->save_to_data = mongo_reply_save_to_data;
+   message_class->save_to_data = mongo_message_reply_save_to_data;
 
    gParamSpecs[PROP_COUNT] =
       g_param_spec_uint("count",
@@ -433,10 +433,10 @@ mongo_reply_class_init (MongoReplyClass *klass)
 }
 
 static void
-mongo_reply_init (MongoReply *reply)
+mongo_message_reply_init (MongoMessageReply *reply)
 {
    reply->priv =
       G_TYPE_INSTANCE_GET_PRIVATE(reply,
-                                  MONGO_TYPE_REPLY,
-                                  MongoReplyPrivate);
+                                  MONGO_TYPE_MESSAGE_REPLY,
+                                  MongoMessageReplyPrivate);
 }

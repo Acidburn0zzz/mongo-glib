@@ -108,7 +108,7 @@ mongo_collection_find_one_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    g_return_if_fail(MONGO_IS_CONNECTION(connection));
@@ -215,7 +215,7 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
                                   GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    MongoBson **documents;
    MongoBson *ret = NULL;
    gsize length;
@@ -230,7 +230,7 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
       RETURN(NULL);
    }
 
-   if ((documents = mongo_reply_get_documents(reply, &length)) && length) {
+   if ((documents = mongo_message_reply_get_documents(reply, &length)) && length) {
       ret = mongo_bson_dup(documents[0]);
    } else {
       g_set_error(error,
@@ -249,7 +249,7 @@ mongo_collection_count_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    ENTRY;
@@ -349,7 +349,7 @@ mongo_collection_count_finish (MongoCollection  *collection,
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoBsonIter iter;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    MongoBson **documents;
    gboolean ret = FALSE;
    gsize length;
@@ -364,7 +364,7 @@ mongo_collection_count_finish (MongoCollection  *collection,
       GOTO(failure);
    }
 
-   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
+   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
       GOTO(failure);
    }
 
@@ -750,8 +750,8 @@ mongo_collection_drop_cb (GObject      *object,
                           gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
+   MongoMessageReply *reply;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
    gboolean ret = TRUE;
    GError *error = NULL;
 

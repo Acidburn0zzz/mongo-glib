@@ -1,4 +1,4 @@
-/* mongo-msg.c
+/* mongo-message-msg.c
  *
  * Copyright (C) 2012 Christian Hergert <christian@hergert.me>
  *
@@ -18,11 +18,11 @@
 
 #include <glib/gi18n.h>
 
-#include "mongo-msg.h"
+#include "mongo-message-msg.h"
 
-G_DEFINE_TYPE(MongoMsg, mongo_msg, MONGO_TYPE_MESSAGE)
+G_DEFINE_TYPE(MongoMessageMsg, mongo_message_msg, MONGO_TYPE_MESSAGE)
 
-struct _MongoMsgPrivate
+struct _MongoMessageMsgPrivate
 {
    gpointer dummy;
 };
@@ -36,18 +36,18 @@ enum
 //static GParamSpec *gParamSpecs[LAST_PROP];
 
 static void
-mongo_msg_finalize (GObject *object)
+mongo_message_msg_finalize (GObject *object)
 {
-   G_OBJECT_CLASS(mongo_msg_parent_class)->finalize(object);
+   G_OBJECT_CLASS(mongo_message_msg_parent_class)->finalize(object);
 }
 
 static void
-mongo_msg_get_property (GObject    *object,
+mongo_message_msg_get_property (GObject    *object,
                         guint       prop_id,
                         GValue     *value,
                         GParamSpec *pspec)
 {
-   //MongoMsg *msg = MONGO_MSG(object);
+   //MongoMessageMsg *msg = MONGO_MESSAGE_MSG(object);
 
    switch (prop_id) {
    default:
@@ -56,12 +56,12 @@ mongo_msg_get_property (GObject    *object,
 }
 
 static void
-mongo_msg_set_property (GObject      *object,
+mongo_message_msg_set_property (GObject      *object,
                         guint         prop_id,
                         const GValue *value,
                         GParamSpec   *pspec)
 {
-   //MongoMsg *msg = MONGO_MSG(object);
+   //MongoMessageMsg *msg = MONGO_MESSAGE_MSG(object);
 
    switch (prop_id) {
    default:
@@ -70,22 +70,22 @@ mongo_msg_set_property (GObject      *object,
 }
 
 static void
-mongo_msg_class_init (MongoMsgClass *klass)
+mongo_message_msg_class_init (MongoMessageMsgClass *klass)
 {
    GObjectClass *object_class;
 
    object_class = G_OBJECT_CLASS(klass);
-   object_class->finalize = mongo_msg_finalize;
-   object_class->get_property = mongo_msg_get_property;
-   object_class->set_property = mongo_msg_set_property;
-   g_type_class_add_private(object_class, sizeof(MongoMsgPrivate));
+   object_class->finalize = mongo_message_msg_finalize;
+   object_class->get_property = mongo_message_msg_get_property;
+   object_class->set_property = mongo_message_msg_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoMessageMsgPrivate));
 }
 
 static void
-mongo_msg_init (MongoMsg *msg)
+mongo_message_msg_init (MongoMessageMsg *msg)
 {
    msg->priv =
       G_TYPE_INSTANCE_GET_PRIVATE(msg,
-                                  MONGO_TYPE_MSG,
-                                  MongoMsgPrivate);
+                                  MONGO_TYPE_MESSAGE_MSG,
+                                  MongoMessageMsgPrivate);
 }

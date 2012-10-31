@@ -1,4 +1,4 @@
-/* mongo-kill-cursors.c
+/* mongo-message-kill-cursors.c
  *
  * Copyright (C) 2012 Christian Hergert <christian@hergert.me>
  *
@@ -18,11 +18,11 @@
 
 #include <glib/gi18n.h>
 
-#include "mongo-kill-cursors.h"
+#include "mongo-message-kill-cursors.h"
 
-G_DEFINE_TYPE(MongoKillCursors, mongo_kill_cursors, MONGO_TYPE_MESSAGE)
+G_DEFINE_TYPE(MongoMessageKillCursors, mongo_message_kill_cursors, MONGO_TYPE_MESSAGE)
 
-struct _MongoKillCursorsPrivate
+struct _MongoMessageKillCursorsPrivate
 {
    gpointer dummy;
 };
@@ -36,18 +36,18 @@ enum
 //static GParamSpec *gParamSpecs[LAST_PROP];
 
 static void
-mongo_kill_cursors_finalize (GObject *object)
+mongo_message_kill_cursors_finalize (GObject *object)
 {
-   G_OBJECT_CLASS(mongo_kill_cursors_parent_class)->finalize(object);
+   G_OBJECT_CLASS(mongo_message_kill_cursors_parent_class)->finalize(object);
 }
 
 static void
-mongo_kill_cursors_get_property (GObject    *object,
+mongo_message_kill_cursors_get_property (GObject    *object,
                                  guint       prop_id,
                                  GValue     *value,
                                  GParamSpec *pspec)
 {
-   //MongoKillCursors *cursors = MONGO_KILL_CURSORS(object);
+   //MongoMessageKillCursors *cursors = MONGO_MESSAGE_KILL_CURSORS(object);
 
    switch (prop_id) {
    default:
@@ -56,12 +56,12 @@ mongo_kill_cursors_get_property (GObject    *object,
 }
 
 static void
-mongo_kill_cursors_set_property (GObject      *object,
+mongo_message_kill_cursors_set_property (GObject      *object,
                                  guint         prop_id,
                                  const GValue *value,
                                  GParamSpec   *pspec)
 {
-   //MongoKillCursors *cursors = MONGO_KILL_CURSORS(object);
+   //MongoMessageKillCursors *cursors = MONGO_MESSAGE_KILL_CURSORS(object);
 
    switch (prop_id) {
    default:
@@ -70,22 +70,22 @@ mongo_kill_cursors_set_property (GObject      *object,
 }
 
 static void
-mongo_kill_cursors_class_init (MongoKillCursorsClass *klass)
+mongo_message_kill_cursors_class_init (MongoMessageKillCursorsClass *klass)
 {
    GObjectClass *object_class;
 
    object_class = G_OBJECT_CLASS(klass);
-   object_class->finalize = mongo_kill_cursors_finalize;
-   object_class->get_property = mongo_kill_cursors_get_property;
-   object_class->set_property = mongo_kill_cursors_set_property;
-   g_type_class_add_private(object_class, sizeof(MongoKillCursorsPrivate));
+   object_class->finalize = mongo_message_kill_cursors_finalize;
+   object_class->get_property = mongo_message_kill_cursors_get_property;
+   object_class->set_property = mongo_message_kill_cursors_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoMessageKillCursorsPrivate));
 }
 
 static void
-mongo_kill_cursors_init (MongoKillCursors *cursors)
+mongo_message_kill_cursors_init (MongoMessageKillCursors *cursors)
 {
    cursors->priv =
       G_TYPE_INSTANCE_GET_PRIVATE(cursors,
-                                  MONGO_TYPE_KILL_CURSORS,
-                                  MongoKillCursorsPrivate);
+                                  MONGO_TYPE_MESSAGE_KILL_CURSORS,
+                                  MongoMessageKillCursorsPrivate);
 }

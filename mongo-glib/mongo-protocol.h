@@ -29,7 +29,7 @@
 #include "mongo-bson.h"
 #include "mongo-flags.h"
 #include "mongo-operation.h"
-#include "mongo-reply.h"
+#include "mongo-message-reply.h"
 
 G_BEGIN_DECLS
 
@@ -108,7 +108,7 @@ void        mongo_protocol_query_async         (MongoProtocol        *protocol,
                                                 GCancellable         *cancellable,
                                                 GAsyncReadyCallback   callback,
                                                 gpointer              user_data);
-MongoReply *mongo_protocol_query_finish        (MongoProtocol        *protocol,
+MongoMessageReply *mongo_protocol_query_finish        (MongoProtocol        *protocol,
                                                 GAsyncResult         *result,
                                                 GError              **error);
 void        mongo_protocol_getmore_async       (MongoProtocol        *protocol,
@@ -118,7 +118,7 @@ void        mongo_protocol_getmore_async       (MongoProtocol        *protocol,
                                                 GCancellable         *cancellable,
                                                 GAsyncReadyCallback   callback,
                                                 gpointer              user_data);
-MongoReply *mongo_protocol_getmore_finish      (MongoProtocol        *protocol,
+MongoMessageReply *mongo_protocol_getmore_finish      (MongoProtocol        *protocol,
                                                 GAsyncResult         *result,
                                                 GError              **error);
 void        mongo_protocol_delete_async        (MongoProtocol        *protocol,

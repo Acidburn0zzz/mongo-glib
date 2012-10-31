@@ -153,7 +153,7 @@ mongo_database_drop_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    ENTRY;

@@ -506,15 +506,15 @@ mongo_protocol_query_async (MongoProtocol       *protocol,
  *
  * Completed an asynchronous request to query.
  *
- * Returns: (transfer full): A #MongoReply.
+ * Returns: (transfer full): A #MongoMessageReply.
  */
-MongoReply *
+MongoMessageReply *
 mongo_protocol_query_finish (MongoProtocol    *protocol,
                              GAsyncResult     *result,
                              GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoReply *reply;
+   MongoMessageReply *reply;
 
    ENTRY;
 
@@ -586,15 +586,15 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
  *
  * Completes an asynchronous request to fetch more documents from a cursor.
  *
- * Returns: (transfer full): A #MongoReply if successful; otherwise or %NULL.
+ * Returns: (transfer full): A #MongoMessageReply if successful; otherwise or %NULL.
  */
-MongoReply *
+MongoMessageReply *
 mongo_protocol_getmore_finish (MongoProtocol  *protocol,
                                GAsyncResult   *result,
                                GError        **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoReply *reply;
+   MongoMessageReply *reply;
 
    ENTRY;
 
@@ -846,7 +846,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    MongoProtocolPrivate *priv;
    GSimpleAsyncResult *request;
    const guint8 *buffer;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
    guint8 *doc_buffer;
    gsize count;
@@ -917,7 +917,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       GOTO(failure);
    }
 
-   reply = g_object_new(MONGO_TYPE_REPLY,
+   reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
                         "request-id", header.request_id,
                         "response-to", header.response_to,
                         NULL);

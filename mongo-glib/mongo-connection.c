@@ -219,7 +219,7 @@ mongo_connection_query_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    g_assert(MONGO_IS_PROTOCOL(protocol));
@@ -244,7 +244,7 @@ mongo_connection_getmore_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoProtocol *protocol = (MongoProtocol *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    ENTRY;
@@ -518,7 +518,7 @@ mongo_connection_ismaster_cb (GObject      *object,
    const gchar *host;
    const gchar *primary;
    const gchar *replica_set;
-   MongoReply *reply = NULL;
+   MongoMessageReply *reply = NULL;
    MongoBson **documents;
    gboolean ismaster = FALSE;
    Request *request;
@@ -544,7 +544,7 @@ mongo_connection_ismaster_cb (GObject      *object,
    /*
     * Make sure we got a valid document back.
     */
-   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
+   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
       GOTO(failure);
    }
 
@@ -885,7 +885,7 @@ mongo_connection_command_cb (GObject      *object,
    MongoBsonIter iter;
    MongoBson **documents;
    const gchar *errmsg;
-   MongoReply *reply = NULL;
+   MongoMessageReply *reply = NULL;
    GError *error = NULL;
    gsize length;
 
@@ -905,7 +905,7 @@ mongo_connection_command_cb (GObject      *object,
    /*
     * Check to see if the command provided a failure document.
     */
-   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
+   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
       mongo_bson_iter_init(&iter, documents[0]);
       if (mongo_bson_iter_find(&iter, "ok")) {
          if (!mongo_bson_iter_get_value_boolean(&iter)) {
@@ -1004,15 +1004,15 @@ mongo_connection_command_async (MongoConnection     *connection,
  * Completes an asynchronous request to execute a command on a remote
  * Mongo server. Upon failure, %NULL is returned and @error is set.
  *
- * Returns: (transfer full): A #MongoReply if successful; otherwise %NULL.
+ * Returns: (transfer full): A #MongoMessageReply if successful; otherwise %NULL.
  */
-MongoReply *
+MongoMessageReply *
 mongo_connection_command_finish (MongoConnection  *connection,
                                  GAsyncResult     *result,
                                  GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoReply *ret;
+   MongoMessageReply *ret;
 
    ENTRY;
 
@@ -1343,15 +1343,15 @@ mongo_connection_query_async (MongoConnection     *connection,
  *
  * Completes an asynchronous request to mongo_connection_query_async().
  *
- * Returns: (transfer full): A #MongoReply.
+ * Returns: (transfer full): A #MongoMessageReply.
  */
-MongoReply *
+MongoMessageReply *
 mongo_connection_query_finish (MongoConnection  *connection,
                                GAsyncResult     *result,
                                GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoReply *reply;
+   MongoMessageReply *reply;
 
    ENTRY;
 
@@ -1417,15 +1417,15 @@ mongo_connection_getmore_async (MongoConnection     *connection,
  *
  * Completes an asynchronous request to mongo_connection_getmore_finish().
  *
- * Returns: (transfer full): A #MongoReply.
+ * Returns: (transfer full): A #MongoMessageReply.
  */
-MongoReply *
+MongoMessageReply *
 mongo_connection_getmore_finish (MongoConnection  *connection,
                                  GAsyncResult     *result,
                                  GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoReply *reply;
+   MongoMessageReply *reply;
 
    ENTRY;
 

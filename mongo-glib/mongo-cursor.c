@@ -245,7 +245,7 @@ mongo_cursor_count_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    g_return_if_fail(MONGO_IS_CONNECTION(connection));
@@ -319,7 +319,7 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoBsonIter iter;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    MongoBson **documents;
    gboolean ret = FALSE;
    gsize length;
@@ -333,7 +333,7 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
       GOTO(failure);
    }
 
-   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
+   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
       GOTO(failure);
    }
 
@@ -364,7 +364,7 @@ mongo_cursor_kill_cursors_cb (GObject      *object,
 
 static void
 mongo_cursor_foreach_dispatch (MongoConnection    *connection,
-                               MongoReply         *reply,
+                               MongoMessageReply         *reply,
                                GSimpleAsyncResult *simple)
 {
    MongoCursorCallback func;
@@ -397,11 +397,11 @@ mongo_cursor_foreach_dispatch (MongoConnection    *connection,
 
    priv = cursor->priv;
 
-   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
+   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
       GOTO(stop);
    }
 
-   offset = mongo_reply_get_offset(reply);
+   offset = mongo_message_reply_get_offset(reply);
 
    for (i = 0; i < length; i++) {
       if (((offset + i) >= priv->limit) ||
@@ -410,8 +410,8 @@ mongo_cursor_foreach_dispatch (MongoConnection    *connection,
       }
    }
 
-   offset = mongo_reply_get_offset(reply);
-   cursor_id = mongo_reply_get_cursor_id(reply);
+   offset = mongo_message_reply_get_offset(reply);
+   cursor_id = mongo_message_reply_get_cursor_id(reply);
 
    if (!cursor_id || ((offset + length) >= priv->limit)) {
       GOTO(stop);
@@ -440,7 +440,7 @@ mongo_cursor_foreach_dispatch (MongoConnection    *connection,
    EXIT;
 
 stop:
-   if (mongo_reply_get_cursor_id(reply)) {
+   if (mongo_message_reply_get_cursor_id(reply)) {
       mongo_connection_kill_cursors_async(connection,
                                           &cursor_id,
                                           1,
@@ -464,7 +464,7 @@ mongo_cursor_foreach_getmore_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    ENTRY;
@@ -492,7 +492,7 @@ mongo_cursor_foreach_query_cb (GObject      *object,
 {
    GSimpleAsyncResult *simple = user_data;
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    ENTRY;

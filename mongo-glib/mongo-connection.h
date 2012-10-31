@@ -73,90 +73,90 @@ struct _MongoConnectionClass
    GObjectClass parent_class;
 };
 
-void             mongo_connection_command_async     (MongoConnection      *connection,
-                                                     const gchar          *db,
-                                                     const MongoBson      *command,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-MongoReply      *mongo_connection_command_finish    (MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-void             mongo_connection_getmore_async     (MongoConnection      *connection,
-                                                     const gchar          *db_and_collection,
-                                                     guint32               limit,
-                                                     guint64               cursor_id,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-MongoReply      *mongo_connection_getmore_finish    (MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-void             mongo_connection_insert_async      (MongoConnection      *connection,
-                                                     const gchar          *db_and_collection,
-                                                     MongoInsertFlags      flags,
-                                                     MongoBson           **documents,
-                                                     gsize                 n_documents,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-gboolean         mongo_connection_insert_finish     (MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-void             mongo_connection_delete_async      (MongoConnection      *connection,
-                                                     const gchar          *db_and_collection,
-                                                     MongoDeleteFlags      flags,
-                                                     const MongoBson      *selector,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-gboolean         mongo_connection_delete_finish     (MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-void             mongo_connection_update_async      (MongoConnection      *connection,
-                                                     const gchar          *db_and_collection,
-                                                     MongoUpdateFlags      flags,
-                                                     const MongoBson      *selector,
-                                                     const MongoBson      *update,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-gboolean         mongo_connection_update_finish     (MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-void             mongo_connection_query_async       (MongoConnection      *connection,
-                                                     const gchar          *db_and_collection,
-                                                     MongoQueryFlags       flags,
-                                                     guint32               skip,
-                                                     guint32               limit,
-                                                     const MongoBson      *query,
-                                                     const MongoBson      *field_selector,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-void            mongo_connection_kill_cursors_async (MongoConnection      *connection,
-                                                     guint64              *cursors,
-                                                     gsize                 n_cursors,
-                                                     GCancellable         *cancellable,
-                                                     GAsyncReadyCallback   callback,
-                                                     gpointer              user_data);
-gboolean        mongo_connection_kill_cursors_finish(MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-MongoReply      *mongo_connection_query_finish      (MongoConnection      *connection,
-                                                     GAsyncResult         *result,
-                                                     GError              **error);
-MongoDatabase   *mongo_connection_get_database      (MongoConnection      *connection,
-                                                     const gchar          *name);
-GType            mongo_connection_get_type          (void) G_GNUC_CONST;
-GQuark           mongo_connection_error_quark       (void) G_GNUC_CONST;
-MongoConnection *mongo_connection_new               (void);
-MongoConnection *mongo_connection_new_from_uri      (const gchar          *uri);
-gboolean         mongo_connection_get_slave_okay    (MongoConnection      *connection);
-void             mongo_connection_set_slave_okay    (MongoConnection      *connection,
-                                                     gboolean              slave_okay);
-MongoConnection *mongo_database_get_connection      (MongoDatabase        *database);
-MongoConnection *mongo_collection_get_connection    (MongoCollection      *collection);
+void               mongo_connection_command_async       (MongoConnection      *connection,
+                                                         const gchar          *db,
+                                                         const MongoBson      *command,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+MongoMessageReply *mongo_connection_command_finish      (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+void               mongo_connection_getmore_async       (MongoConnection      *connection,
+                                                         const gchar          *db_and_collection,
+                                                         guint32               limit,
+                                                         guint64               cursor_id,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+MongoMessageReply *mongo_connection_getmore_finish      (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+void               mongo_connection_insert_async        (MongoConnection      *connection,
+                                                         const gchar          *db_and_collection,
+                                                         MongoInsertFlags      flags,
+                                                         MongoBson           **documents,
+                                                         gsize                 n_documents,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+gboolean           mongo_connection_insert_finish       (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+void               mongo_connection_delete_async        (MongoConnection      *connection,
+                                                         const gchar          *db_and_collection,
+                                                         MongoDeleteFlags      flags,
+                                                         const MongoBson      *selector,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+gboolean           mongo_connection_delete_finish       (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+void               mongo_connection_update_async        (MongoConnection      *connection,
+                                                         const gchar          *db_and_collection,
+                                                         MongoUpdateFlags      flags,
+                                                         const MongoBson      *selector,
+                                                         const MongoBson      *update,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+gboolean           mongo_connection_update_finish       (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+void               mongo_connection_query_async         (MongoConnection      *connection,
+                                                         const gchar          *db_and_collection,
+                                                         MongoQueryFlags       flags,
+                                                         guint32               skip,
+                                                         guint32               limit,
+                                                         const MongoBson      *query,
+                                                         const MongoBson      *field_selector,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+void               mongo_connection_kill_cursors_async  (MongoConnection      *connection,
+                                                         guint64              *cursors,
+                                                         gsize                 n_cursors,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+gboolean           mongo_connection_kill_cursors_finish (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+MongoMessageReply *mongo_connection_query_finish        (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
+MongoDatabase     *mongo_connection_get_database        (MongoConnection      *connection,
+                                                         const gchar          *name);
+GType              mongo_connection_get_type            (void) G_GNUC_CONST;
+GQuark             mongo_connection_error_quark         (void) G_GNUC_CONST;
+MongoConnection   *mongo_connection_new                 (void);
+MongoConnection   *mongo_connection_new_from_uri        (const gchar          *uri);
+gboolean           mongo_connection_get_slave_okay      (MongoConnection      *connection);
+void               mongo_connection_set_slave_okay      (MongoConnection      *connection,
+                                                         gboolean              slave_okay);
+MongoConnection   *mongo_database_get_connection        (MongoDatabase        *database);
+MongoConnection   *mongo_collection_get_connection      (MongoCollection      *collection);
 
 G_END_DECLS
 

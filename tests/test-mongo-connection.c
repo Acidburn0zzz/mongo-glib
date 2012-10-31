@@ -47,7 +47,7 @@ test2_query_cb (GObject      *object,
                 gpointer      user_data)
 {
    MongoConnection *connection = (MongoConnection *)object;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    MongoBson **documents;
    gboolean *success = user_data;
    GError *error = NULL;
@@ -58,7 +58,7 @@ test2_query_cb (GObject      *object,
    g_assert_no_error(error);
    g_assert(reply);
 
-   documents = mongo_reply_get_documents(reply, &length);
+   documents = mongo_message_reply_get_documents(reply, &length);
 
    for (i = 0; i < length; i++) {
       g_assert(documents[i]);
@@ -135,7 +135,7 @@ test4_query_cb (GObject      *object,
 {
    MongoConnection *connection = (MongoConnection *)object;
    gboolean *success = user_data;
-   MongoReply *reply;
+   MongoMessageReply *reply;
    GError *error = NULL;
 
    reply = mongo_connection_command_finish(connection, result, &error);

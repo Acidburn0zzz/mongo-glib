@@ -1,4 +1,4 @@
-/* mongo-query.c
+/* mongo-message-query.c
  *
  * Copyright (C) 2012 Christian Hergert <christian@hergert.me>
  *
@@ -19,11 +19,11 @@
 #include <glib/gi18n.h>
 
 #include "mongo-debug.h"
-#include "mongo-query.h"
+#include "mongo-message-query.h"
 
-G_DEFINE_TYPE(MongoQuery, mongo_query, MONGO_TYPE_MESSAGE)
+G_DEFINE_TYPE(MongoMessageQuery, mongo_message_query, MONGO_TYPE_MESSAGE)
 
-struct _MongoQueryPrivate
+struct _MongoMessageQueryPrivate
 {
    gchar           *collection;
    MongoQueryFlags  flags;
@@ -39,7 +39,7 @@ enum
    PROP_COLLECTION,
    PROP_FLAGS,
    PROP_LIMIT,
-   PROP_QUERY,
+   PROP_MESSAGE_QUERY,
    PROP_SELECTOR,
    PROP_SKIP,
    LAST_PROP
@@ -48,51 +48,51 @@ enum
 static GParamSpec *gParamSpecs[LAST_PROP];
 
 const gchar *
-mongo_query_get_collection (MongoQuery *query)
+mongo_message_query_get_collection (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), NULL);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), NULL);
    return query->priv->collection;
 }
 
 MongoQueryFlags
-mongo_query_get_flags (MongoQuery *query)
+mongo_message_query_get_flags (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), 0);
    return query->priv->flags;
 }
 
 guint
-mongo_query_get_limit (MongoQuery *query)
+mongo_message_query_get_limit (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), 0);
    return query->priv->limit;
 }
 
 const MongoBson *
-mongo_query_get_query (MongoQuery *query)
+mongo_message_query_get_query (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), NULL);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), NULL);
    return query->priv->query;
 }
 
 const MongoBson *
-mongo_query_get_selector (MongoQuery *query)
+mongo_message_query_get_selector (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), NULL);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), NULL);
    return query->priv->selector;
 }
 
 guint
-mongo_query_get_skip (MongoQuery *query)
+mongo_message_query_get_skip (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), 0);
    return query->priv->skip;
 }
 
 gboolean
-mongo_query_is_command (MongoQuery *query)
+mongo_message_query_is_command (MongoMessageQuery *query)
 {
-   g_return_val_if_fail(MONGO_IS_QUERY(query), FALSE);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), FALSE);
 
    if (query->priv->collection) {
       return g_str_has_suffix(query->priv->collection, ".$cmd");
@@ -102,16 +102,16 @@ mongo_query_is_command (MongoQuery *query)
 }
 
 const gchar *
-mongo_query_get_command_name (MongoQuery *query)
+mongo_message_query_get_command_name (MongoMessageQuery *query)
 {
-   MongoQueryPrivate *priv;
+   MongoMessageQueryPrivate *priv;
    MongoBsonIter iter;
 
-   g_return_val_if_fail(MONGO_IS_QUERY(query), NULL);
+   g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), NULL);
 
    priv = query->priv;
 
-   if (mongo_query_is_command(query)) {
+   if (mongo_message_query_is_command(query)) {
       if (priv->query) {
          mongo_bson_iter_init(&iter, priv->query);
          if (mongo_bson_iter_next(&iter)) {
@@ -124,12 +124,12 @@ mongo_query_get_command_name (MongoQuery *query)
 }
 
 void
-mongo_query_set_collection (MongoQuery  *query,
+mongo_message_query_set_collection (MongoMessageQuery  *query,
                             const gchar *collection)
 {
-   MongoQueryPrivate *priv;
+   MongoMessageQueryPrivate *priv;
 
-   g_return_if_fail(MONGO_IS_QUERY(query));
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
 
    priv = query->priv;
 
@@ -139,55 +139,55 @@ mongo_query_set_collection (MongoQuery  *query,
 }
 
 void
-mongo_query_set_flags (MongoQuery      *query,
-                       MongoQueryFlags  flags)
+mongo_message_query_set_flags (MongoMessageQuery *query,
+                               MongoQueryFlags    flags)
 {
-   g_return_if_fail(MONGO_IS_QUERY(query));
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    query->priv->flags = flags;
    g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_FLAGS]);
 }
 
 void
-mongo_query_set_limit (MongoQuery *query,
+mongo_message_query_set_limit (MongoMessageQuery *query,
                        guint       limit)
 {
-   g_return_if_fail(MONGO_IS_QUERY(query));
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    query->priv->limit = limit;
    g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_LIMIT]);
 }
 
 void
-mongo_query_set_query (MongoQuery      *query,
+mongo_message_query_set_query (MongoMessageQuery      *query,
                        const MongoBson *bson)
 {
-   g_return_if_fail(MONGO_IS_QUERY(query));
-   mongo_query_take_query(query, bson ? mongo_bson_dup(bson) : NULL);
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
+   mongo_message_query_take_query(query, bson ? mongo_bson_dup(bson) : NULL);
 }
 
 void
-mongo_query_set_selector (MongoQuery      *query,
+mongo_message_query_set_selector (MongoMessageQuery      *query,
                           const MongoBson *bson)
 {
-   g_return_if_fail(MONGO_IS_QUERY(query));
-   mongo_query_take_selector(query, bson ? mongo_bson_dup(bson) : NULL);
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
+   mongo_message_query_take_selector(query, bson ? mongo_bson_dup(bson) : NULL);
 }
 
 void
-mongo_query_set_skip (MongoQuery *query,
+mongo_message_query_set_skip (MongoMessageQuery *query,
                       guint       skip)
 {
-   g_return_if_fail(MONGO_IS_QUERY(query));
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    query->priv->skip = skip;
    g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_SKIP]);
 }
 
 void
-mongo_query_take_query (MongoQuery *query,
+mongo_message_query_take_query (MongoMessageQuery *query,
                         MongoBson  *bson)
 {
-   MongoQueryPrivate *priv;
+   MongoMessageQueryPrivate *priv;
 
-   g_return_if_fail(MONGO_IS_QUERY(query));
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
 
    priv = query->priv;
 
@@ -198,16 +198,16 @@ mongo_query_take_query (MongoQuery *query,
 
    priv->query = bson;
 
-   g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_QUERY]);
+   g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_MESSAGE_QUERY]);
 }
 
 void
-mongo_query_take_selector (MongoQuery *query,
+mongo_message_query_take_selector (MongoMessageQuery *query,
                            MongoBson  *bson)
 {
-   MongoQueryPrivate *priv;
+   MongoMessageQueryPrivate *priv;
 
-   g_return_if_fail(MONGO_IS_QUERY(query));
+   g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
 
    priv = query->priv;
 
@@ -222,21 +222,21 @@ mongo_query_take_selector (MongoQuery *query,
 }
 
 static gboolean
-mongo_query_load_from_data (MongoMessage *message,
+mongo_message_query_load_from_data (MongoMessage *message,
                             const guint8 *data,
                             gsize         data_len)
 {
-   MongoQueryPrivate *priv;
+   MongoMessageQueryPrivate *priv;
    const gchar *name;
    guint32 vu32;
 
    ENTRY;
 
-   g_assert(MONGO_IS_QUERY(message));
+   g_assert(MONGO_IS_MESSAGE_QUERY(message));
    g_assert(data);
    g_assert(data_len);
 
-   priv = MONGO_QUERY(message)->priv;
+   priv = MONGO_MESSAGE_QUERY(message)->priv;
 
    if (data_len > 4) {
       memcpy(&vu32, data, sizeof vu32);
@@ -294,13 +294,13 @@ mongo_query_load_from_data (MongoMessage *message,
 }
 
 static void
-mongo_query_finalize (GObject *object)
+mongo_message_query_finalize (GObject *object)
 {
-   MongoQueryPrivate *priv;
+   MongoMessageQueryPrivate *priv;
 
    ENTRY;
 
-   priv = MONGO_QUERY(object)->priv;
+   priv = MONGO_MESSAGE_QUERY(object)->priv;
 
    g_free(priv->collection);
 
@@ -312,37 +312,37 @@ mongo_query_finalize (GObject *object)
       mongo_bson_unref(priv->selector);
    }
 
-   G_OBJECT_CLASS(mongo_query_parent_class)->finalize(object);
+   G_OBJECT_CLASS(mongo_message_query_parent_class)->finalize(object);
 
    EXIT;
 }
 
 static void
-mongo_query_get_property (GObject    *object,
+mongo_message_query_get_property (GObject    *object,
                           guint       prop_id,
                           GValue     *value,
                           GParamSpec *pspec)
 {
-   MongoQuery *query = MONGO_QUERY(object);
+   MongoMessageQuery *query = MONGO_MESSAGE_QUERY(object);
 
    switch (prop_id) {
    case PROP_COLLECTION:
-      g_value_set_string(value, mongo_query_get_collection(query));
+      g_value_set_string(value, mongo_message_query_get_collection(query));
       break;
    case PROP_FLAGS:
-      g_value_set_flags(value, mongo_query_get_flags(query));
+      g_value_set_flags(value, mongo_message_query_get_flags(query));
       break;
    case PROP_LIMIT:
-      g_value_set_uint(value, mongo_query_get_limit(query));
+      g_value_set_uint(value, mongo_message_query_get_limit(query));
       break;
-   case PROP_QUERY:
-      g_value_set_boxed(value, mongo_query_get_query(query));
+   case PROP_MESSAGE_QUERY:
+      g_value_set_boxed(value, mongo_message_query_get_query(query));
       break;
    case PROP_SELECTOR:
-      g_value_set_boxed(value, mongo_query_get_selector(query));
+      g_value_set_boxed(value, mongo_message_query_get_selector(query));
       break;
    case PROP_SKIP:
-      g_value_set_uint(value, mongo_query_get_skip(query));
+      g_value_set_uint(value, mongo_message_query_get_skip(query));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -350,31 +350,31 @@ mongo_query_get_property (GObject    *object,
 }
 
 static void
-mongo_query_set_property (GObject      *object,
+mongo_message_query_set_property (GObject      *object,
                           guint         prop_id,
                           const GValue *value,
                           GParamSpec   *pspec)
 {
-   MongoQuery *query = MONGO_QUERY(object);
+   MongoMessageQuery *query = MONGO_MESSAGE_QUERY(object);
 
    switch (prop_id) {
    case PROP_COLLECTION:
-      mongo_query_set_collection(query, g_value_get_string(value));
+      mongo_message_query_set_collection(query, g_value_get_string(value));
       break;
    case PROP_FLAGS:
-      mongo_query_set_flags(query, g_value_get_flags(value));
+      mongo_message_query_set_flags(query, g_value_get_flags(value));
       break;
    case PROP_LIMIT:
-      mongo_query_set_limit(query, g_value_get_uint(value));
+      mongo_message_query_set_limit(query, g_value_get_uint(value));
       break;
-   case PROP_QUERY:
-      mongo_query_set_query(query, g_value_get_boxed(value));
+   case PROP_MESSAGE_QUERY:
+      mongo_message_query_set_query(query, g_value_get_boxed(value));
       break;
    case PROP_SELECTOR:
-      mongo_query_set_selector(query, g_value_get_boxed(value));
+      mongo_message_query_set_selector(query, g_value_get_boxed(value));
       break;
    case PROP_SKIP:
-      mongo_query_set_skip(query, g_value_get_uint(value));
+      mongo_message_query_set_skip(query, g_value_get_uint(value));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -382,20 +382,20 @@ mongo_query_set_property (GObject      *object,
 }
 
 static void
-mongo_query_class_init (MongoQueryClass *klass)
+mongo_message_query_class_init (MongoMessageQueryClass *klass)
 {
    GObjectClass *object_class;
    MongoMessageClass *message_class;
 
    object_class = G_OBJECT_CLASS(klass);
-   object_class->finalize = mongo_query_finalize;
-   object_class->get_property = mongo_query_get_property;
-   object_class->set_property = mongo_query_set_property;
-   g_type_class_add_private(object_class, sizeof(MongoQueryPrivate));
+   object_class->finalize = mongo_message_query_finalize;
+   object_class->get_property = mongo_message_query_get_property;
+   object_class->set_property = mongo_message_query_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoMessageQueryPrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
    message_class->operation = MONGO_OPERATION_QUERY;
-   message_class->load_from_data = mongo_query_load_from_data;
+   message_class->load_from_data = mongo_message_query_load_from_data;
 
    gParamSpecs[PROP_COLLECTION] =
       g_param_spec_string("collection",
@@ -427,14 +427,14 @@ mongo_query_class_init (MongoQueryClass *klass)
    g_object_class_install_property(object_class, PROP_LIMIT,
                                    gParamSpecs[PROP_LIMIT]);
 
-   gParamSpecs[PROP_QUERY] =
+   gParamSpecs[PROP_MESSAGE_QUERY] =
       g_param_spec_boxed("query",
-                         _("Query"),
+                         _("MessageQuery"),
                          _("A bson containing the query to perform."),
                          MONGO_TYPE_BSON,
                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-   g_object_class_install_property(object_class, PROP_QUERY,
-                                   gParamSpecs[PROP_QUERY]);
+   g_object_class_install_property(object_class, PROP_MESSAGE_QUERY,
+                                   gParamSpecs[PROP_MESSAGE_QUERY]);
 
    gParamSpecs[PROP_SELECTOR] =
       g_param_spec_boxed("selector",
@@ -458,10 +458,10 @@ mongo_query_class_init (MongoQueryClass *klass)
 }
 
 static void
-mongo_query_init (MongoQuery *query)
+mongo_message_query_init (MongoMessageQuery *query)
 {
    query->priv =
       G_TYPE_INSTANCE_GET_PRIVATE(query,
-                                  MONGO_TYPE_QUERY,
-                                  MongoQueryPrivate);
+                                  MONGO_TYPE_MESSAGE_QUERY,
+                                  MongoMessageQueryPrivate);
 }

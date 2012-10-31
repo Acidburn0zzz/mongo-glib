@@ -21,9 +21,9 @@
 #include "mongo-bson.h"
 #include "mongo-debug.h"
 #include "mongo-message.h"
+#include "mongo-message-query.h"
+#include "mongo-message-reply.h"
 #include "mongo-operation.h"
-#include "mongo-query.h"
-#include "mongo-reply.h"
 #include "mongo-server.h"
 
 G_DEFINE_TYPE(MongoServer, mongo_server, G_TYPE_SOCKET_SERVICE)
@@ -588,27 +588,28 @@ mongo_client_context_dispatch (MongoClientContext *client)
 
    switch (client->header.op_code) {
    case MONGO_OPERATION_REPLY:
-      type_id = MONGO_TYPE_REPLY;
+      type_id = MONGO_TYPE_MESSAGE_REPLY;
       break;
    case MONGO_OPERATION_MSG:
-      //type_id = MONGO_TYPE_MSG;
+      //type_id = MONGO_TYPE_MESSAGE_MSG;
       break;
    case MONGO_OPERATION_UPDATE:
-      //type_id = MONGO_TYPE_UPDATE;
+      //type_id = MONGO_TYPE_MESSAGE_UPDATE;
       break;
    case MONGO_OPERATION_INSERT:
-      //type_id = MONGO_TYPE_INSERT;
+      //type_id = MONGO_TYPE_MESSAGE_INSERT;
       break;
    case MONGO_OPERATION_QUERY:
-      type_id = MONGO_TYPE_QUERY;
+      type_id = MONGO_TYPE_MESSAGE_QUERY;
       break;
    case MONGO_OPERATION_GETMORE:
-      //type_id = MONGO_TYPE_GETMORE;
+      //type_id = MONGO_TYPE_MESSAGE_GETMORE;
       break;
    case MONGO_OPERATION_DELETE:
-      //type_id = MONGO_TYPE_DELETE;
+      //type_id = MONGO_TYPE_MESSAGE_DELETE;
       break;
    case MONGO_OPERATION_KILL_CURSORS:
+      //type_id = MONGO_TYPE_MESSAGE_KILL_CURSORS;
       break;
    default:
       mongo_client_context_fail(client);
@@ -651,7 +652,7 @@ mongo_client_context_dispatch (MongoClientContext *client)
       if ((reply = mongo_message_get_reply(message))) {
          mongo_client_context_write(client, message, reply);
       } else {
-         reply = g_object_new(MONGO_TYPE_REPLY,
+         reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
                               "cursor-id", G_GUINT64_CONSTANT(0),
                               "flags", MONGO_REPLY_QUERY_FAILURE,
                               "request-id", -1,
@@ -659,9 +660,11 @@ mongo_client_context_dispatch (MongoClientContext *client)
                               NULL);
          documents = g_new0(MongoBson*, 1);
          documents[0] = mongo_bson_new_empty();
-         mongo_bson_append_string(documents[0], "$err", "Your request is denied.");
+         mongo_bson_append_string(documents[0], "$err",
+                                  "Your request is denied.");
          mongo_bson_append_int(documents[0], "code", 0);
-         mongo_reply_set_documents(MONGO_REPLY(reply), documents, 1);
+         mongo_message_reply_set_documents(MONGO_MESSAGE_REPLY(reply),
+                                           documents, 1);
          mongo_client_context_write(client, message, reply);
          g_object_unref(reply);
       }
