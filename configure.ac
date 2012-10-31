@@ -151,6 +151,7 @@ dnl **************************************************************************
 AC_CONFIG_FILES([
 	Makefile
 	mongo-glib-1.0.pc
+	mongo-glib/mongo-version.h
 	doc/Makefile
 	doc/version.xml
 ])

@@ -47,6 +47,7 @@ G_BEGIN_DECLS
 #include "mongo-operation.h"
 #include "mongo-protocol.h"
 #include "mongo-server.h"
+#include "mongo-version.h"
 
 #undef MONGO_INSIDE
 
