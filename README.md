@@ -79,7 +79,7 @@ def handleRequest(server, client, message):
     return True
 
 Server = Mongo.Server()
-Server.add_inet_port(5201, None)
+Server.add_inet_port(27017, None)
 Server.connect('request-query', handleRequest)
 
 GLib.MainLoop().run()
