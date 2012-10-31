@@ -27,6 +27,34 @@ G_BEGIN_DECLS
 #define MONGO_TYPE_REPLY_FLAGS (mongo_reply_flags_get_type())
 
 /**
+ * MongoDeleteFlags:
+ * @MONGO_DELETE_NONE: Specify no delete flags.
+ * @MONGO_DELETE_SINGLE_REMOVE: Only remove the first document matching the
+ *    document selector.
+ *
+ * #MongoDeleteFlags are used when performing a delete operation.
+ */
+typedef enum
+{
+   MONGO_DELETE_NONE          = 0,
+   MONGO_DELETE_SINGLE_REMOVE = 1 << 0,
+} MongoDeleteFlags;
+
+/**
+ * MongoInsertFlags:
+ * @MONGO_INSERT_NONE: Specify no insert flags.
+ * @MONGO_INSERT_CONTINUE_ON_ERROR: Continue inserting documents from
+ *    the insertion set even if one fails.
+ *
+ * #MongoInsertFlags are used when performing an insert operation.
+ */
+typedef enum
+{
+   MONGO_INSERT_NONE              = 0,
+   MONGO_INSERT_CONTINUE_ON_ERROR = 1 << 0,
+} MongoInsertFlags;
+
+/**
  * MongoQueryFlags:
  * @MONGO_QUERY_NONE: No query flags supplied.
  * @MONGO_QUERY_TAILABLE_CURSOR: Cursor will not be closed when the last
@@ -78,8 +106,26 @@ typedef enum
    MONGO_REPLY_AWAIT_CAPABLE      = 1 << 3,
 } MongoReplyFlags;
 
-GType mongo_query_flags_get_type (void) G_GNUC_CONST;
-GType mongo_reply_flags_get_type (void) G_GNUC_CONST;
+/**
+ * MongoUpdateFlags:
+ * @MONGO_UPDATE_NONE: No update flags specified.
+ * @MONGO_UPDATE_UPSERT: Perform an upsert.
+ * @MONGO_UPDATE_MULTI_UPDATE: Continue updating after first match.
+ *
+ * #MongoUpdateFlags is used when updating documents found in Mongo.
+ */
+typedef enum
+{
+   MONGO_UPDATE_NONE         = 0,
+   MONGO_UPDATE_UPSERT       = 1 << 0,
+   MONGO_UPDATE_MULTI_UPDATE = 1 << 1,
+} MongoUpdateFlags;
+
+GType mongo_delete_flags_get_type (void) G_GNUC_CONST;
+GType mongo_insert_flags_get_type (void) G_GNUC_CONST;
+GType mongo_query_flags_get_type  (void) G_GNUC_CONST;
+GType mongo_reply_flags_get_type  (void) G_GNUC_CONST;
+GType mongo_update_flags_get_type (void) G_GNUC_CONST;
 
 G_END_DECLS
 

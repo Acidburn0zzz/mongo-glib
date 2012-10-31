@@ -58,6 +58,15 @@ _mongo_message_get_paused (MongoMessage *message)
    return message->priv->_paused;
 }
 
+/**
+ * mongo_message_get_reply:
+ * @message: (in): A #MongoMessage.
+ *
+ * Retrieves the reply to the message if it has been set. This is primarily
+ * useful when working with #MongoServer.
+ *
+ * Returns: (transfer none): A #MongoMessage reply to the message.
+ */
 MongoMessage *
 mongo_message_get_reply (MongoMessage *message)
 {

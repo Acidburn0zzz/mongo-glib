@@ -19,7 +19,7 @@
 #ifndef MONGO_INSERT_H
 #define MONGO_INSERT_H
 
-#include "mongo-insert.h"
+#include "mongo-message.h"
 
 G_BEGIN_DECLS
 

@@ -19,6 +19,44 @@
 #include "mongo-flags.h"
 
 GType
+mongo_delete_flags_get_type (void)
+{
+   static gsize initialized;
+   static GType type_id;
+   static const GFlagsValue values[] = {
+      { MONGO_DELETE_NONE, "MONGO_DELETE_NONE", "NONE" },
+      { MONGO_DELETE_SINGLE_REMOVE, "MONGO_DELETE_SINGLE_REMOVE", "SINGLE_REMOVE" },
+      { 0 }
+   };
+
+   if (g_once_init_enter(&initialized)) {
+      type_id = g_flags_register_static("MongoDeleteFlags", values);
+      g_once_init_leave(&initialized, TRUE);
+   }
+
+   return type_id;
+}
+
+GType
+mongo_insert_flags_get_type (void)
+{
+   static gsize initialized;
+   static GType type_id;
+   static const GFlagsValue values[] = {
+      { MONGO_INSERT_NONE, "MONGO_INSERT_NONE", "NONE" },
+      { MONGO_INSERT_CONTINUE_ON_ERROR, "MONGO_INSERT_CONTINUE_ON_ERROR", "CONTINUE_ON_ERROR" },
+      { 0 }
+   };
+
+   if (g_once_init_enter(&initialized)) {
+      type_id = g_flags_register_static("MongoInsertFlags", values);
+      g_once_init_leave(&initialized, TRUE);
+   }
+
+   return type_id;
+}
+
+GType
 mongo_query_flags_get_type (void)
 {
    static gsize initialized;
@@ -59,6 +97,26 @@ mongo_reply_flags_get_type (void)
 
    if (g_once_init_enter(&initialized)) {
       type_id = g_flags_register_static("MongoReplyFlags", values);
+      g_once_init_leave(&initialized, TRUE);
+   }
+
+   return type_id;
+}
+
+GType
+mongo_update_flags_get_type (void)
+{
+   static gsize initialized;
+   static GType type_id;
+   static const GFlagsValue values[] = {
+      { MONGO_UPDATE_NONE, "MONGO_UPDATE_NONE", "NONE" },
+      { MONGO_UPDATE_UPSERT, "MONGO_UPDATE_UPSERT", "UPSERT" },
+      { MONGO_UPDATE_MULTI_UPDATE, "MONGO_UPDATE_MULTI_UPDATE", "MULTI_UPDATE" },
+      { 0 }
+   };
+
+   if (g_once_init_enter(&initialized)) {
+      type_id = g_flags_register_static("MongoUpdateFlags", values);
       g_once_init_leave(&initialized, TRUE);
    }
 

@@ -27,6 +27,9 @@
 #include <gio/gio.h>
 
 #include "mongo-bson.h"
+#include "mongo-flags.h"
+#include "mongo-operation.h"
+#include "mongo-reply.h"
 
 G_BEGIN_DECLS
 
@@ -44,156 +47,10 @@ typedef struct _MongoProtocol        MongoProtocol;
 typedef struct _MongoProtocolClass   MongoProtocolClass;
 typedef enum   _MongoProtocolError   MongoProtocolError;
 typedef struct _MongoProtocolPrivate MongoProtocolPrivate;
-typedef struct _MongoReply           MongoReply;
 
 enum _MongoProtocolError
 {
    MONGO_PROTOCOL_ERROR_UNEXPECTED = 1,
-};
-
-/**
- * MongoDeleteFlags:
- * @MONGO_DELETE_NONE: Specify no delete flags.
- * @MONGO_DELETE_SINGLE_REMOVE: Only remove the first document matching the
- *    document selector.
- *
- * #MongoDeleteFlags are used when performing a delete operation.
- */
-typedef enum
-{
-   MONGO_DELETE_NONE          = 0,
-   MONGO_DELETE_SINGLE_REMOVE = 1 << 0,
-} MongoDeleteFlags;
-
-/**
- * MongoInsertFlags:
- * @MONGO_INSERT_NONE: Specify no insert flags.
- * @MONGO_INSERT_CONTINUE_ON_ERROR: Continue inserting documents from
- *    the insertion set even if one fails.
- *
- * #MongoInsertFlags are used when performing an insert operation.
- */
-typedef enum
-{
-   MONGO_INSERT_NONE              = 0,
-   MONGO_INSERT_CONTINUE_ON_ERROR = 1 << 0,
-} MongoInsertFlags;
-
-/**
- * MongoOperation:
- * @MONGO_OPERATION_REPLY: OP_REPLY from Mongo.
- * @MONGO_OPERATION_MSG: Generic message operation.
- * @MONGO_OPERATION_UPDATE: Operation to update documents.
- * @MONGO_OPERATION_INSERT: Operation to insert documents.
- * @MONGO_OPERATION_QUERY: Operation to find documents.
- * @MONGO_OPERATION_GETMORE: Operation to getmore documents on a cursor.
- * @MONGO_OPERATION_DELETE: Operation to delete documents.
- * @MONGO_OPERATION_KILL_CURSORS: Operation to kill an array of cursors.
- *
- * #MongoOperation represents the operation command identifiers used by
- * the Mongo wire protocol. This is mainly provided for completeness sake
- * and is unlikely to be needed by most consumers of this library.
- */
-typedef enum
-{
-   MONGO_OPERATION_REPLY        = 1,
-   MONGO_OPERATION_MSG          = 1000,
-   MONGO_OPERATION_UPDATE       = 2001,
-   MONGO_OPERATION_INSERT       = 2002,
-   MONGO_OPERATION_QUERY        = 2004,
-   MONGO_OPERATION_GETMORE      = 2005,
-   MONGO_OPERATION_DELETE       = 2006,
-   MONGO_OPERATION_KILL_CURSORS = 2007,
-} MongoOperation;
-
-/**
- * MongoQueryFlags:
- * @MONGO_QUERY_NONE: No query flags supplied.
- * @MONGO_QUERY_TAILABLE_CURSOR: Cursor will not be closed when the last
- *    data is retrieved. You can resume this cursor later.
- * @MONGO_QUERY_SLAVE_OK: Allow query of replica slave.
- * @MONGO_QUERY_OPLOG_REPLAY: Used internally by Mongo.
- * @MONGO_QUERY_NO_CURSOR_TIMEOUT: The server normally times out idle
- *    cursors after an inactivity period (10 minutes). This prevents that.
- * @MONGO_QUERY_AWAIT_DATA: Use with %MONGO_QUERY_TAILABLE_CURSOR. Block
- *    rather than returning no data. After a period, time out.
- * @MONGO_QUERY_EXHAUST: Stream the data down full blast in multiple
- *    "more" packages. Faster when you are pulling a lot of data and
- *    know you want to pull it all down.
- * @MONGO_QUERY_PARTIAL: Get partial results from mongos if some shards
- *    are down (instead of throwing an error).
- *
- * #MongoQueryFlags is used for querying a Mongo instance.
- */
-typedef enum
-{
-   MONGO_QUERY_NONE              = 0,
-   MONGO_QUERY_TAILABLE_CURSOR   = 1 << 1,
-   MONGO_QUERY_SLAVE_OK          = 1 << 2,
-   MONGO_QUERY_OPLOG_REPLAY      = 1 << 3,
-   MONGO_QUERY_NO_CURSOR_TIMEOUT = 1 << 4,
-   MONGO_QUERY_AWAIT_DATA        = 1 << 5,
-   MONGO_QUERY_EXHAUST           = 1 << 6,
-   MONGO_QUERY_PARTIAL           = 1 << 7,
-} MongoQueryFlags;
-
-/**
- * MongoReplyFlags:
- * @MONGO_REPLY_NONE: No flags set.
- * @MONGO_REPLY_CURSOR_NOT_FOUND: Cursor was not found.
- * @MONGO_REPLY_QUERY_FAILURE: Query failed, error document provided.
- * @MONGO_REPLY_SHARD_CONFIG_STALE: Shard configuration is stale.
- * @MONGO_REPLY_AWAIT_CAPABLE: Wait for data to be returned until timeout
- *    has passed. Used with %MONGO_QUERY_TAILABLE_CURSOR.
- *
- * #MongoReplyFlags contains flags supplied by the Mongo server in reply
- * to a request.
- */
-typedef enum
-{
-   MONGO_REPLY_NONE               = 0,
-   MONGO_REPLY_CURSOR_NOT_FOUND   = 1 << 0,
-   MONGO_REPLY_QUERY_FAILURE      = 1 << 1,
-   MONGO_REPLY_SHARD_CONFIG_STALE = 1 << 2,
-   MONGO_REPLY_AWAIT_CAPABLE      = 1 << 3,
-} MongoReplyFlags;
-
-/**
- * MongoUpdateFlags:
- * @MONGO_UPDATE_NONE: No update flags specified.
- * @MONGO_UPDATE_UPSERT: Perform an upsert.
- * @MONGO_UPDATE_MULTI_UPDATE: Continue updating after first match.
- *
- * #MongoUpdateFlags is used when updating documents found in Mongo.
- */
-typedef enum
-{
-   MONGO_UPDATE_NONE         = 0,
-   MONGO_UPDATE_UPSERT       = 1 << 0,
-   MONGO_UPDATE_MULTI_UPDATE = 1 << 1,
-} MongoUpdateFlags;
-
-/**
- * MongoReply:
- * @ref_count: The reference count of the structure.
- * @flags: Flags for the reply.
- * @cursor_id: The cursor_id for the reply.
- * @starting_from: The offset of the first result document.
- * @n_returned: Number of documents returned.
- * @documents: (array length=n_returned): Array of documents returned.
- *
- * #MongoReply contains the reply from the mongo server. It is not
- * designed to be used by external applications unless you know exactly
- * why you need it. Try to use the higher level API when possible.
- */
-struct _MongoReply
-{
-   gint ref_count;
-   MongoReplyFlags flags;
-   guint64 cursor_id;
-   guint32 starting_from;
-   guint32 n_returned;
-   MongoBson **documents;
 };
 
 struct _MongoProtocol
@@ -214,9 +71,6 @@ struct _MongoProtocolClass
    GObjectClass parent_class;
 };
 
-MongoReply *mongo_reply_ref                    (MongoReply *reply);
-void        mongo_reply_unref                  (MongoReply *reply);
-GType       mongo_reply_get_type               (void) G_GNUC_CONST;
 GQuark      mongo_protocol_error_quark         (void) G_GNUC_CONST;
 GType       mongo_protocol_get_type            (void) G_GNUC_CONST;
 GIOStream  *mongo_protocol_get_io_stream       (MongoProtocol        *protocol);
@@ -295,7 +149,6 @@ gboolean    mongo_protocol_msg_finish          (MongoProtocol        *protocol,
                                                 GAsyncResult         *result,
                                                 GError              **error);
 void        mongo_protocol_flush_sync          (MongoProtocol        *protocol);
-GType       mongo_query_flags_get_type         (void) G_GNUC_CONST;
 
 G_END_DECLS
 

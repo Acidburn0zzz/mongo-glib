@@ -220,6 +220,87 @@ mongo_reply_save_to_data (MongoMessage *message,
    return g_byte_array_free(bytes, FALSE);
 }
 
+static gboolean
+mongo_reply_load_from_data (MongoMessage *message,
+                            const guint8 *data,
+                            gsize         length)
+{
+   MongoReplyPrivate *priv;
+   MongoReply *reply = (MongoReply *)message;
+   GPtrArray *docs = NULL;
+   MongoBson *bson;
+   guint64 cursor;
+   guint32 flags;
+   guint32 offset;
+   guint32 count;
+   guint32 msg_len;
+   gssize len = length;
+   guint i;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_REPLY(reply));
+   g_assert(data);
+   g_assert(len);
+
+   priv = reply->priv;
+
+   memcpy(&flags, data, sizeof flags);
+   flags = GUINT32_FROM_LE(flags);
+   data += 4;
+   len -= 4;
+
+   memcpy(&cursor, data, sizeof cursor);
+   cursor = GUINT64_FROM_LE(cursor);
+   data += 8;
+   len -= 8;
+
+   memcpy(&offset, data, sizeof offset);
+   offset = GUINT32_FROM_LE(offset);
+   data += 4;
+   len -= 4;
+
+   memcpy(&count, data, sizeof count);
+   count = GUINT32_FROM_LE(count);
+   data += 4;
+   len -= 4;
+
+   docs = g_ptr_array_new();
+
+   for (i = 0; i < count; i++) {
+      if (len <= 0) {
+         GOTO(failure);
+      }
+
+      memcpy(&msg_len, data, sizeof msg_len);
+      msg_len = GUINT32_FROM_LE(msg_len);
+
+      if (msg_len <= len) {
+         if ((bson = mongo_bson_new_from_data(data, msg_len))) {
+            g_ptr_array_add(docs, bson);
+         } else {
+            GOTO(failure);
+         }
+      }
+
+      data += msg_len;
+   }
+
+   priv->count = count;
+   priv->cursor_id = cursor;
+   priv->flags = flags;
+   priv->offset = offset;
+   priv->documents = (MongoBson **)g_ptr_array_free(docs, FALSE);
+
+   RETURN(TRUE);
+
+failure:
+   if (docs) {
+      g_ptr_array_free(docs, TRUE);
+   }
+   RETURN(FALSE);
+}
+
 static void
 mongo_reply_finalize (GObject *object)
 {
@@ -303,6 +384,7 @@ mongo_reply_class_init (MongoReplyClass *klass)
    g_type_class_add_private(object_class, sizeof(MongoReplyPrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->load_from_data = mongo_reply_load_from_data;
    message_class->operation = MONGO_OPERATION_REPLY;
    message_class->save_to_data = mongo_reply_save_to_data;
 

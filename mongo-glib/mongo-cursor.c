@@ -254,8 +254,7 @@ mongo_cursor_count_cb (GObject      *object,
    if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
+      g_simple_async_result_set_op_res_gpointer(simple, reply, g_object_unref);
    }
 
    mongo_simple_async_result_complete_in_idle(simple);
@@ -321,7 +320,9 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoBsonIter iter;
    MongoReply *reply;
+   MongoBson **documents;
    gboolean ret = FALSE;
+   gsize length;
 
    g_return_val_if_fail(MONGO_IS_CURSOR(cursor), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
@@ -332,11 +333,11 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
       GOTO(failure);
    }
 
-   if (!reply->n_returned) {
+   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
       GOTO(failure);
    }
 
-   mongo_bson_iter_init(&iter, reply->documents[0]);
+   mongo_bson_iter_init(&iter, documents[0]);
    if (!mongo_bson_iter_find(&iter, "n") ||
        (mongo_bson_iter_get_value_type(&iter) != MONGO_BSON_DOUBLE)) {
       GOTO(failure);
@@ -362,7 +363,7 @@ mongo_cursor_kill_cursors_cb (GObject      *object,
 }
 
 static void
-mongo_cursor_foreach_dispatch (MongoConnection        *connection,
+mongo_cursor_foreach_dispatch (MongoConnection    *connection,
                                MongoReply         *reply,
                                GSimpleAsyncResult *simple)
 {
@@ -370,8 +371,12 @@ mongo_cursor_foreach_dispatch (MongoConnection        *connection,
    MongoCursorPrivate *priv;
    GCancellable *cancellable;
    MongoCursor *cursor;
+   MongoBson **documents;
    gpointer func_data;
+   guint64 cursor_id;
    gchar *db_and_collection;
+   guint offset;
+   gsize length;
    guint i;
 
    ENTRY;
@@ -392,19 +397,23 @@ mongo_cursor_foreach_dispatch (MongoConnection        *connection,
 
    priv = cursor->priv;
 
-   if (!reply->n_returned) {
+   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
       GOTO(stop);
    }
 
-   for (i = 0; i < reply->n_returned; i++) {
-      if (((reply->starting_from + i) >= priv->limit) ||
-          !func(cursor, reply->documents[i], func_data)) {
+   offset = mongo_reply_get_offset(reply);
+
+   for (i = 0; i < length; i++) {
+      if (((offset + i) >= priv->limit) ||
+          !func(cursor, documents[i], func_data)) {
          GOTO(stop);
       }
    }
 
-   if (!reply->cursor_id ||
-       ((reply->starting_from + reply->n_returned) >= priv->limit)) {
+   offset = mongo_reply_get_offset(reply);
+   cursor_id = mongo_reply_get_cursor_id(reply);
+
+   if (!cursor_id || ((offset + length) >= priv->limit)) {
       GOTO(stop);
    }
 
@@ -419,7 +428,7 @@ mongo_cursor_foreach_dispatch (MongoConnection        *connection,
       mongo_connection_getmore_async(connection,
                                  db_and_collection,
                                  cursor->priv->batch_size,
-                                 reply->cursor_id,
+                                 cursor_id,
                                  cancellable,
                                  mongo_cursor_foreach_getmore_cb,
                                  simple);
@@ -431,9 +440,9 @@ mongo_cursor_foreach_dispatch (MongoConnection        *connection,
    EXIT;
 
 stop:
-   if (reply->cursor_id) {
+   if (mongo_reply_get_cursor_id(reply)) {
       mongo_connection_kill_cursors_async(connection,
-                                          &reply->cursor_id,
+                                          &cursor_id,
                                           1,
                                           cancellable,
                                           mongo_cursor_kill_cursors_cb,
@@ -471,7 +480,7 @@ mongo_cursor_foreach_getmore_cb (GObject      *object,
    }
 
    mongo_cursor_foreach_dispatch(connection, reply, simple);
-   mongo_reply_unref(reply);
+   g_object_unref(reply);
 
    EXIT;
 }
@@ -499,7 +508,7 @@ mongo_cursor_foreach_query_cb (GObject      *object,
    }
 
    mongo_cursor_foreach_dispatch(connection, reply, simple);
-   mongo_reply_unref(reply);
+   g_object_unref(reply);
 
    EXIT;
 }

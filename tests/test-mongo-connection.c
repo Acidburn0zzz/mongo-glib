@@ -32,8 +32,8 @@ test1 (void)
    mongo_bson_append_int(bson, "key1", 1234);
    mongo_bson_append_string(bson, "key2", "Some test string");
    mongo_connection_insert_async(connection, "dbtest1.dbcollection1",
-                             MONGO_INSERT_NONE, &bson, 1, NULL,
-                             test1_insert_cb, &success);
+                                 MONGO_INSERT_NONE, &bson, 1, NULL,
+                                 test1_insert_cb, &success);
    mongo_bson_unref(bson);
 
    g_main_loop_run(gMainLoop);
@@ -48,19 +48,23 @@ test2_query_cb (GObject      *object,
 {
    MongoConnection *connection = (MongoConnection *)object;
    MongoReply *reply;
+   MongoBson **documents;
    gboolean *success = user_data;
    GError *error = NULL;
+   gsize length;
    guint i;
 
    reply = mongo_connection_query_finish(connection, result, &error);
    g_assert_no_error(error);
    g_assert(reply);
 
-   for (i = 0; i < reply->n_returned; i++) {
-      g_assert(reply->documents[i]);
+   documents = mongo_reply_get_documents(reply, &length);
+
+   for (i = 0; i < length; i++) {
+      g_assert(documents[i]);
    }
 
-   mongo_reply_unref(reply);
+   g_object_unref(reply);
 
    *success = TRUE;
    g_main_loop_quit(gMainLoop);
@@ -140,7 +144,7 @@ test4_query_cb (GObject      *object,
 
    *success = TRUE;
 
-   mongo_reply_unref(reply);
+   g_object_unref(reply);
    g_main_loop_quit(gMainLoop);
 }
 
@@ -155,11 +159,11 @@ test4 (void)
    command = mongo_bson_new_empty();
    mongo_bson_append_int(command, "ismaster", 1);
    mongo_connection_command_async(connection,
-                              "dbtest1.dbcollection1",
-                              command,
-                              NULL,
-                              test4_query_cb,
-                              &success);
+                                  "admin",
+                                  command,
+                                  NULL,
+                                  test4_query_cb,
+                                  &success);
    mongo_bson_unref(command);
 
    g_main_loop_run(gMainLoop);

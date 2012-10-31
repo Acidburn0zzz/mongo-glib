@@ -39,13 +39,6 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
                                GAsyncResult         *result,
                                MongoProtocol        *protocol);
 
-typedef struct
-{
-   const guint8 *buffer;
-   gssize count;
-   gsize offset;
-} MongoProtocolReader;
-
 struct _MongoProtocolPrivate
 {
    GIOStream *io_stream;
@@ -73,48 +66,6 @@ enum
 
 static GParamSpec *gParamSpecs[LAST_PROP];
 static guint       gSignals[LAST_SIGNAL];
-
-MongoReply *
-mongo_reply_ref (MongoReply *reply)
-{
-   g_return_val_if_fail(reply, NULL);
-   g_return_val_if_fail(reply->ref_count > 0, NULL);
-   g_atomic_int_inc(&reply->ref_count);
-   return reply;
-}
-
-void
-mongo_reply_unref (MongoReply *reply)
-{
-   guint i;
-
-   g_return_if_fail(reply);
-   g_return_if_fail(reply->ref_count > 0);
-
-   if (g_atomic_int_dec_and_test(&reply->ref_count)) {
-      for (i = 0; i < reply->n_returned; i++) {
-         mongo_bson_unref(reply->documents[i]);
-      }
-      g_free(reply->documents);
-      g_slice_free(MongoReply, reply);
-   }
-}
-
-GType
-mongo_reply_get_type (void)
-{
-   static gsize initialized = FALSE;
-   static GType type_id;
-
-   if (g_once_init_enter(&initialized)) {
-      type_id = g_boxed_type_register_static("MongoReply",
-                                             (GBoxedCopyFunc)mongo_reply_ref,
-                                             (GBoxedFreeFunc)mongo_reply_unref);
-      g_once_init_leave(&initialized, TRUE);
-   }
-
-   return type_id;
-}
 
 static void
 mongo_protocol_append_bson (GByteArray      *array,
@@ -547,6 +498,16 @@ mongo_protocol_query_async (MongoProtocol       *protocol,
    EXIT;
 }
 
+/**
+ * mongo_protocol_query_finish:
+ * @protocol: (in): A #MongoProtocol.
+ * @result: (in): A #GAsyncResult.
+ * @error: (out): A location for a #GError, or %NULL.
+ *
+ * Completed an asynchronous request to query.
+ *
+ * Returns: (transfer full): A #MongoReply.
+ */
 MongoReply *
 mongo_protocol_query_finish (MongoProtocol    *protocol,
                              GAsyncResult     *result,
@@ -564,7 +525,7 @@ mongo_protocol_query_finish (MongoProtocol    *protocol,
       g_simple_async_result_propagate_error(simple, error);
    }
 
-   reply = reply ? mongo_reply_ref(reply) : NULL;
+   reply = reply ? g_object_ref(reply) : NULL;
 
    RETURN(reply);
 }
@@ -617,6 +578,16 @@ mongo_protocol_getmore_async (MongoProtocol       *protocol,
    EXIT;
 }
 
+/**
+ * mongo_protocol_getmore_finish:
+ * @protocol: (in): A #MongoProtocol.
+ * @result: (in): A #GAsyncResult.
+ * @error: (out): A location for a #GError, or %NULL.
+ *
+ * Completes an asynchronous request to fetch more documents from a cursor.
+ *
+ * Returns: (transfer full): A #MongoReply if successful; otherwise or %NULL.
+ */
 MongoReply *
 mongo_protocol_getmore_finish (MongoProtocol  *protocol,
                                GAsyncResult   *result,
@@ -634,7 +605,7 @@ mongo_protocol_getmore_finish (MongoProtocol  *protocol,
       g_simple_async_result_propagate_error(simple, error);
    }
 
-   reply = reply ? mongo_reply_ref(reply) : NULL;
+   reply = reply ? g_object_ref(reply) : NULL;
 
    RETURN(reply);
 }
@@ -868,68 +839,25 @@ mongo_protocol_get_io_stream (MongoProtocol *protocol)
 }
 
 static void
-mongo_protocol_reader_init (MongoProtocolReader *reader,
-                            const guint8        *buffer,
-                            gssize               count)
-{
-   ENTRY;
-   reader->buffer = buffer;
-   reader->count = count;
-   reader->offset = 0;
-   EXIT;
-}
-
-static MongoBson *
-mongo_protocol_reader_next (MongoProtocolReader *reader)
-{
-   MongoBson *bson;
-   guint32 bson_size;
-
-   ENTRY;
-
-   if (reader->count < 0) {
-      RETURN(NULL);
-   }
-
-   if ((reader->offset + sizeof bson_size) <= reader->count) {
-      bson_size = GUINT32_FROM_LE(*(const guint32 *)(reader->buffer + reader->offset));
-      if ((reader->offset + bson_size) <= reader->count) {
-         bson = mongo_bson_new_from_data(reader->buffer + reader->offset, bson_size);
-         reader->offset += bson_size;
-         RETURN(bson);
-      }
-   }
-
-   RETURN(NULL);
-}
-
-static void
 mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
                                 GAsyncResult         *result,
                                 MongoProtocol        *protocol)
 {
    MongoProtocolPrivate *priv;
-   MongoProtocolReader reader;
    GSimpleAsyncResult *request;
    const guint8 *buffer;
-   MongoReply *r;
-#pragma pack(1)
-   struct {
-      guint32 len;
-      guint32 request_id;
-      guint32 response_to;
-      guint32 op_code;
-      guint32 response_flags;
-      guint64 cursor_id;
-      guint32 starting_from;
-      guint32 n_returned;
-   } reply;
-#pragma pack()
-   GPtrArray *docs;
-   MongoBson *bson;
+   MongoReply *reply;
    GError *error = NULL;
    guint8 *doc_buffer;
    gsize count;
+#pragma pack(push, 1)
+   struct {
+      guint32 msg_len;
+      guint32 request_id;
+      guint32 response_to;
+      guint32 op_code;
+   } header;
+#pragma pack(pop)
 
    ENTRY;
 
@@ -957,68 +885,57 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    g_assert_cmpint(count, >=, 36);
 
    /*
-    * Process the incoming MONGO_OPERATION_REPLY.
+    * Make sure we got a reply.
     */
-   memcpy(&reply, buffer, sizeof reply);
-#if G_BYTE_ORDER != G_LITTLE_ENDIAN
-   reply.len = GUINT32_FROM_LE(reply.len);
-   reply.request_id = GUINT32_FROM_LE(reply.request_id);
-   reply.response_to = GUINT32_FROM_LE(reply.response_to);
-   reply.op_code = GUINT32_FROM_LE(reply.op_code);
-   reply.response_flags = GUINT32_FROM_LE(reply.response_flags);
-   reply.cursor_id = GUINT64_FROM_LE(reply.cursor_id);
-   reply.starting_from = GUINT32_FROM_LE(reply.starting_from);
-   reply.n_returned = GUINT32_FROM_LE(reply.n_returned);
-#endif
-
-   if (reply.op_code != MONGO_OPERATION_REPLY) {
+   memcpy(&header, buffer, sizeof header);
+   header.msg_len = GUINT32_FROM_LE(header.msg_len);
+   header.request_id = GUINT32_FROM_LE(header.request_id);
+   header.response_to = GUINT32_FROM_LE(header.response_to);
+   header.op_code = GUINT32_FROM_LE(header.op_code);
+   if (header.op_code != MONGO_OPERATION_REPLY) {
       GOTO(failure);
    }
 
    g_input_stream_skip(G_INPUT_STREAM(input_stream),
-                       sizeof reply, NULL, NULL);
+                       sizeof header,
+                       NULL,
+                       NULL);
 
    count = 0;
-   doc_buffer = g_malloc(reply.len);
+   doc_buffer = g_malloc(header.msg_len);
    g_input_stream_read_all(G_INPUT_STREAM(input_stream),
-                           doc_buffer, reply.len - sizeof reply,
-                           &count, NULL, &error);
+                           doc_buffer,
+                           header.msg_len - sizeof header,
+                           &count,
+                           NULL,
+                           &error);
 
    DUMP_BYTES(buffer, buffer, count);
 
-   if (count != (reply.len - sizeof reply)) {
+   if (count != (header.msg_len - sizeof header)) {
       g_free(doc_buffer);
       GOTO(failure);
    }
 
-   docs = g_ptr_array_new();
-   mongo_protocol_reader_init(&reader, doc_buffer, count);
-   while ((bson = mongo_protocol_reader_next(&reader))) {
-      g_ptr_array_add(docs, bson);
+   reply = g_object_new(MONGO_TYPE_REPLY,
+                        "request-id", header.request_id,
+                        "response-to", header.response_to,
+                        NULL);
+   if (!mongo_message_load_from_data(MONGO_MESSAGE(reply),
+                                     doc_buffer,
+                                     count)) {
+      g_clear_object(&reply);
+      GOTO(failure);
    }
-
-   g_free(doc_buffer);
-   g_assert_cmpint(docs->len, ==, reply.n_returned);
 
    /*
     * See if there was someone waiting for this request.
     */
    if ((request = g_hash_table_lookup(priv->requests,
-                                      GINT_TO_POINTER(reply.response_to)))) {
-      r = g_slice_new(MongoReply);
-      r->ref_count = 1;
-      r->flags = reply.response_flags;
-      r->cursor_id = reply.cursor_id;
-      r->starting_from = reply.starting_from;
-      r->n_returned = docs->len;
-      r->documents = (MongoBson **)g_ptr_array_free(docs, FALSE);
-      g_simple_async_result_set_op_res_gpointer(
-            request, r, (GDestroyNotify)mongo_reply_unref);
+                                      GINT_TO_POINTER(header.response_to)))) {
+      g_simple_async_result_set_op_res_gpointer(request, reply, g_object_unref);
       mongo_simple_async_result_complete_in_idle(request);
-      g_hash_table_remove(priv->requests, GINT_TO_POINTER(reply.response_to));
-   } else {
-      g_ptr_array_set_free_func(docs, (GDestroyNotify)mongo_bson_unref);
-      g_ptr_array_free(docs, TRUE);
+      g_hash_table_remove(priv->requests, GINT_TO_POINTER(header.response_to));
    }
 
    /*
@@ -1289,47 +1206,6 @@ mongo_protocol_init (MongoProtocol *protocol)
                                                     g_object_unref);
 
    EXIT;
-}
-
-GType
-mongo_query_flags_get_type (void)
-{
-   static gsize initialized;
-   static GType type_id;
-   static GFlagsValue values[] = {
-      { MONGO_QUERY_NONE,
-        "MONGO_QUERY_NONE",
-        "NONE" },
-      { MONGO_QUERY_TAILABLE_CURSOR,
-        "MONGO_QUERY_TAILABLE_CURSOR",
-        "TAILABLE_CURSOR" },
-      { MONGO_QUERY_SLAVE_OK,
-        "MONGO_QUERY_SLAVE_OK",
-        "SLAVE_OK" },
-      { MONGO_QUERY_OPLOG_REPLAY,
-        "MONGO_QUERY_OPLOG_REPLAY",
-        "OPLOG_REPLAY" },
-      { MONGO_QUERY_NO_CURSOR_TIMEOUT,
-        "MONGO_QUERY_NO_CURSOR_TIMEOUT",
-        "NO_CURSOR_TIMEOUT" },
-      { MONGO_QUERY_AWAIT_DATA,
-        "MONGO_QUERY_AWAIT_DATA",
-        "AWAIT_DATA" },
-      { MONGO_QUERY_EXHAUST,
-        "MONGO_QUERY_EXHAUST",
-        "EXHAUST" },
-      { MONGO_QUERY_PARTIAL,
-        "MONGO_QUERY_PARTIAL",
-        "PARTIAL" },
-      { 0 }
-   };
-
-   if (g_once_init_enter(&initialized)) {
-      type_id = g_flags_register_static("MongoQueryFlags", values);
-      g_once_init_leave(&initialized, TRUE);
-   }
-
-   return type_id;
 }
 
 GQuark

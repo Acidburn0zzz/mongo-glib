@@ -117,8 +117,7 @@ mongo_collection_find_one_cb (GObject      *object,
    if (!(reply = mongo_connection_query_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
+      g_simple_async_result_set_op_res_gpointer(simple, reply, g_object_unref);
    }
 
    mongo_simple_async_result_complete_in_idle(simple);
@@ -217,7 +216,9 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoReply *reply;
+   MongoBson **documents;
    MongoBson *ret = NULL;
+   gsize length;
 
    ENTRY;
 
@@ -229,8 +230,8 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
       RETURN(NULL);
    }
 
-   if (reply->n_returned) {
-      ret = mongo_bson_ref(reply->documents[0]);
+   if ((documents = mongo_reply_get_documents(reply, &length)) && length) {
+      ret = mongo_bson_dup(documents[0]);
    } else {
       g_set_error(error,
                   MONGO_COLLECTION_ERROR,
@@ -259,8 +260,7 @@ mongo_collection_count_cb (GObject      *object,
    if (!(reply = mongo_connection_command_finish(connection, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
+      g_simple_async_result_set_op_res_gpointer(simple, reply, g_object_unref);
    }
 
    mongo_simple_async_result_complete_in_idle(simple);
@@ -350,7 +350,9 @@ mongo_collection_count_finish (MongoCollection  *collection,
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoBsonIter iter;
    MongoReply *reply;
+   MongoBson **documents;
    gboolean ret = FALSE;
+   gsize length;
 
    ENTRY;
 
@@ -362,11 +364,11 @@ mongo_collection_count_finish (MongoCollection  *collection,
       GOTO(failure);
    }
 
-   if (!reply->n_returned) {
+   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
       GOTO(failure);
    }
 
-   mongo_bson_iter_init(&iter, reply->documents[0]);
+   mongo_bson_iter_init(&iter, documents[0]);
    if (!mongo_bson_iter_find(&iter, "n") ||
        (mongo_bson_iter_get_value_type(&iter) != MONGO_BSON_DOUBLE)) {
       GOTO(failure);
@@ -768,7 +770,7 @@ mongo_collection_drop_cb (GObject      *object,
    g_object_unref(simple);
 
    if (reply) {
-      mongo_reply_unref(reply);
+      g_object_unref(reply);
    }
 
    EXIT;

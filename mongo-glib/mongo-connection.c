@@ -228,8 +228,7 @@ mongo_connection_query_cb (GObject      *object,
    if (!(reply = mongo_protocol_query_finish(protocol, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
+      g_simple_async_result_set_op_res_gpointer(simple, reply, g_object_unref);
    }
 
    mongo_simple_async_result_complete_in_idle(simple);
@@ -256,8 +255,7 @@ mongo_connection_getmore_cb (GObject      *object,
    if (!(reply = mongo_protocol_getmore_finish(protocol, result, &error))) {
       g_simple_async_result_take_error(simple, error);
    } else {
-      g_simple_async_result_set_op_res_gpointer(
-            simple, reply, (GDestroyNotify)mongo_reply_unref);
+      g_simple_async_result_set_op_res_gpointer(simple, reply, g_object_unref);
    }
 
    mongo_simple_async_result_complete_in_idle(simple);
@@ -521,9 +519,11 @@ mongo_connection_ismaster_cb (GObject      *object,
    const gchar *primary;
    const gchar *replica_set;
    MongoReply *reply = NULL;
+   MongoBson **documents;
    gboolean ismaster = FALSE;
    Request *request;
    GError *error = NULL;
+   gsize length;
 
    ENTRY;
 
@@ -544,14 +544,14 @@ mongo_connection_ismaster_cb (GObject      *object,
    /*
     * Make sure we got a valid document back.
     */
-   if (!reply->n_returned || !reply->documents[0]) {
+   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
       GOTO(failure);
    }
 
    /*
     * Make sure we got a valid response back.
     */
-   mongo_bson_iter_init(&iter, reply->documents[0]);
+   mongo_bson_iter_init(&iter, documents[0]);
    if (mongo_bson_iter_find(&iter, "ok")) {
       if (!mongo_bson_iter_get_value_boolean(&iter)) {
          GOTO(failure);
@@ -563,7 +563,7 @@ mongo_connection_ismaster_cb (GObject      *object,
     * If so, verify that it is the one we should be talking to.
     */
    if (priv->replica_set) {
-      mongo_bson_iter_init(&iter, reply->documents[0]);
+      mongo_bson_iter_init(&iter, documents[0]);
       if (mongo_bson_iter_find(&iter, "setName") &&
           (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8)) {
          replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
@@ -578,7 +578,7 @@ mongo_connection_ismaster_cb (GObject      *object,
     * Update who we think the primary is now so that we can reconnect
     * if this isn't the primary.
     */
-   mongo_bson_iter_init(&iter, reply->documents[0]);
+   mongo_bson_iter_init(&iter, documents[0]);
    if (mongo_bson_iter_find(&iter, "primary") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8)) {
       primary = mongo_bson_iter_get_value_string(&iter, NULL);
@@ -589,7 +589,7 @@ mongo_connection_ismaster_cb (GObject      *object,
     * Update who we think is in the list of nodes for this replica set
     * so that we can iterate through them upon inability to find master.
     */
-   mongo_bson_iter_init(&iter, reply->documents[0]);
+   mongo_bson_iter_init(&iter, documents[0]);
    if (mongo_bson_iter_find(&iter, "hosts") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_ARRAY)) {
       if (mongo_bson_iter_recurse(&iter, &iter2)) {
@@ -605,7 +605,7 @@ mongo_connection_ismaster_cb (GObject      *object,
    /*
     * Check to see if this host is PRIMARY.
     */
-   mongo_bson_iter_init(&iter, reply->documents[0]);
+   mongo_bson_iter_init(&iter, documents[0]);
    if (mongo_bson_iter_find(&iter, "ismaster") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_BOOLEAN)) {
       if (!(ismaster = mongo_bson_iter_get_value_boolean(&iter))) {
@@ -644,15 +644,14 @@ mongo_connection_ismaster_cb (GObject      *object,
       request_free(request);
    }
 
-   mongo_reply_unref(reply);
+   g_clear_object(&reply);
    EXIT;
 
 failure:
    mongo_protocol_fail(protocol, NULL);
-   mongo_reply_unref(reply);
-
    priv->state = STATE_0;
    mongo_connection_start_connecting(connection);
+   g_clear_object(&reply);
 
    EXIT;
 }
@@ -882,11 +881,13 @@ mongo_connection_command_cb (GObject      *object,
                              gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
-   MongoBsonIter iter;
    MongoConnection *connection = (MongoConnection *)object;
+   MongoBsonIter iter;
+   MongoBson **documents;
    const gchar *errmsg;
    MongoReply *reply = NULL;
    GError *error = NULL;
+   gsize length;
 
    ENTRY;
 
@@ -904,14 +905,11 @@ mongo_connection_command_cb (GObject      *object,
    /*
     * Check to see if the command provided a failure document.
     */
-   if (reply->n_returned) {
-      g_assert(reply->documents);
-      g_assert(reply->documents[0]);
-
-      mongo_bson_iter_init(&iter, reply->documents[0]);
+   if (!(documents = mongo_reply_get_documents(reply, &length)) || !length) {
+      mongo_bson_iter_init(&iter, documents[0]);
       if (mongo_bson_iter_find(&iter, "ok")) {
          if (!mongo_bson_iter_get_value_boolean(&iter)) {
-            mongo_bson_iter_init(&iter, reply->documents[0]);
+            mongo_bson_iter_init(&iter, documents[0]);
             if (mongo_bson_iter_find(&iter, "errmsg") &&
                 mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8) {
                errmsg = mongo_bson_iter_get_value_string(&iter, NULL);
@@ -933,15 +931,13 @@ mongo_connection_command_cb (GObject      *object,
       }
    }
 
-   g_simple_async_result_set_op_res_gpointer(
-         simple, mongo_reply_ref(reply),
-         (GDestroyNotify)mongo_reply_unref);
+   g_simple_async_result_set_op_res_gpointer(simple,
+                                             g_object_ref(reply),
+                                             g_object_unref);
 
 finish:
    mongo_simple_async_result_complete_in_idle(simple);
-   if (reply) {
-      mongo_reply_unref(reply);
-   }
+   g_clear_object(&reply);
    g_object_unref(simple);
 
    EXIT;
@@ -1027,7 +1023,7 @@ mongo_connection_command_finish (MongoConnection  *connection,
       g_simple_async_result_propagate_error(simple, error);
    }
 
-   ret = ret ? mongo_reply_ref(ret) : NULL;
+   ret = ret ? g_object_ref(ret) : NULL;
 
    RETURN(ret);
 }
@@ -1366,7 +1362,7 @@ mongo_connection_query_finish (MongoConnection  *connection,
       g_simple_async_result_propagate_error(simple, error);
    }
 
-   reply = reply ? mongo_reply_ref(reply) : NULL;
+   reply = reply ? g_object_ref(reply) : NULL;
 
    RETURN(reply);
 }
@@ -1440,7 +1436,7 @@ mongo_connection_getmore_finish (MongoConnection  *connection,
       g_simple_async_result_propagate_error(simple, error);
    }
 
-   reply = reply ? mongo_reply_ref(reply) : NULL;
+   reply = reply ? g_object_ref(reply) : NULL;
 
    RETURN(reply);
 }

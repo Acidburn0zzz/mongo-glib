@@ -169,7 +169,7 @@ mongo_database_drop_cb (GObject      *object,
    g_object_unref(simple);
 
    if (reply) {
-      mongo_reply_unref(reply);
+      g_object_unref(reply);
    }
 
    EXIT;
