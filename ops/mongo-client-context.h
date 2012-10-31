@@ -28,6 +28,7 @@ G_BEGIN_DECLS
 typedef struct _MongoClientContext MongoClientContext;
 
 GType               mongo_client_context_get_type (void) G_GNUC_CONST;
+gchar              *mongo_client_context_get_uri  (MongoClientContext *context);
 MongoClientContext *mongo_client_context_ref      (MongoClientContext *context);
 void                mongo_client_context_unref    (MongoClientContext *context);
 

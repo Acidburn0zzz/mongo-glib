@@ -55,45 +55,49 @@ struct _MongoServerClass
 {
    GSocketServiceClass parent_class;
 
-   void (*request_started)      (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   void     (*request_started)      (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_read)         (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   void     (*request_finished)     (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_finished)     (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_read)         (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_msg)          (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_reply)        (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_update)       (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_msg)          (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_insert)       (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_update)       (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_query)        (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_insert)       (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_getmore)      (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_query)        (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_delete)       (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_getmore)      (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
-   void (*request_kill_cursors) (MongoServer        *server,
-                                 MongoClientContext *client,
-                                 MongoMessage       *message);
+   gboolean (*request_delete)       (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
+
+   gboolean (*request_kill_cursors) (MongoServer        *server,
+                                     MongoClientContext *client,
+                                     MongoMessage       *message);
 
    gpointer _reserved1;
    gpointer _reserved2;
@@ -105,8 +109,6 @@ struct _MongoServerClass
    gpointer _reserved8;
 };
 
-GType        mongo_client_context_get_type (void) G_GNUC_CONST;
-gchar       *mongo_client_context_get_peer (MongoClientContext *client);
 GType        mongo_server_get_type         (void) G_GNUC_CONST;
 MongoServer *mongo_server_new              (const gchar        *first_property,
                                             ...) G_GNUC_NULL_TERMINATED;

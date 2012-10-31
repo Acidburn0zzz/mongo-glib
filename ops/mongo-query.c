@@ -394,6 +394,7 @@ mongo_query_class_init (MongoQueryClass *klass)
    g_type_class_add_private(object_class, sizeof(MongoQueryPrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->operation = MONGO_OPERATION_QUERY;
    message_class->load_from_data = mongo_query_load_from_data;
 
    gParamSpecs[PROP_COLLECTION] =

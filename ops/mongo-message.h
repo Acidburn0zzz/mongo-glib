@@ -23,6 +23,7 @@
 
 #include "mongo-bson.h"
 #include "mongo-flags.h"
+#include "mongo-operation.h"
 
 G_BEGIN_DECLS
 
@@ -50,11 +51,23 @@ struct _MongoMessageClass
 {
    GInitiallyUnownedClass parent_class;
 
+   MongoOperation operation;
+
    gboolean  (*load_from_data) (MongoMessage *message,
                                 const guint8 *data,
                                 gsize         length);
+
    guint8   *(*save_to_data)   (MongoMessage *message,
                                 gsize        *length);
+
+   gpointer _reserved1;
+   gpointer _reserved2;
+   gpointer _reserved3;
+   gpointer _reserved4;
+   gpointer _reserved5;
+   gpointer _reserved6;
+   gpointer _reserved7;
+   gpointer _reserved8;
 };
 
 GType         mongo_message_get_type        (void) G_GNUC_CONST;

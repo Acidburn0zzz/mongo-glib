@@ -30,8 +30,7 @@ G_DEFINE_TYPE(MongoServer, mongo_server, G_TYPE_SOCKET_SERVICE)
 
 struct _MongoServerPrivate
 {
-   GMainContext *async_context;
-   GHashTable   *client_contexts;
+   GHashTable *client_contexts;
 };
 
 struct _MongoClientContext
@@ -42,6 +41,7 @@ struct _MongoClientContext
    GOutputStream     *output;
    MongoServer       *server;
    guint8            *incoming;
+   gboolean           failed;
 
 #pragma pack(push, 4)
    struct {
@@ -55,16 +55,10 @@ struct _MongoClientContext
 
 enum
 {
-   PROP_0,
-   PROP_ASYNC_CONTEXT,
-   LAST_PROP
-};
-
-enum
-{
    REQUEST_STARTED,
-   REQUEST_READ,
    REQUEST_FINISHED,
+   REQUEST_READ,
+   REQUEST_REPLY,
    REQUEST_MSG,
    REQUEST_UPDATE,
    REQUEST_INSERT,
@@ -75,8 +69,7 @@ enum
    LAST_SIGNAL
 };
 
-static GParamSpec *gParamSpecs[LAST_PROP];
-static guint       gSignals[LAST_SIGNAL];
+static guint gSignals[LAST_SIGNAL];
 
 extern gboolean _mongo_message_get_paused (MongoMessage *message);
 extern gboolean _mongo_message_set_paused (MongoMessage *message,
@@ -89,16 +82,12 @@ static void
 mongo_client_context_dispatch (MongoClientContext *client);
 
 static void
+mongo_client_context_fail (MongoClientContext *client);
+
+static void
 mongo_server_read_header_cb (GInputStream *stream,
                              GAsyncResult *result,
                              gpointer      user_data);
-
-GMainContext *
-mongo_server_get_async_context (MongoServer *server)
-{
-   g_return_val_if_fail(MONGO_IS_SERVER(server), NULL);
-   return server->priv->async_context;
-}
 
 static void
 mongo_server_read_msg_cb (GInputStream *stream,
@@ -117,14 +106,9 @@ mongo_server_read_msg_cb (GInputStream *stream,
    ret = g_input_stream_read_finish(stream, result, &error);
    switch (ret) {
    case -1:
-      /*
-       * TODO: Fail the connection.
-       */
-      break;
    case 0:
-      /*
-       * TODO: End of connection, cleanup.
-       */
+      mongo_client_context_fail(client);
+      GOTO(cleanup);
       break;
    default:
       mongo_client_context_dispatch(client);
@@ -143,6 +127,7 @@ mongo_server_read_msg_cb (GInputStream *stream,
                              (GAsyncReadyCallback)mongo_server_read_header_cb,
                              mongo_client_context_ref(client));
 
+cleanup:
    mongo_client_context_unref(client);
 
    EXIT;
@@ -165,14 +150,10 @@ mongo_server_read_header_cb (GInputStream *stream,
    ret = g_input_stream_read_finish(stream, result, &error);
    switch (ret) {
    case -1:
-      /*
-       * TODO: Fail the connection.
-       */
-      break;
    case 0:
-      /*
-       * TODO: End of connection, cleanup.
-       */
+   default:
+      mongo_client_context_fail(client);
+      GOTO(cleanup);
       break;
    case 16:
       client->header.msg_len = GUINT32_FROM_LE(client->header.msg_len);
@@ -180,13 +161,11 @@ mongo_server_read_header_cb (GInputStream *stream,
       client->header.response_to = GUINT32_FROM_LE(client->header.response_to);
       client->header.op_code = GUINT32_FROM_LE(client->header.op_code);
       if (client->header.msg_len <= 16) {
-         /*
-          * TODO: Invalid message size, abort.
-          */
+         mongo_client_context_fail(client);
+         GOTO(cleanup);
       }
 
       g_assert(!client->incoming);
-
       client->incoming = g_malloc(client->header.msg_len);
       g_input_stream_read_async(stream,
                                 client->incoming,
@@ -196,13 +175,9 @@ mongo_server_read_header_cb (GInputStream *stream,
                                 (GAsyncReadyCallback)mongo_server_read_msg_cb,
                                 mongo_client_context_ref(client));
       break;
-   default:
-      /*
-       * TODO: Bad read back, close the connection.
-       */
-      break;
    }
 
+cleanup:
    mongo_client_context_unref(client);
 
    EXIT;
@@ -252,27 +227,53 @@ mongo_server_incoming (GSocketService    *service,
    RETURN(TRUE);
 }
 
-static void
-mongo_server_set_async_context (MongoServer  *server,
-                                GMainContext *async_context)
+static gboolean
+mongo_server_request_read (MongoServer        *server,
+                           MongoClientContext *client,
+                           MongoMessage       *message)
 {
-   MongoServerPrivate *priv;
+   MongoMessageClass *klass;
+   gboolean handled = FALSE;
+   guint signal;
 
-   g_return_if_fail(MONGO_IS_SERVER(server));
+   g_assert(MONGO_IS_SERVER(server));
+   g_assert(client);
+   g_assert(MONGO_IS_MESSAGE(message));
 
-   priv = server->priv;
+   klass = MONGO_MESSAGE_GET_CLASS(message);
 
-   if (priv->async_context) {
-      g_main_context_unref(priv->async_context);
-      priv->async_context = NULL;
+   switch (klass->operation) {
+   case MONGO_OPERATION_REPLY:
+      signal = REQUEST_REPLY;
+      break;
+   case MONGO_OPERATION_UPDATE:
+      signal = REQUEST_UPDATE;
+      break;
+   case MONGO_OPERATION_INSERT:
+      signal = REQUEST_INSERT;
+      break;
+   case MONGO_OPERATION_QUERY:
+      signal = REQUEST_QUERY;
+      break;
+   case MONGO_OPERATION_GETMORE:
+      signal = REQUEST_GETMORE;
+      break;
+   case MONGO_OPERATION_DELETE:
+      signal = REQUEST_DELETE;
+      break;
+   case MONGO_OPERATION_KILL_CURSORS:
+      signal = REQUEST_KILL_CURSORS;
+      break;
+   case MONGO_OPERATION_MSG:
+      signal = REQUEST_MSG;
+      break;
+   default:
+      g_assert_not_reached();
    }
 
-   if (async_context) {
-      priv->async_context = g_main_context_ref(async_context);
-   }
+   g_signal_emit(server, gSignals[signal], 0, client, message, &handled);
 
-   g_object_notify_by_pspec(G_OBJECT(server),
-                            gParamSpecs[PROP_ASYNC_CONTEXT]);
+   return handled;
 }
 
 static void
@@ -280,48 +281,15 @@ mongo_server_finalize (GObject *object)
 {
    MongoServerPrivate *priv;
 
+   ENTRY;
+
    priv = MONGO_SERVER(object)->priv;
 
-   if (priv->async_context) {
-      g_main_context_unref(priv->async_context);
-      priv->async_context = NULL;
-   }
+   g_hash_table_unref(priv->client_contexts);
 
    G_OBJECT_CLASS(mongo_server_parent_class)->finalize(object);
-}
 
-static void
-mongo_server_get_property (GObject    *object,
-                           guint       prop_id,
-                           GValue     *value,
-                           GParamSpec *pspec)
-{
-   MongoServer *server = MONGO_SERVER(object);
-
-   switch (prop_id) {
-   case PROP_ASYNC_CONTEXT:
-      g_value_set_boxed(value, mongo_server_get_async_context(server));
-      break;
-   default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-   }
-}
-
-static void
-mongo_server_set_property (GObject      *object,
-                           guint         prop_id,
-                           const GValue *value,
-                           GParamSpec   *pspec)
-{
-   MongoServer *server = MONGO_SERVER(object);
-
-   switch (prop_id) {
-   case PROP_ASYNC_CONTEXT:
-      mongo_server_set_async_context(server, g_value_get_boxed(value));
-      break;
-   default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
-   }
+   EXIT;
 }
 
 static void
@@ -330,48 +298,27 @@ mongo_server_class_init (MongoServerClass *klass)
    GObjectClass *object_class;
    GSocketServiceClass *service_class;
 
+   klass->request_read = mongo_server_request_read;
+
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = mongo_server_finalize;
-   object_class->get_property = mongo_server_get_property;
-   object_class->set_property = mongo_server_set_property;
    g_type_class_add_private(object_class, sizeof(MongoServerPrivate));
 
    service_class = G_SOCKET_SERVICE_CLASS(klass);
    service_class->incoming = mongo_server_incoming;
 
    /**
-    * MongoServer:async-context:
+    * MongoServer:request-started:
     *
-    * The "async-context" property is the #GMainContext that is used to
-    * dispatch events to callbacks.
+    * The "request-started" signal is emitted when a new request has
+    * been parsed from the client. Only the header fields of the message
+    * have been filled in such as "request-id" and "response-to".
     */
-   gParamSpecs[PROP_ASYNC_CONTEXT] =
-      g_param_spec_boxed("async-context",
-                         _("Async Context"),
-                         _("The main context for callback execution."),
-                         G_TYPE_MAIN_CONTEXT,
-                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
-   g_object_class_install_property(object_class, PROP_ASYNC_CONTEXT,
-                                   gParamSpecs[PROP_ASYNC_CONTEXT]);
-
    gSignals[REQUEST_STARTED] =
       g_signal_new("request-started",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_started),
-                   NULL,
-                   NULL,
-                   g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
-                   2,
-                   MONGO_TYPE_CLIENT_CONTEXT,
-                   MONGO_TYPE_MESSAGE);
-
-   gSignals[REQUEST_READ] =
-      g_signal_new("request-read",
-                   MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
-                   G_STRUCT_OFFSET(MongoServerClass, request_read),
                    NULL,
                    NULL,
                    g_cclosure_marshal_generic,
@@ -383,7 +330,7 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_FINISHED] =
       g_signal_new("request-finished",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_finished),
                    NULL,
                    NULL,
@@ -393,15 +340,52 @@ mongo_server_class_init (MongoServerClass *klass)
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
 
+   /**
+    * MongoServer:request-read:
+    *
+    * The "request-read" signal is emitted when a request has been fully
+    * read from the client and all fields filled in. This is a good place
+    * to handle all incoming requests. If you handle this function and
+    * return %TRUE to suppress further events from firing, the signals for
+    * individual request types will not fire.
+    *
+    * Returning %TRUE supresses further events.
+    */
+   gSignals[REQUEST_READ] =
+      g_signal_new("request-read",
+                   MONGO_TYPE_SERVER,
+                   G_SIGNAL_RUN_LAST,
+                   G_STRUCT_OFFSET(MongoServerClass, request_read),
+                   g_signal_accumulator_true_handled,
+                   NULL,
+                   g_cclosure_marshal_generic,
+                   G_TYPE_BOOLEAN,
+                   2,
+                   MONGO_TYPE_CLIENT_CONTEXT,
+                   MONGO_TYPE_MESSAGE);
+
+   gSignals[REQUEST_MSG] =
+      g_signal_new("request-reply",
+                   MONGO_TYPE_SERVER,
+                   G_SIGNAL_RUN_LAST,
+                   G_STRUCT_OFFSET(MongoServerClass, request_reply),
+                   g_signal_accumulator_true_handled,
+                   NULL,
+                   g_cclosure_marshal_generic,
+                   G_TYPE_BOOLEAN,
+                   2,
+                   MONGO_TYPE_CLIENT_CONTEXT,
+                   MONGO_TYPE_MESSAGE);
+
    gSignals[REQUEST_MSG] =
       g_signal_new("request-msg",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_msg),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -409,12 +393,12 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_UPDATE] =
       g_signal_new("request-update",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_update),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -422,12 +406,12 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_INSERT] =
       g_signal_new("request-insert",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_insert),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -435,12 +419,12 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_QUERY] =
       g_signal_new("request-query",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_query),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -448,12 +432,12 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_GETMORE] =
       g_signal_new("request-getmore",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_getmore),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -461,12 +445,12 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_DELETE] =
       g_signal_new("request-delete",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_delete),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -474,12 +458,12 @@ mongo_server_class_init (MongoServerClass *klass)
    gSignals[REQUEST_KILL_CURSORS] =
       g_signal_new("request-kill_cursors",
                    MONGO_TYPE_SERVER,
-                   G_SIGNAL_RUN_FIRST,
+                   G_SIGNAL_RUN_LAST,
                    G_STRUCT_OFFSET(MongoServerClass, request_kill_cursors),
-                   NULL,
+                   g_signal_accumulator_true_handled,
                    NULL,
                    g_cclosure_marshal_generic,
-                   G_TYPE_NONE,
+                   G_TYPE_BOOLEAN,
                    2,
                    MONGO_TYPE_CLIENT_CONTEXT,
                    MONGO_TYPE_MESSAGE);
@@ -488,10 +472,9 @@ mongo_server_class_init (MongoServerClass *klass)
 static void
 mongo_server_init (MongoServer *server)
 {
-   server->priv =
-      G_TYPE_INSTANCE_GET_PRIVATE(server,
-                                  MONGO_TYPE_SERVER,
-                                  MongoServerPrivate);
+   server->priv = G_TYPE_INSTANCE_GET_PRIVATE(server,
+                                              MONGO_TYPE_SERVER,
+                                              MongoServerPrivate);
    server->priv->client_contexts =
       g_hash_table_new_full(g_direct_hash,
                             g_direct_equal,
@@ -505,6 +488,7 @@ mongo_client_context_dispose (MongoClientContext *context)
    ENTRY;
 
    g_clear_object(&context->cancellable);
+   g_clear_object(&context->connection);
    g_clear_object(&context->output);
 
    if (context->server) {
@@ -528,6 +512,7 @@ mongo_client_context_new (MongoServer       *server,
    context->cancellable = g_cancellable_new();
    context->server = server;
    context->connection = g_object_ref(connection);
+   context->failed = FALSE;
    output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
    context->output = g_buffered_output_stream_new(output_stream);
    g_buffered_output_stream_set_auto_grow(
@@ -540,8 +525,10 @@ mongo_client_context_new (MongoServer       *server,
 
 void
 mongo_client_context_write (MongoClientContext  *client,
-                            MongoMessage        *message)
+                            MongoMessage        *message,
+                            MongoMessage        *reply)
 {
+   gboolean handled;
    guint8 *buf;
    gsize buflen;
    gsize written;
@@ -550,142 +537,156 @@ mongo_client_context_write (MongoClientContext  *client,
 
    g_assert(client);
    g_assert(message);
+   g_assert(reply);
 
-   if ((buf = mongo_message_save_to_data(message, &buflen))) {
-      if (g_output_stream_write_all(client->output,
-                                    buf,
-                                    buflen,
-                                    &written,
-                                    client->cancellable,
-                                    NULL)) {
-         g_output_stream_flush(client->output, client->cancellable, NULL);
-         g_free(buf);
-         EXIT;
+   if (!client->failed) {
+      if ((buf = mongo_message_save_to_data(reply, &buflen))) {
+         if (g_output_stream_write_all(client->output,
+                                       buf,
+                                       buflen,
+                                       &written,
+                                       client->cancellable,
+                                       NULL)) {
+            g_output_stream_flush(client->output, client->cancellable, NULL);
+            g_signal_emit(client->server,
+                          gSignals[REQUEST_FINISHED],
+                          0,
+                          client,
+                          message,
+                          &handled);
+            g_free(buf);
+            EXIT;
+         }
       }
+
+      mongo_client_context_fail(client);
+      g_free(buf);
    }
 
-   g_free(buf);
-
-   /*
-    * TODO: Fail the client since we could not write all data.
-    */
+   EXIT;
 }
 
 static void
 mongo_client_context_dispatch (MongoClientContext *client)
 {
-   MongoMessage *message;
+   MongoMessage *message = NULL;
    MongoMessage *reply;
-   guint8 *data;
+   MongoBson **documents;
+   gboolean handled;
+   guint8 *data = NULL;
    gsize data_len;
    GType type_id = G_TYPE_NONE;
-   guint signal = 0;
 
    ENTRY;
 
    g_assert(client);
+   g_assert(client->incoming);
 
    data = client->incoming;
    data_len = client->header.msg_len - sizeof client->header;
    client->incoming = NULL;
 
-   g_assert(data);
-   g_assert(data_len);
-
    switch (client->header.op_code) {
    case MONGO_OPERATION_REPLY:
-      /*
-       * TODO: Fail the connection, shouldn't send replies to a server.
-       */
+      type_id = MONGO_TYPE_REPLY;
       break;
    case MONGO_OPERATION_MSG:
-      signal = gSignals[REQUEST_MSG];
+      //type_id = MONGO_TYPE_MSG;
       break;
    case MONGO_OPERATION_UPDATE:
-      signal = gSignals[REQUEST_UPDATE];
+      //type_id = MONGO_TYPE_UPDATE;
       break;
    case MONGO_OPERATION_INSERT:
-      signal = gSignals[REQUEST_INSERT];
+      //type_id = MONGO_TYPE_INSERT;
       break;
    case MONGO_OPERATION_QUERY:
-      signal = gSignals[REQUEST_QUERY];
       type_id = MONGO_TYPE_QUERY;
       break;
    case MONGO_OPERATION_GETMORE:
-      signal = gSignals[REQUEST_GETMORE];
+      //type_id = MONGO_TYPE_GETMORE;
       break;
    case MONGO_OPERATION_DELETE:
-      signal = gSignals[REQUEST_DELETE];
+      //type_id = MONGO_TYPE_DELETE;
       break;
    case MONGO_OPERATION_KILL_CURSORS:
-      signal = gSignals[REQUEST_KILL_CURSORS];
       break;
    default:
-      /*
-       * TODO: Fail the connection for protocol failure.
-       */
+      mongo_client_context_fail(client);
+      GOTO(cleanup);
       break;
    }
 
+   /*
+    * Create a MongoMessage for the incoming request.
+    */
    message = g_object_new(type_id,
                           "request-id", client->header.request_id,
                           "response-to", client->header.response_to,
                           NULL);
 
    /*
-    * Let the message subclass load the data.
+    * Load the message buffer into the MongoMessage instance.
     */
    if (!mongo_message_load_from_data(message, data, data_len)) {
-      /*
-       * TODO: Fail the connection for protocol failure.
-       */
-      g_print("Failed to load.\n");
+      mongo_client_context_fail(client);
+      GOTO(cleanup);
    }
 
    /*
-    * Emit request signals for this request.
+    * Emit request signals for this request. The default "request-read"
+    * handler will emit the proper signal for the request.
     */
-   g_signal_emit(client->server, gSignals[REQUEST_READ], 0, client, message);
-   g_signal_emit(client->server, signal, 0, client, message);
+   g_signal_emit(client->server, gSignals[REQUEST_READ], 0,
+                 client, message, &handled);
 
    /*
-    * TODO: If the message is not paused, we probably need to send the reply
-    *       and emit the FINISHED. Finished might get emitted elsewhere in
-    *       the send path, however.
+    * TODO: Technically we need to hold a lock on the message before checking
+    *       to see if it is paused since it is possible for it to be handled
+    *       by a thread and then moved to complete state before we readback.
+    *       If that thread then unpaused it and we already wrote the response,
+    *       we could send a response twice.
     */
 
    if (!_mongo_message_get_paused(message)) {
       if ((reply = mongo_message_get_reply(message))) {
-         mongo_client_context_write(client, reply);
+         mongo_client_context_write(client, message, reply);
       } else {
-         MongoBson **documents;
-
-         g_print("no reply, generating.\n");
-
          reply = g_object_new(MONGO_TYPE_REPLY,
-                              "cursor-id", 0UL,
+                              "cursor-id", G_GUINT64_CONSTANT(0),
                               "flags", MONGO_REPLY_QUERY_FAILURE,
                               "request-id", -1,
                               "response-to", client->header.request_id,
                               NULL);
          documents = g_new0(MongoBson*, 1);
          documents[0] = mongo_bson_new_empty();
-         mongo_bson_append_string(documents[0], "$err", "Server did not handle query.");
-         mongo_bson_append_int(documents[0], "code", 1234);
+         mongo_bson_append_string(documents[0], "$err", "Your request is denied.");
+         mongo_bson_append_int(documents[0], "code", 0);
          mongo_reply_set_documents(MONGO_REPLY(reply), documents, 1);
-         mongo_bson_unref(documents[0]);
+         mongo_client_context_write(client, message, reply);
          g_object_unref(reply);
       }
    }
 
-   g_object_unref(message);
+cleanup:
+   g_clear_object(&message);
    g_free(data);
 
    EXIT;
 }
 
+static void
+mongo_client_context_fail (MongoClientContext *client)
+{
+   g_assert(client);
+
+   client->failed = TRUE;
+   g_io_stream_close(G_IO_STREAM(client->connection),
+                     client->cancellable,
+                     NULL);
+}
+
 gchar *
-mongo_client_context_get_peer (MongoClientContext *client)
+mongo_client_context_get_uri (MongoClientContext *client)
 {
    GInetSocketAddress *saddr;
    GSocketAddress *addr;

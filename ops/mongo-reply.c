@@ -303,6 +303,7 @@ mongo_reply_class_init (MongoReplyClass *klass)
    g_type_class_add_private(object_class, sizeof(MongoReplyPrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->operation = MONGO_OPERATION_REPLY;
    message_class->save_to_data = mongo_reply_save_to_data;
 
    gParamSpecs[PROP_COUNT] =

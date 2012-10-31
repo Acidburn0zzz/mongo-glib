@@ -10,7 +10,7 @@ whatsmyuri (MongoServer        *server,
    MongoBson *doc;
    gchar *str;
 
-   str = mongo_client_context_get_peer(client);
+   str = mongo_client_context_get_uri(client);
    doc = mongo_bson_new_empty();
    mongo_bson_append_string(doc, "you", str);
    mongo_bson_append_int(doc, "ok", 1);
