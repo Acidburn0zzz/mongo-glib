@@ -11,6 +11,7 @@ DISTCHECK_CONFIGURE_FLAGS = --enable-maintainer-flags --enable-gtk-doc --enable-
 mongodocdir = ${prefix}/doc/mongo-glib-1.0
 mongodoc_DATA =
 mongodoc_DATA += README
+mongodoc_DATA += README.md
 mongodoc_DATA += COPYING
 mongodoc_DATA += AUTHORS
 mongodoc_DATA += ChangeLog
