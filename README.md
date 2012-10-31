@@ -65,3 +65,22 @@ Server.connect('request-query', function(server, client, message) {
 // Run the main loop.
 MainLoop.run("");
 ```
+
+### Implementing a Server in Python
+
+```python
+from gi.repository import Mongo
+from gi.repository import GLib
+
+def handleRequest(server, client, message):
+    bson = Mongo.Bson()
+    bson.append_string("hello", "world")
+    message.set_reply_bson(Mongo.ReplyFlags.NONE, bson)
+    return True
+
+Server = Mongo.Server()
+Server.add_inet_port(5201, None)
+Server.connect('request-query', handleRequest)
+
+GLib.MainLoop().run()
+```
