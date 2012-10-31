@@ -40,3 +40,28 @@ in systems other than MongoDB such as Redis.
   * Index creation.
   * Probably more ...
 
+## Examples
+
+### Implementing a Server in JavaScript
+
+```javascript
+// Requires mongo-glib from master and gobject-introspection. Run with gjs.
+
+let Mongo = imports.gi.Mongo;
+let MainLoop = imports.mainloop;
+let Server = new Mongo.Server();
+
+// Listen on 27017.
+Server.add_inet_port(27017, null, null);
+
+// Handle an incoming OP_QUERY
+Server.connect('request-query', function(server, client, message) {
+    let bson = Mongo.Bson.new_empty();
+    bson.append_string("hello", "world");
+    message.set_reply_bson(Mongo.ReplyFlags.NONE, bson);
+    return true;
+});
+
+// Run the main loop.
+MainLoop.run("");
+```
