@@ -80,15 +80,10 @@ mongo_message_delete_set_selector (MongoMessageDelete *delete,
 
    priv = delete->priv;
 
-   if (priv->selector) {
-      mongo_bson_unref(priv->selector);
-      priv->selector = NULL;
-   }
-
+   mongo_clear_bson(&priv->selector);
    if (selector) {
       priv->selector = mongo_bson_ref(selector);
    }
-
    g_object_notify_by_pspec(G_OBJECT(delete), gParamSpecs[PROP_SELECTOR]);
 }
 
@@ -236,11 +231,7 @@ mongo_message_delete_finalize (GObject *object)
 
    priv = MONGO_MESSAGE_DELETE(object)->priv;
 
-   if (priv->selector) {
-      mongo_bson_unref(priv->selector);
-      priv->selector = NULL;
-   }
-
+   mongo_clear_bson(&priv->selector);
    g_free(priv->collection);
 
    G_OBJECT_CLASS(mongo_message_delete_parent_class)->finalize(object);
