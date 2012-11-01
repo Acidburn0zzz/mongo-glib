@@ -62,14 +62,16 @@ mongo_message_msg_load_from_data (MongoMessage *message,
 {
    MongoMessageMsg *msg = (MongoMessageMsg *)message;
 
+   ENTRY;
+
    g_assert(MONGO_IS_MESSAGE_MSG(msg));
 
    if (g_utf8_validate((gchar *)data, length, NULL)) {
       mongo_message_msg_set_message(msg, (gchar *)data);
-      return TRUE;
+      RETURN(TRUE);
    }
 
-   return FALSE;
+   RETURN(FALSE);
 }
 
 static guint8 *
@@ -80,6 +82,9 @@ mongo_message_msg_save_to_data (MongoMessage *message,
    MongoMessageMsg *msg = (MongoMessageMsg *)message;
    GByteArray *bytes;
    gint32 v32;
+   guint8 *ret;
+
+   ENTRY;
 
    g_assert(MONGO_IS_MESSAGE_MSG(msg));
    g_assert(length);
@@ -115,8 +120,8 @@ mongo_message_msg_save_to_data (MongoMessage *message,
 
    DUMP_BYTES(buf, bytes->data, bytes->len);
 
-   return g_byte_array_free(bytes, FALSE);
-
+   ret = g_byte_array_free(bytes, FALSE);
+   RETURN(ret);
 }
 
 static void

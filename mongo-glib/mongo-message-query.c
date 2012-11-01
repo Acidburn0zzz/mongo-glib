@@ -124,8 +124,8 @@ mongo_message_query_get_command_name (MongoMessageQuery *query)
 }
 
 void
-mongo_message_query_set_collection (MongoMessageQuery  *query,
-                            const gchar *collection)
+mongo_message_query_set_collection (MongoMessageQuery *query,
+                                    const gchar       *collection)
 {
    MongoMessageQueryPrivate *priv;
 
@@ -149,7 +149,7 @@ mongo_message_query_set_flags (MongoMessageQuery *query,
 
 void
 mongo_message_query_set_limit (MongoMessageQuery *query,
-                       guint       limit)
+                               guint              limit)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    query->priv->limit = limit;
@@ -157,16 +157,16 @@ mongo_message_query_set_limit (MongoMessageQuery *query,
 }
 
 void
-mongo_message_query_set_query (MongoMessageQuery      *query,
-                       const MongoBson *bson)
+mongo_message_query_set_query (MongoMessageQuery *query,
+                               const MongoBson   *bson)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    mongo_message_query_take_query(query, bson ? mongo_bson_dup(bson) : NULL);
 }
 
 void
-mongo_message_query_set_selector (MongoMessageQuery      *query,
-                          const MongoBson *bson)
+mongo_message_query_set_selector (MongoMessageQuery *query,
+                                  const MongoBson   *bson)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    mongo_message_query_take_selector(query, bson ? mongo_bson_dup(bson) : NULL);
@@ -174,7 +174,7 @@ mongo_message_query_set_selector (MongoMessageQuery      *query,
 
 void
 mongo_message_query_set_skip (MongoMessageQuery *query,
-                      guint       skip)
+                              guint              skip)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
    query->priv->skip = skip;
@@ -183,7 +183,7 @@ mongo_message_query_set_skip (MongoMessageQuery *query,
 
 void
 mongo_message_query_take_query (MongoMessageQuery *query,
-                        MongoBson  *bson)
+                                MongoBson         *bson)
 {
    MongoMessageQueryPrivate *priv;
 
@@ -203,7 +203,7 @@ mongo_message_query_take_query (MongoMessageQuery *query,
 
 void
 mongo_message_query_take_selector (MongoMessageQuery *query,
-                           MongoBson  *bson)
+                                   MongoBson         *bson)
 {
    MongoMessageQueryPrivate *priv;
 
@@ -223,8 +223,8 @@ mongo_message_query_take_selector (MongoMessageQuery *query,
 
 static gboolean
 mongo_message_query_load_from_data (MongoMessage *message,
-                            const guint8 *data,
-                            gsize         data_len)
+                                    const guint8 *data,
+                                    gsize         data_len)
 {
    MongoMessageQueryPrivate *priv;
    const gchar *name;
@@ -319,9 +319,9 @@ mongo_message_query_finalize (GObject *object)
 
 static void
 mongo_message_query_get_property (GObject    *object,
-                          guint       prop_id,
-                          GValue     *value,
-                          GParamSpec *pspec)
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
 {
    MongoMessageQuery *query = MONGO_MESSAGE_QUERY(object);
 
@@ -351,9 +351,9 @@ mongo_message_query_get_property (GObject    *object,
 
 static void
 mongo_message_query_set_property (GObject      *object,
-                          guint         prop_id,
-                          const GValue *value,
-                          GParamSpec   *pspec)
+                                  guint         prop_id,
+                                  const GValue *value,
+                                  GParamSpec   *pspec)
 {
    MongoMessageQuery *query = MONGO_MESSAGE_QUERY(object);
 

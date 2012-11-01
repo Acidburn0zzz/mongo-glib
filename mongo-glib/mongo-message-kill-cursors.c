@@ -97,9 +97,12 @@ mongo_message_kill_cursors_save_to_data (MongoMessage *message,
    MongoMessageKillCursorsPrivate *priv;
    MongoMessageKillCursors *cursors = (MongoMessageKillCursors *)message;
    GByteArray *bytes;
-   guint32 v32;
    guint64 v64;
+   guint32 v32;
+   guint8 *ret;
    guint i;
+
+   ENTRY;
 
    g_assert(MONGO_IS_MESSAGE_KILL_CURSORS(cursors));
    g_assert(length);
@@ -142,7 +145,8 @@ mongo_message_kill_cursors_save_to_data (MongoMessage *message,
 
    DUMP_BYTES(buf, bytes->data, bytes->len);
 
-   return g_byte_array_free(bytes, FALSE);
+   ret = g_byte_array_free(bytes, FALSE);
+   RETURN(ret);
 }
 
 static void
