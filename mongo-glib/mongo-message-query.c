@@ -227,16 +227,17 @@ mongo_message_query_load_from_data (MongoMessage *message,
                                     gsize         data_len)
 {
    MongoMessageQueryPrivate *priv;
+   MongoMessageQuery *query = (MongoMessageQuery *)message;
    const gchar *name;
    guint32 vu32;
 
    ENTRY;
 
-   g_assert(MONGO_IS_MESSAGE_QUERY(message));
+   g_assert(MONGO_IS_MESSAGE_QUERY(query));
    g_assert(data);
    g_assert(data_len);
 
-   priv = MONGO_MESSAGE_QUERY(message)->priv;
+   priv = query->priv;
 
    if (data_len > 4) {
       memcpy(&vu32, data, sizeof vu32);
@@ -248,21 +249,21 @@ mongo_message_query_load_from_data (MongoMessage *message,
       for (name = (gchar *)data; data_len && *data; data_len--, data++) { }
 
       if (data_len) {
-         priv->collection = g_strdup(name);
+         mongo_message_query_set_collection(query, name);
          data_len--;
          data++;
 
          if (data_len > 4) {
             memcpy(&vu32, data, sizeof vu32);
+            mongo_message_query_set_skip(query, GUINT32_FROM_LE(vu32));
             data_len -= 4;
             data += 4;
-            priv->skip = vu32;
 
             if (data_len > 4) {
                memcpy(&vu32, data, sizeof vu32);
+               mongo_message_query_set_limit(query, GUINT32_FROM_LE(vu32));
                data_len -= 4;
                data += 4;
-               priv->limit = vu32;
 
                if (data_len > 4) {
                   memcpy(&vu32, data, sizeof vu32);
