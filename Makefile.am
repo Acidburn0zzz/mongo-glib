@@ -1,4 +1,3 @@
-include Makefile.include
 include Makefile.tests
 include mongo-glib/Makefile.include
 include tests/Makefile.include

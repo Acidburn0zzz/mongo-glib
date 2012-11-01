@@ -17,27 +17,20 @@ m4_define([lt_age], [m4_eval(mongo_binary_age - mongo_interface_age)])
 dnl **************************************************************************
 dnl Initialize Automake
 dnl **************************************************************************
-AC_PREREQ([2.64])
-AC_INIT([mongo-glib],[mongo_version])
+AC_PREREQ([2.69])
+AC_INIT([mongo-glib],[mongo_version],[https://github.com/chergert/mongo-glib])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([-Wno-portability])
-AM_MAINTAINER_MODE([enable])
-
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AS_AM_REALLY_SILENT
-
-# Check for programs
-AC_PROG_CC
-AM_PROG_CC_C_O
-AM_PATH_GLIB_2_0
-GLIB_GSETTINGS
 
 # Initialize libtool
 LT_PREREQ([2.2])
 LT_INIT
+
+AM_INIT_AUTOMAKE([1.11.1 no-dist-gzip dist-xz -Wno-portability])
 
 
 dnl **************************************************************************
@@ -65,7 +58,9 @@ PKG_CHECK_MODULES(GOBJECT, [gobject-2.0 >= 2.32])
 dnl **************************************************************************
 dnl Check for libunistring
 dnl **************************************************************************
-AC_CHECK_HEADERS([unistr.h])
+AC_CHECK_HEADERS([unistr.h],[],[
+	AC_MSG_ERROR([unistr.h missing; please install libunistring.])
+])
 
 
 dnl **************************************************************************
@@ -128,21 +123,13 @@ AM_CONDITIONAL(ENABLE_GLIB_TEST, test "x$enable_glibtest" = "xyes")
 dnl **************************************************************************
 dnl API Documentation
 dnl **************************************************************************
-m4_ifdef([GTK_DOC_CHECK], [
-	GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
-],[
-	AM_CONDITIONAL([ENABLE_GTK_DOC], false)
-	enable_gtk_doc=no
-])
+GTK_DOC_CHECK([1.14],[--flavour no-tmpl])
 
 
 dnl **************************************************************************
 dnl Miscellaneous
 dnl **************************************************************************
 GOBJECT_INTROSPECTION_CHECK([1.30.0])
-SHAMROCK_EXPAND_LIBDIR
-SHAMROCK_EXPAND_BINDIR
-SHAMROCK_EXPAND_DATADIR
 
 
 dnl **************************************************************************
@@ -162,7 +149,6 @@ echo "Mongo-GLib $VERSION"
 echo ""
 echo "  Prefix.....................: ${prefix}"
 echo "  Enable Introspection.......: ${found_introspection}"
-echo "  Enable API Reference.......: ${enable_gtk_doc}"
 echo "  Enable Test Suite..........: ${enable_glibtest}"
 echo "  Debug Level................: ${enable_debug}"
 echo "  Compiler Flags.............: ${CFLAGS}"
