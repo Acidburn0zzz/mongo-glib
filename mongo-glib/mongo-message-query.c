@@ -229,6 +229,7 @@ mongo_message_query_load_from_data (MongoMessage *message,
    MongoMessageQueryPrivate *priv;
    MongoMessageQuery *query = (MongoMessageQuery *)message;
    const gchar *name;
+   MongoBson *bson;
    guint32 vu32;
 
    ENTRY;
@@ -240,12 +241,14 @@ mongo_message_query_load_from_data (MongoMessage *message,
    priv = query->priv;
 
    if (data_len > 4) {
+      /* Query flags */
       memcpy(&vu32, data, sizeof vu32);
       priv->flags = GUINT32_FROM_LE(vu32);
 
       data_len -= 4;
       data += 4;
 
+      /* Walk through collection name */
       for (name = (gchar *)data; data_len && *data; data_len--, data++) { }
 
       if (data_len) {
@@ -253,31 +256,39 @@ mongo_message_query_load_from_data (MongoMessage *message,
          data_len--;
          data++;
 
+         /* Skipped documents */
          if (data_len > 4) {
             memcpy(&vu32, data, sizeof vu32);
             mongo_message_query_set_skip(query, GUINT32_FROM_LE(vu32));
             data_len -= 4;
             data += 4;
 
+            /* Maximum return documents */
             if (data_len > 4) {
                memcpy(&vu32, data, sizeof vu32);
                mongo_message_query_set_limit(query, GUINT32_FROM_LE(vu32));
                data_len -= 4;
                data += 4;
 
+               /* Query BSON document */
                if (data_len > 4) {
                   memcpy(&vu32, data, sizeof vu32);
                   vu32 = GUINT32_FROM_LE(vu32);
                   if (data_len >= vu32) {
-                     priv->query = mongo_bson_new_from_data(data, vu32);
+                     bson = mongo_bson_new_from_data(data, vu32);
+                     mongo_message_query_set_query(query, bson);
+                     mongo_bson_unref(bson);
                      data_len -= vu32;
                      data += vu32;
 
+                     /* Selector bson document */
                      if (data_len > 4) {
                         memcpy(&vu32, data, sizeof vu32);
                         vu32 = GUINT32_FROM_LE(vu32);
                         if (data_len >= vu32) {
-                           priv->selector = mongo_bson_new_from_data(data, vu32);
+                           bson = mongo_bson_new_from_data(data, vu32);
+                           mongo_message_query_set_selector(query, bson);
+                           mongo_bson_unref(bson);
                            data_len -= vu32;
                            data += vu32;
                         }
