@@ -40,6 +40,16 @@ in systems other than MongoDB such as Redis.
   * Index creation.
   * Probably more ...
 
+## Dependencies
+
+  * glib2-devel
+  * libunistring
+
+### Optional
+
+  * gnome-common (if building from git)
+  * gtk-doc (for api documentation)
+
 ## Examples
 
 ### Implementing a Server in JavaScript
