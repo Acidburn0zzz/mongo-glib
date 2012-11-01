@@ -800,7 +800,8 @@ mongo_bson_append_timeval (MongoBson   *bson,
    g_return_if_fail(key);
    g_return_if_fail(value);
 
-   msec = (value->tv_sec * 1000) + (value->tv_usec / 1000);
+   msec = ((guint64)value->tv_sec * 1000UL) +
+          ((guint64)value->tv_usec / 1000UL);
    mongo_bson_append(bson, MONGO_BSON_DATE_TIME, key,
                      (const guint8 *)&msec, sizeof msec,
                      NULL, 0);
