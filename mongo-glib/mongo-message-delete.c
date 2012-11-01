@@ -307,6 +307,7 @@ mongo_message_delete_class_init (MongoMessageDeleteClass *klass)
    g_type_class_add_private(object_class, sizeof(MongoMessageDeletePrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->operation = MONGO_OPERATION_DELETE;
    message_class->load_from_data = mongo_message_delete_load_from_data;
    message_class->save_to_data = mongo_message_delete_save_to_data;
 }

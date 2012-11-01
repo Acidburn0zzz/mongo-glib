@@ -266,6 +266,7 @@ mongo_message_getmore_class_init (MongoMessageGetmoreClass *klass)
    g_type_class_add_private(object_class, sizeof(MongoMessageGetmorePrivate));
 
    message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->operation = MONGO_OPERATION_GETMORE;
    message_class->load_from_data = mongo_message_getmore_load_from_data;
    message_class->save_to_data = mongo_message_getmore_save_to_data;
 

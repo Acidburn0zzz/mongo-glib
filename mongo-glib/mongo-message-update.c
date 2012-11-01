@@ -73,12 +73,16 @@ static void
 mongo_message_update_class_init (MongoMessageUpdateClass *klass)
 {
    GObjectClass *object_class;
+   MongoMessageClass *message_class;
 
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = mongo_message_update_finalize;
    object_class->get_property = mongo_message_update_get_property;
    object_class->set_property = mongo_message_update_set_property;
    g_type_class_add_private(object_class, sizeof(MongoMessageUpdatePrivate));
+
+   message_class = MONGO_MESSAGE_CLASS(klass);
+   message_class->operation = MONGO_OPERATION_MSG;
 }
 
 static void
