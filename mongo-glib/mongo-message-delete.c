@@ -301,6 +301,34 @@ mongo_message_delete_class_init (MongoMessageDeleteClass *klass)
    message_class->operation = MONGO_OPERATION_DELETE;
    message_class->load_from_data = mongo_message_delete_load_from_data;
    message_class->save_to_data = mongo_message_delete_save_to_data;
+
+   gParamSpecs[PROP_COLLECTION] =
+      g_param_spec_string("collection",
+                          _("Collection"),
+                          _("The db.collection name."),
+                          NULL,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_COLLECTION,
+                                   gParamSpecs[PROP_COLLECTION]);
+
+   gParamSpecs[PROP_FLAGS] =
+      g_param_spec_flags("flags",
+                          _("Flags"),
+                          _("The delete flags for the opreation."),
+                          MONGO_TYPE_DELETE_FLAGS,
+                          MONGO_DELETE_NONE,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_FLAGS,
+                                   gParamSpecs[PROP_FLAGS]);
+
+   gParamSpecs[PROP_SELECTOR] =
+      g_param_spec_boxed("selector",
+                         _("Selector"),
+                         _("The query to select the document(s)."),
+                         MONGO_TYPE_BSON,
+                         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_SELECTOR,
+                                   gParamSpecs[PROP_SELECTOR]);
 }
 
 static void
