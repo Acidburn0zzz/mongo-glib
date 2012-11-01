@@ -119,6 +119,8 @@ mongo_message_delete_load_from_data (MongoMessage *message,
    MongoBson *bson;
    guint32 len;
 
+   ENTRY;
+
    g_assert(MONGO_IS_MESSAGE_DELETE(delete));
    g_assert(data);
    g_assert(length);
@@ -148,7 +150,7 @@ mongo_message_delete_load_from_data (MongoMessage *message,
                         bson = mongo_bson_new_from_data(data, len);
                         mongo_message_delete_set_selector(delete, bson);
                         mongo_bson_unref(bson);
-                        return TRUE;
+                        RETURN(TRUE);
                      }
                   }
                }
@@ -157,14 +159,73 @@ mongo_message_delete_load_from_data (MongoMessage *message,
       }
    }
 
-   return FALSE;
+   RETURN(FALSE);
 }
 
 static guint8 *
 mongo_message_delete_save_to_data (MongoMessage *message,
                                    gsize        *length)
 {
-   return NULL;
+   MongoMessageDeletePrivate *priv;
+   MongoMessageDelete *delete = (MongoMessageDelete *)message;
+   const guint8 *buf;
+   GByteArray *bytes;
+   gint32 v32;
+   gsize buflen;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_MESSAGE_DELETE(delete));
+   g_assert(length);
+
+   priv = delete->priv;
+
+   bytes = g_byte_array_sized_new(64);
+
+   v32 = 0;
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(mongo_message_get_request_id(message));
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(mongo_message_get_response_to(message));
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GUINT32_TO_LE(MONGO_OPERATION_REPLY);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* ZERO, reserved for future use. */
+   v32 = 0;
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* Collection name */
+   g_byte_array_append(bytes, (guint8 *)(priv->collection ?: ""),
+                       strlen(priv->collection ?: "") + 1);
+
+   /* Delete flags */
+   v32 = GUINT32_TO_LE(priv->flags);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* Selector */
+   if ((buf = mongo_bson_get_data(priv->selector, &buflen))) {
+      g_byte_array_append(bytes, buf, buflen);
+   } else {
+      MongoBson *bson;
+
+      bson = mongo_bson_new_empty();
+      buf = mongo_bson_get_data(bson, &buflen);
+      g_byte_array_append(bytes, buf, buflen);
+      mongo_bson_unref(bson);
+   }
+
+   v32 = GUINT32_TO_LE(bytes->len);
+   memcpy(bytes->data, &v32, sizeof v32);
+
+   *length = bytes->len;
+
+   DUMP_BYTES(buf, bytes->data, bytes->len);
+
+   return g_byte_array_free(bytes, FALSE);
 }
 
 static void
