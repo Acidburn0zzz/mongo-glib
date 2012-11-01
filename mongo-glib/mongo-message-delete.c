@@ -193,7 +193,7 @@ mongo_message_delete_save_to_data (MongoMessage *message,
    v32 = GINT32_TO_LE(mongo_message_get_response_to(message));
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
-   v32 = GUINT32_TO_LE(MONGO_OPERATION_REPLY);
+   v32 = GUINT32_TO_LE(MONGO_OPERATION_DELETE);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
    /* ZERO, reserved for future use. */
