@@ -164,6 +164,7 @@ static guint8 *
 mongo_message_reply_save_to_data (MongoMessage *message,
                                   gsize        *length)
 {
+   static const guint8 empty_bson[] = { 5, 0, 0, 0, 0 };
    MongoMessageReplyPrivate *priv;
    const guint8 *buf;
    MongoMessageReply *reply = (MongoMessageReply *)message;
@@ -192,24 +193,33 @@ mongo_message_reply_save_to_data (MongoMessage *message,
    v32 = GUINT32_TO_LE(MONGO_OPERATION_REPLY);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
+   /* Reply flags */
    v32 = GUINT32_TO_LE(priv->flags);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
+   /* Server side cursor id */
    v64 = GUINT64_TO_LE(priv->cursor_id);
    g_byte_array_append(bytes, (guint8 *)&v64, sizeof v64);
 
+   /* Offset in result set. */
    v32 = GINT32_TO_LE(priv->offset);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
+   /* Number of documents returned */
    v32 = GUINT32_TO_LE(priv->count);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
+   /* encode BSON documents */
    for (i = 0; i < priv->count; i++) {
-      if ((buf = mongo_bson_get_data(priv->documents[i], &buflen))) {
+      if (priv->documents[i] &&
+          (buf = mongo_bson_get_data(priv->documents[i], &buflen))) {
          g_byte_array_append(bytes, buf, buflen);
+      } else {
+         g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
       }
    }
 
+   /* Update message length */
    v32 = GUINT32_TO_LE(bytes->len);
    memcpy(bytes->data, &v32, sizeof v32);
 
