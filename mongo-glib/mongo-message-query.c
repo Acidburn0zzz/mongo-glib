@@ -305,6 +305,78 @@ mongo_message_query_load_from_data (MongoMessage *message,
    RETURN(FALSE);
 }
 
+static guint8 *
+mongo_message_query_save_to_data (MongoMessage *message,
+                                  gsize        *length)
+{
+   static const guint8 empty_bson[] = { 5, 0, 0, 0, 0 };
+   MongoMessageQueryPrivate *priv;
+   MongoMessageQuery *query = (MongoMessageQuery *)message;
+   const guint8 *buf;
+   GByteArray *bytes;
+   guint32 v32;
+   guint8 *ret;
+   gsize buflen;
+
+   g_assert(MONGO_IS_MESSAGE_QUERY(query));
+   g_assert(length);
+
+   priv = query->priv;
+
+   bytes = g_byte_array_sized_new(64);
+
+   v32 = 0;
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(mongo_message_get_request_id(message));
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GINT32_TO_LE(mongo_message_get_response_to(message));
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   v32 = GUINT32_TO_LE(MONGO_OPERATION_QUERY);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* Query flags. */
+   v32 = GUINT32_TO_LE(priv->flags);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* Collection name */
+   g_byte_array_append(bytes, (guint8 *)(priv->collection ?: ""),
+                       strlen(priv->collection ?: "") + 1);
+
+   /* Number to skip */
+   v32 = GUINT32_TO_LE(priv->skip);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* Number to return */
+   v32 = GUINT32_TO_LE(priv->limit);
+   g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
+
+   /* Query */
+   if (priv->query && (buf = mongo_bson_get_data(priv->query, &buflen))) {
+      g_byte_array_append(bytes, buf, buflen);
+   } else {
+      g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
+   }
+
+   /* Selector */
+   if (priv->selector && (buf = mongo_bson_get_data(priv->selector, &buflen))) {
+      g_byte_array_append(bytes, buf, buflen);
+   }
+
+   /* Update the message length */
+   v32 = GUINT32_TO_LE(bytes->len);
+   memcpy(bytes->data, &v32, sizeof v32);
+
+   *length = bytes->len;
+
+   DUMP_BYTES(buf, bytes->data, bytes->len);
+
+   ret = g_byte_array_free(bytes, FALSE);
+   RETURN(ret);
+}
+
 static void
 mongo_message_query_finalize (GObject *object)
 {
@@ -408,6 +480,7 @@ mongo_message_query_class_init (MongoMessageQueryClass *klass)
    message_class = MONGO_MESSAGE_CLASS(klass);
    message_class->operation = MONGO_OPERATION_QUERY;
    message_class->load_from_data = mongo_message_query_load_from_data;
+   message_class->save_to_data = mongo_message_query_save_to_data;
 
    gParamSpecs[PROP_COLLECTION] =
       g_param_spec_string("collection",
