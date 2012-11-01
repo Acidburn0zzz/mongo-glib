@@ -61,7 +61,7 @@ mongo_message_reply_get_cursor_id (MongoMessageReply *reply)
 
 void
 mongo_message_reply_set_cursor_id (MongoMessageReply *reply,
-                           guint64     cursor_id)
+                                   guint64     cursor_id)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
    reply->priv->cursor_id = cursor_id;
@@ -80,7 +80,7 @@ mongo_message_reply_set_cursor_id (MongoMessageReply *reply,
  */
 MongoBson **
 mongo_message_reply_get_documents (MongoMessageReply *reply,
-                           gsize      *count)
+                                   gsize      *count)
 {
    g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), NULL);
 
@@ -105,8 +105,8 @@ mongo_message_reply_get_documents (MongoMessageReply *reply,
  */
 void
 mongo_message_reply_set_documents (MongoMessageReply  *reply,
-                           MongoBson  **documents,
-                           gsize        count)
+                                   MongoBson  **documents,
+                                   gsize        count)
 {
    MongoMessageReplyPrivate *priv;
    guint i;
@@ -137,7 +137,7 @@ mongo_message_reply_get_flags (MongoMessageReply *reply)
 
 void
 mongo_message_reply_set_flags (MongoMessageReply *reply,
-                       MongoReplyFlags    flags)
+                               MongoReplyFlags    flags)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
    reply->priv->flags = flags;
@@ -153,7 +153,7 @@ mongo_message_reply_get_offset (MongoMessageReply *reply)
 
 void
 mongo_message_reply_set_offset (MongoMessageReply *reply,
-                        guint       offset)
+                                guint       offset)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
    reply->priv->offset = offset;
@@ -162,7 +162,7 @@ mongo_message_reply_set_offset (MongoMessageReply *reply,
 
 static guint8 *
 mongo_message_reply_save_to_data (MongoMessage *message,
-                          gsize        *length)
+                                  gsize        *length)
 {
    MongoMessageReplyPrivate *priv;
    const guint8 *buf;
@@ -222,8 +222,8 @@ mongo_message_reply_save_to_data (MongoMessage *message,
 
 static gboolean
 mongo_message_reply_load_from_data (MongoMessage *message,
-                            const guint8 *data,
-                            gsize         length)
+                                    const guint8 *data,
+                                    gsize         length)
 {
    MongoMessageReplyPrivate *priv;
    MongoMessageReply *reply = (MongoMessageReply *)message;
@@ -324,9 +324,9 @@ mongo_message_reply_finalize (GObject *object)
 
 static void
 mongo_message_reply_get_property (GObject    *object,
-                          guint       prop_id,
-                          GValue     *value,
-                          GParamSpec *pspec)
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
 {
    MongoMessageReply *reply = MONGO_MESSAGE_REPLY(object);
 
@@ -350,9 +350,9 @@ mongo_message_reply_get_property (GObject    *object,
 
 static void
 mongo_message_reply_set_property (GObject      *object,
-                          guint         prop_id,
-                          const GValue *value,
-                          GParamSpec   *pspec)
+                                  guint         prop_id,
+                                  const GValue *value,
+                                  GParamSpec   *pspec)
 {
    MongoMessageReply *reply = MONGO_MESSAGE_REPLY(object);
 
