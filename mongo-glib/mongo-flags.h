@@ -23,8 +23,11 @@
 
 G_BEGIN_DECLS
 
-#define MONGO_TYPE_QUERY_FLAGS (mongo_query_flags_get_type())
-#define MONGO_TYPE_REPLY_FLAGS (mongo_reply_flags_get_type())
+#define MONGO_TYPE_DELETE_FLAGS (mongo_delete_flags_get_type())
+#define MONGO_TYPE_INSERT_FLAGS (mongo_insert_flags_get_type())
+#define MONGO_TYPE_QUERY_FLAGS  (mongo_query_flags_get_type())
+#define MONGO_TYPE_REPLY_FLAGS  (mongo_reply_flags_get_type())
+#define MONGO_TYPE_UPDATE_FLAGS (mongo_update_flags_get_type())
 
 /**
  * MongoDeleteFlags:
