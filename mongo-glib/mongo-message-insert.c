@@ -25,10 +25,9 @@ G_DEFINE_TYPE(MongoMessageInsert, mongo_message_insert, MONGO_TYPE_MESSAGE)
 
 struct _MongoMessageInsertPrivate
 {
-   MongoInsertFlags   flags;
-   gchar             *collection;
-   gsize              count;
-   MongoBson        **documents;
+   MongoInsertFlags  flags;
+   gchar            *collection;
+   GList            *documents;
 };
 
 enum
@@ -58,6 +57,45 @@ mongo_message_insert_set_collection (MongoMessageInsert *insert,
    g_object_notify_by_pspec(G_OBJECT(insert), gParamSpecs[PROP_COLLECTION]);
 }
 
+/**
+ * mongo_message_insert_get_documents:
+ * @insert: (in): A #MongoMessageInsert.
+ *
+ * Gets the documents that were part of the insert message.
+ *
+ * Returns: (transfer none) (element-type MongoBson*): A #GList of #MongoBson.
+ */
+GList *
+mongo_message_insert_get_documents (MongoMessageInsert *insert)
+{
+   g_return_val_if_fail(MONGO_IS_MESSAGE_INSERT(insert), NULL);
+   return insert->priv->documents;
+}
+
+void
+mongo_message_insert_set_documents (MongoMessageInsert *insert,
+                                    GList              *documents)
+{
+   MongoMessageInsertPrivate *priv;
+   GList *list;
+
+   g_return_if_fail(MONGO_IS_MESSAGE_INSERT(insert));
+   g_return_if_fail(documents);
+
+   priv = insert->priv;
+
+   list = priv->documents;
+   priv->documents = NULL;
+
+   g_list_foreach(list, (GFunc)mongo_bson_unref, NULL);
+   g_list_free(list);
+
+   list = g_list_copy(documents);
+   g_list_foreach(list, (GFunc)mongo_bson_ref, NULL);
+
+   priv->documents = list;
+}
+
 MongoInsertFlags
 mongo_message_insert_get_flags (MongoMessageInsert *insert)
 {
@@ -74,63 +112,6 @@ mongo_message_insert_set_flags (MongoMessageInsert *insert,
    g_object_notify_by_pspec(G_OBJECT(insert), gParamSpecs[PROP_FLAGS]);
 }
 
-/**
- * mongo_message_insert_get_documents:
- * @insert: (in): A #MongoMessageInsert.
- * @length: (out): A location for the number of documents.
- *
- * Fetches the documents to be inserted as an array of #MongoBson.
- *
- * Returns: (transfer none) (array length=length): An array of #MongoBson.
- */
-MongoBson **
-mongo_message_insert_get_documents (MongoMessageInsert *insert,
-                                    gsize              *length)
-{
-   g_return_val_if_fail(MONGO_IS_MESSAGE_INSERT(insert), NULL);
-   if (length) {
-      *length = insert->priv->count;
-   }
-   return insert->priv->documents;
-}
-
-/**
- * mongo_message_insert_set_documents:
- * @insert: (in): A #MongoMessageInsert.
- * @documents: (in) (array length=length) (transfer none): Array of #MongoBson.
- * @length: (in): Number of documents in @documents.
- *
- * Sets the documents to be inserted.
- */
-void
-mongo_message_insert_set_documents (MongoMessageInsert  *insert,
-                                    MongoBson          **documents,
-                                    gsize                length)
-{
-   MongoMessageInsertPrivate *priv;
-   guint i;
-
-   g_return_if_fail(MONGO_IS_MESSAGE_INSERT(insert));
-
-   priv = insert->priv;
-
-   for (i = 0; i < priv->count; i++) {
-      mongo_bson_unref(priv->documents[i]);
-   }
-   g_free(priv->documents);
-
-   priv->documents = NULL;
-   priv->count = 0;
-
-   if (documents) {
-      priv->documents = g_new(MongoBson*, length);
-      priv->count = length;
-      for (i = 0; i < length; i++) {
-         priv->documents[i] = mongo_bson_ref(documents[i]);
-      }
-   }
-}
-
 static gboolean
 mongo_message_insert_load_from_data (MongoMessage *message,
                                      const guint8 *data,
@@ -138,9 +119,9 @@ mongo_message_insert_load_from_data (MongoMessage *message,
 {
    MongoMessageInsert *insert = (MongoMessageInsert *)message;
    const gchar *name;
-   GPtrArray *ar;
    MongoBson *bson;
    guint32 v32;
+   GList *list = NULL;
 
    ENTRY;
 
@@ -163,8 +144,6 @@ mongo_message_insert_load_from_data (MongoMessage *message,
             data++;
 
             /* Insert flags */
-            ar = g_ptr_array_new();
-            g_ptr_array_set_free_func(ar, (GDestroyNotify)mongo_bson_unref);
             while (length >= 4) {
                memcpy(&v32, data, sizeof v32);
                v32 = GUINT32_FROM_LE(v32);
@@ -172,25 +151,27 @@ mongo_message_insert_load_from_data (MongoMessage *message,
                   if ((bson = mongo_bson_new_from_data(data, v32))) {
                      length -= v32;
                      data += v32;
-                     g_ptr_array_add(ar, bson);
+                     list = g_list_append(list, bson);
                   } else {
-                     g_ptr_array_unref(ar);
-                     RETURN(FALSE);
+                     GOTO(failure);
                   }
                } else if (length != 0) {
-                  g_ptr_array_unref(ar);
-                  RETURN(FALSE);
+                  GOTO(failure);
                }
             }
-            mongo_message_insert_set_documents(insert,
-                                               (MongoBson **)ar->pdata,
-                                               ar->len);
-            g_ptr_array_unref(ar);
+            mongo_message_insert_set_documents(insert, list);
+            g_list_foreach(list, (GFunc)mongo_bson_unref, NULL);
+            g_list_free(list);
             RETURN(TRUE);
          }
       }
    }
 
+   RETURN(FALSE);
+
+failure:
+   g_list_foreach(list, (GFunc)mongo_bson_unref, NULL);
+   g_list_free(list);
    RETURN(FALSE);
 }
 
@@ -202,10 +183,11 @@ mongo_message_insert_save_to_data (MongoMessage *message,
    MongoMessageInsert *insert = (MongoMessageInsert *)message;
    const guint8 *buf;
    GByteArray *bytes;
+   MongoBson *bson;
    guint32 v32;
    guint8 *ret;
+   GList *iter;
    gsize buflen;
-   guint i;
 
    ENTRY;
 
@@ -214,8 +196,7 @@ mongo_message_insert_save_to_data (MongoMessage *message,
 
    priv = insert->priv;
 
-   if (!priv->documents || !priv->count) {
-      *length = 0;
+   if (!priv->documents) {
       RETURN(NULL);
    }
 
@@ -242,14 +223,10 @@ mongo_message_insert_save_to_data (MongoMessage *message,
                        strlen(priv->collection ?: "") + 1);
 
    /* Documents to insert. */
-   for (i = 0; i < priv->count; i++) {
-      if ((buf = mongo_bson_get_data(priv->documents[i], &buflen))) {
-         g_byte_array_append(bytes, buf, buflen);
-      } else {
-         *length = 0;
-         g_byte_array_free(bytes, TRUE);
-         RETURN(NULL);
-      }
+   for (iter = priv->documents; iter; iter = iter->next) {
+      bson = iter->data;
+      buf = mongo_bson_get_data(bson, &buflen);
+      g_byte_array_append(bytes, buf, buflen);
    }
 
    /* Update the message length */
@@ -268,15 +245,12 @@ static void
 mongo_message_insert_finalize (GObject *object)
 {
    MongoMessageInsertPrivate *priv;
-   guint i;
 
    ENTRY;
    priv = MONGO_MESSAGE_INSERT(object)->priv;
    g_free(priv->collection);
-   for (i = 0; i < priv->count; i++) {
-      mongo_bson_unref(priv->documents[i]);
-   }
-   g_free(priv->documents);
+   g_list_foreach(priv->documents, (GFunc)mongo_bson_unref, NULL);
+   g_list_free(priv->documents);
    G_OBJECT_CLASS(mongo_message_insert_parent_class)->finalize(object);
    EXIT;
 }

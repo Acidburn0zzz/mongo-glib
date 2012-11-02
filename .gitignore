@@ -28,4 +28,5 @@ test-mongo-collection
 test-mongo-connection
 test-mongo-cursor
 test-mongo-manager
+test-mongo-message-insert
 test-mongo-object-id
