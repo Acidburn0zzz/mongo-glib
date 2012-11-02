@@ -640,6 +640,8 @@ mongo_client_context_dispatch (MongoClientContext *client)
                           "response-to", client->header.response_to,
                           NULL);
 
+   DUMP_BYTES(buf, data, data_len);
+
    /*
     * Load the message buffer into the MongoMessage instance.
     */
