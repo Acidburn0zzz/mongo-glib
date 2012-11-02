@@ -295,6 +295,9 @@ void           mongo_bson_join                     (MongoBson       *bson,
                                                     const MongoBson *other);
 void           mongo_bson_iter_init                (MongoBsonIter   *iter,
                                                     const MongoBson *bson);
+gboolean       mongo_bson_iter_init_find           (MongoBsonIter   *iter,
+                                                    const MongoBson *bson,
+                                                    const gchar     *key);
 gboolean       mongo_bson_iter_find                (MongoBsonIter   *iter,
                                                     const gchar     *key);
 const gchar   *mongo_bson_iter_get_key             (MongoBsonIter   *iter);

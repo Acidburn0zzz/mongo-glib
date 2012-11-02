@@ -679,6 +679,26 @@ mongo_bson_iter_init (MongoBsonIter   *iter,
 }
 
 /**
+ * mongo_bson_iter_init_find:
+ * @iter: an uninitialized #MongoBsonIter.
+ * @bson: (in): A #MongoBson.
+ * @key: (in): The key to find.
+ *
+ * Convenience function to initialize a #MongoBsonIter and find the key
+ * matching @key. If @key was found, %TRUE is returned, otherwise %FALSE.
+ *
+ * Returns: %TRUE if @key was found.
+ */
+gboolean
+mongo_bson_iter_init_find (MongoBsonIter   *iter,
+                           const MongoBson *bson,
+                           const gchar     *key)
+{
+   mongo_bson_iter_init(iter, bson);
+   return mongo_bson_iter_find(iter, key);
+}
+
+/**
  * mongo_bson_iter_find:
  * @iter: (in): A #MongoBsonIter.
  * @key: (in): A key to find in the BSON document.
