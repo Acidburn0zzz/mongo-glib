@@ -837,7 +837,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    const guint8 *buffer;
    MongoMessageReply *reply;
    GError *error = NULL;
-   guint8 *doc_buffer;
+   guint8 *doc_buffer = NULL;
    gsize count;
 #pragma pack(push, 1)
    struct {
