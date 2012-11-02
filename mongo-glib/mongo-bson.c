@@ -160,7 +160,7 @@ mongo_bson_new_take_data (guint8 *buffer,
 }
 
 /**
- * mongo_bson_new_from_static_data:
+ * mongo_bson_new_from_static_data: (skip)
  * @buffer: (in) (transfer full): The static buffer to use.
  * @length: (in): The number of bytes in @buffer.
  * @notify: (in): A #GDestroyNotify to free @buffer.
