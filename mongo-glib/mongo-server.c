@@ -585,6 +585,7 @@ mongo_client_context_dispatch (MongoClientContext *client)
    MongoMessage *reply;
    MongoBson **documents;
    gboolean handled;
+   gboolean wants_reply = FALSE;
    guint8 *data = NULL;
    gsize data_len;
    GType type_id = G_TYPE_NONE;
@@ -613,9 +614,11 @@ mongo_client_context_dispatch (MongoClientContext *client)
       break;
    case MONGO_OPERATION_QUERY:
       type_id = MONGO_TYPE_MESSAGE_QUERY;
+      wants_reply = TRUE;
       break;
    case MONGO_OPERATION_GETMORE:
       type_id = MONGO_TYPE_MESSAGE_GETMORE;
+      wants_reply = TRUE;
       break;
    case MONGO_OPERATION_DELETE:
       type_id = MONGO_TYPE_MESSAGE_DELETE;
@@ -660,25 +663,27 @@ mongo_client_context_dispatch (MongoClientContext *client)
     *       we could send a response twice.
     */
 
-   if (!_mongo_message_get_paused(message)) {
-      if ((reply = mongo_message_get_reply(message))) {
-         mongo_client_context_write(client, message, reply);
-      } else {
-         reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
-                              "cursor-id", G_GUINT64_CONSTANT(0),
-                              "flags", MONGO_REPLY_QUERY_FAILURE,
-                              "request-id", -1,
-                              "response-to", client->header.request_id,
-                              NULL);
-         documents = g_new0(MongoBson*, 1);
-         documents[0] = mongo_bson_new_empty();
-         mongo_bson_append_string(documents[0], "$err",
-                                  "Your request is denied.");
-         mongo_bson_append_int(documents[0], "code", 0);
-         mongo_message_reply_set_documents(MONGO_MESSAGE_REPLY(reply),
-                                           documents, 1);
-         mongo_client_context_write(client, message, reply);
-         g_object_unref(reply);
+   if (wants_reply) {
+      if (!_mongo_message_get_paused(message)) {
+         if ((reply = mongo_message_get_reply(message))) {
+            mongo_client_context_write(client, message, reply);
+         } else {
+            reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
+                                 "cursor-id", G_GUINT64_CONSTANT(0),
+                                 "flags", MONGO_REPLY_QUERY_FAILURE,
+                                 "request-id", -1,
+                                 "response-to", client->header.request_id,
+                                 NULL);
+            documents = g_new0(MongoBson*, 1);
+            documents[0] = mongo_bson_new_empty();
+            mongo_bson_append_string(documents[0], "$err",
+                                     "Your request is denied.");
+            mongo_bson_append_int(documents[0], "code", 0);
+            mongo_message_reply_set_documents(MONGO_MESSAGE_REPLY(reply),
+                                              documents, 1);
+            mongo_client_context_write(client, message, reply);
+            g_object_unref(reply);
+         }
       }
    }
 
