@@ -148,14 +148,13 @@ mongo_message_reply_save_to_data (MongoMessage *message,
                                   gsize        *length)
 {
    MongoMessageReplyPrivate *priv;
-   const guint8 *buf;
    MongoMessageReply *reply = (MongoMessageReply *)message;
    GByteArray *bytes;
+   MongoBson *bson;
    gint32 v32;
    gint64 v64;
    guint8 *ret;
    GList *iter;
-   gsize buflen;
 
    ENTRY;
 
@@ -196,8 +195,8 @@ mongo_message_reply_save_to_data (MongoMessage *message,
 
    /* encode BSON documents */
    for (iter = priv->documents; iter; iter = iter->next) {
-      buf = mongo_bson_get_data(iter->data, &buflen);
-      g_byte_array_append(bytes, buf, buflen);
+      bson = iter->data;
+      g_byte_array_append(bytes, bson->data, bson->len);
    }
 
    /* Update message length */

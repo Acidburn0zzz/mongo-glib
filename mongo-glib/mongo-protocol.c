@@ -71,19 +71,8 @@ static void
 mongo_protocol_append_bson (GByteArray      *array,
                             const MongoBson *bson)
 {
-   const guint8 *data;
-   gsize data_len = 0;
-
    ENTRY;
-
-   data = mongo_bson_get_data(bson, &data_len);
-   g_assert(data);
-   g_assert_cmpint(data_len, >, 0);
-
-   DUMP_BYTES(data, data, data_len);
-
-   g_byte_array_append(array, data, data_len);
-
+   g_byte_array_append(array, bson->data, bson->len);
    EXIT;
 }
 

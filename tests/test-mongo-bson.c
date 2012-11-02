@@ -7,10 +7,8 @@ assert_bson (MongoBson   *bson,
              const gchar *name)
 {
    gchar *filename;
-   const guint8 *bson_buffer = NULL;
    guint8 *buffer = NULL;
    GError *error = NULL;
-   gsize bson_length = 0;
    gsize length = 0;
    guint i;
 
@@ -21,13 +19,11 @@ assert_bson (MongoBson   *bson,
       g_assert(FALSE);
    }
 
-   bson_buffer = mongo_bson_get_data(bson, &bson_length);
-
-   g_assert_cmpint(length, ==, bson_length);
+   g_assert_cmpint(length, ==, bson->len);
 
    for (i = 0; i < length; i++) {
-      if (bson_buffer[i] != buffer[i]) {
-         g_error("Expected 0x%02x at offset %d got 0x%02x.", buffer[i], i, bson_buffer[i]);
+      if (bson->data[i] != buffer[i]) {
+         g_error("Expected 0x%02x at offset %d got 0x%02x.", buffer[i], i, bson->data[i]);
       }
    }
 

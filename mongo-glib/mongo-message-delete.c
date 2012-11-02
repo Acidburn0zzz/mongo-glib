@@ -164,11 +164,9 @@ mongo_message_delete_save_to_data (MongoMessage *message,
    static const guint8 empty_bson[] = { 5, 0, 0, 0, 0 };
    MongoMessageDeletePrivate *priv;
    MongoMessageDelete *delete = (MongoMessageDelete *)message;
-   const guint8 *buf;
    GByteArray *bytes;
    gint32 v32;
    guint8 *ret;
-   gsize buflen;
 
    ENTRY;
 
@@ -204,8 +202,8 @@ mongo_message_delete_save_to_data (MongoMessage *message,
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
    /* Query */
-   if ((buf = mongo_bson_get_data(priv->query, &buflen))) {
-      g_byte_array_append(bytes, buf, buflen);
+   if (priv->query) {
+      g_byte_array_append(bytes, priv->query->data, priv->query->len);
    } else {
       g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
    }

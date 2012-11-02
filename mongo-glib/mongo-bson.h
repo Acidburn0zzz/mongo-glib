@@ -180,6 +180,12 @@ G_BEGIN_DECLS
 
 typedef struct _MongoBson MongoBson;
 
+struct _MongoBson
+{
+   guint8 *data;
+   guint   len;
+};
+
 /**
  * MongoBsonType:
  * @MONGO_BSON_DOUBLE: Field contains a #gdouble.
@@ -237,9 +243,6 @@ typedef struct
 
 GType          mongo_bson_get_type                 (void) G_GNUC_CONST;
 GType          mongo_bson_type_get_type            (void) G_GNUC_CONST;
-const guint8  *mongo_bson_get_data                 (const MongoBson *bson,
-                                                    gsize           *length);
-gsize          mongo_bson_get_size                 (const MongoBson *bson);
 MongoBson     *mongo_bson_new                      (void);
 MongoBson     *mongo_bson_new_empty                (void);
 MongoBson     *mongo_bson_new_from_data            (const guint8    *buffer,
@@ -251,7 +254,7 @@ MongoBson     *mongo_bson_ref                      (MongoBson       *bson);
 void           mongo_bson_unref                    (MongoBson       *bson);
 void           mongo_bson_append_array             (MongoBson       *bson,
                                                     const gchar     *key,
-                                                    MongoBson       *value);
+                                                    const MongoBson *value);
 void           mongo_bson_append_boolean           (MongoBson       *bson,
                                                     const gchar     *key,
                                                     gboolean        value);
@@ -316,8 +319,6 @@ gboolean       mongo_bson_iter_is_key              (MongoBsonIter   *iter,
 gboolean       mongo_bson_iter_next                (MongoBsonIter   *iter);
 gboolean       mongo_bson_iter_recurse             (MongoBsonIter   *iter,
                                                     MongoBsonIter   *child);
-void           mongo_bson_iter_set_trust_utf8      (MongoBsonIter   *iter,
-                                                    gboolean         trust_utf8);
 gchar         *mongo_bson_to_string                (const MongoBson *bson,
                                                     gboolean         is_array);
 void           mongo_clear_bson                    (MongoBson      **bson);

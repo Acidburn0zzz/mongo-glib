@@ -189,13 +189,11 @@ mongo_message_insert_save_to_data (MongoMessage *message,
 {
    MongoMessageInsertPrivate *priv;
    MongoMessageInsert *insert = (MongoMessageInsert *)message;
-   const guint8 *buf;
    GByteArray *bytes;
    MongoBson *bson;
    guint32 v32;
    guint8 *ret;
    GList *iter;
-   gsize buflen;
 
    ENTRY;
 
@@ -233,8 +231,7 @@ mongo_message_insert_save_to_data (MongoMessage *message,
    /* Documents to insert. */
    for (iter = priv->documents; iter; iter = iter->next) {
       bson = iter->data;
-      buf = mongo_bson_get_data(bson, &buflen);
-      g_byte_array_append(bytes, buf, buflen);
+      g_byte_array_append(bytes, bson->data, bson->len);
    }
 
    /* Update the message length */

@@ -45,34 +45,7 @@
  * modified UTF-8.
  */
 
-struct _MongoBson
-{
-   volatile gint ref_count;
-   GByteArray *buf;
-};
-
-typedef enum
-{
-   ITER_TRUST_UTF8   = 1 << 0,
-   ITER_INVALID_UTF8 = 1 << 1,
-} IterFlags;
-
-#define ITER_IS_TYPE(iter, type) \
-   (GPOINTER_TO_INT(iter->user_data5) == type)
-
-/**
- * mongo_bson_dispose:
- * @bson: A #MongoBson.
- *
- * Cleans up @bson and free allocated resources.
- */
-static void
-mongo_bson_dispose (MongoBson *bson)
-{
-   if (bson->buf) {
-      g_byte_array_free(bson->buf, TRUE);
-   }
-}
+#define ITER_IS_TYPE(iter, type) (GPOINTER_TO_INT(iter->user_data5) == type)
 
 /**
  * mongo_bson_new_from_data:
@@ -87,7 +60,7 @@ MongoBson *
 mongo_bson_new_from_data (const guint8 *buffer,
                           gsize         length)
 {
-   MongoBson *bson;
+   GByteArray *bson;
    guint32 bson_len;
 
    g_return_val_if_fail(buffer != NULL, NULL);
@@ -102,12 +75,10 @@ mongo_bson_new_from_data (const guint8 *buffer,
       return NULL;
    }
 
-   bson = g_slice_new0(MongoBson);
-   bson->ref_count = 1;
-   bson->buf = g_byte_array_sized_new(length);
-   g_byte_array_append(bson->buf, buffer, length);
+   bson = g_byte_array_sized_new(length);
+   g_byte_array_append(bson, buffer, length);
 
-   return bson;
+   return (MongoBson *)bson;
 }
 
 /**
@@ -125,7 +96,6 @@ MongoBson *
 mongo_bson_new_take_data (guint8 *buffer,
                           gsize   length)
 {
-   MongoBson *bson;
    guint32 bson_len;
 
    g_return_val_if_fail(buffer, NULL);
@@ -141,11 +111,7 @@ mongo_bson_new_take_data (guint8 *buffer,
       return NULL;
    }
 
-   bson = g_slice_new0(MongoBson);
-   bson->ref_count = 1;
-   bson->buf = g_byte_array_new_take(buffer, length);
-
-   return bson;
+   return (MongoBson *)g_byte_array_new_take(buffer, length);
 }
 
 /**
@@ -160,22 +126,12 @@ mongo_bson_new_take_data (guint8 *buffer,
 MongoBson *
 mongo_bson_new_empty (void)
 {
-   MongoBson *bson;
-   gint32 len = GINT_TO_LE(5);
-   guint8 trailing = 0;
+   static const guint8 empty_bson[] = { 5, 0, 0, 0, 0 };
+   GByteArray *ar;
 
-   bson = g_slice_new0(MongoBson);
-   bson->ref_count = 1;
-   bson->buf = g_byte_array_sized_new(16);
-
-   g_byte_array_append(bson->buf, (guint8 *)&len, sizeof len);
-   g_byte_array_append(bson->buf, (guint8 *)&trailing, sizeof trailing);
-
-   g_assert(bson);
-   g_assert(bson->buf);
-   g_assert_cmpint(bson->buf->len, ==, 5);
-
-   return bson;
+   ar = g_byte_array_new();
+   g_byte_array_append(ar, empty_bson, G_N_ELEMENTS(empty_bson));
+   return (MongoBson *)ar;
 }
 
 /**
@@ -213,15 +169,16 @@ mongo_bson_new (void)
 MongoBson *
 mongo_bson_dup (const MongoBson *bson)
 {
-   const guint8 *data;
-   MongoBson *ret = NULL;
-   gsize data_len = 0;
+   GByteArray *copy;
+   GByteArray *ar;
 
-   if (bson && (data = mongo_bson_get_data(bson, &data_len))) {
-      ret = mongo_bson_new_from_data(data, data_len);
+   if ((ar = (GByteArray *)bson)) {
+      copy = g_byte_array_sized_new(ar->len);
+      g_byte_array_append(copy, ar->data, ar->len);
+      return (MongoBson *)copy;
    }
 
-   return ret;
+   return NULL;
 }
 
 /**
@@ -235,11 +192,7 @@ mongo_bson_dup (const MongoBson *bson)
 MongoBson *
 mongo_bson_ref (MongoBson *bson)
 {
-   g_return_val_if_fail(bson != NULL, NULL);
-   g_return_val_if_fail(bson->ref_count > 0, NULL);
-
-   g_atomic_int_inc(&bson->ref_count);
-   return bson;
+   return (MongoBson *)g_byte_array_ref((GByteArray *)bson);
 }
 
 /**
@@ -253,13 +206,7 @@ mongo_bson_ref (MongoBson *bson)
 void
 mongo_bson_unref (MongoBson *bson)
 {
-   g_return_if_fail(bson != NULL);
-   g_return_if_fail(bson->ref_count > 0);
-
-   if (g_atomic_int_dec_and_test(&bson->ref_count)) {
-      mongo_bson_dispose(bson);
-      g_slice_free(MongoBson, bson);
-   }
+   g_byte_array_unref((GByteArray *)bson);
 }
 
 /**
@@ -273,43 +220,9 @@ mongo_bson_unref (MongoBson *bson)
 gboolean
 mongo_bson_get_empty (MongoBson *bson)
 {
-   g_return_val_if_fail(bson != NULL, FALSE);
-   return (bson->buf->len == 5);
-}
-
-/**
- * mongo_bson_get_data:
- * @bson: (in): A #MongoBson.
- * @length: (out): A location for the buffer length.
- *
- * Fetches the BSON buffer.
- *
- * Returns: (transfer none): The #MongoBson buffer.
- */
-const guint8 *
-mongo_bson_get_data (const MongoBson *bson,
-                     gsize           *length)
-{
-   g_return_val_if_fail(bson != NULL, NULL);
-   g_return_val_if_fail(length != NULL, NULL);
-
-   *length = bson->buf->len;
-   return bson->buf->data;
-}
-
-/**
- * mongo_bson_get_size:
- * @bson: (in): A #MongoBson.
- *
- * Retrieves the size of the #MongoBson buffer.
- *
- * Returns: A gsize.
- */
-gsize
-mongo_bson_get_size (const MongoBson *bson)
-{
-   g_return_val_if_fail(bson, 0);
-   return bson->buf->len;
+   GByteArray *ar = (GByteArray *)bson;
+   g_return_val_if_fail(ar, FALSE);
+   return (ar->len == 5);
 }
 
 /**
@@ -345,8 +258,8 @@ mongo_bson_get_type (void)
 GType
 mongo_bson_type_get_type (void)
 {
-   static GType type_id = 0;
-   static gsize initialized = FALSE;
+   static GType type_id;
+   static gsize initialized;
    static GEnumValue values[] = {
       { MONGO_BSON_DOUBLE,    "MONGO_BSON_DOUBLE",    "DOUBLE" },
       { MONGO_BSON_UTF8,      "MONGO_BSON_UTF8",      "UTF8" },
@@ -397,47 +310,47 @@ mongo_bson_append (MongoBson    *bson,
                    gsize         len2)
 {
    const guint8 trailing = 0;
+   GByteArray *buf = (GByteArray *)bson;
    gint32 doc_len;
 
-   g_return_if_fail(bson != NULL);
-   g_return_if_fail(bson->buf != NULL);
-   g_return_if_fail(type != 0);
-   g_return_if_fail(key != NULL);
+   g_return_if_fail(bson);
+   g_return_if_fail(type);
+   g_return_if_fail(key);
    g_return_if_fail(g_utf8_validate(key, -1, NULL));
-   g_return_if_fail(data1 != NULL || len1 == 0);
-   g_return_if_fail(data2 != NULL || len2 == 0);
+   g_return_if_fail(data1 || !len1);
+   g_return_if_fail(data2 || !len2);
    g_return_if_fail(!data2 || data1);
 
    /*
     * Overwrite our trailing byte with the type for this key.
     */
-   bson->buf->data[bson->buf->len - 1] = type;
+   buf->data[buf->len - 1] = type;
 
    /*
     * Append the field name as a BSON cstring.
     */
-   g_byte_array_append(bson->buf, (guint8 *)key, strlen(key) + 1);
+   g_byte_array_append(buf, (guint8 *)key, strlen(key) + 1);
 
    /*
     * Append the data sections if needed.
     */
    if (data1) {
-      g_byte_array_append(bson->buf, data1, len1);
+      g_byte_array_append(buf, data1, len1);
       if (data2) {
-         g_byte_array_append(bson->buf, data2, len2);
+         g_byte_array_append(buf, data2, len2);
       }
    }
 
    /*
     * Append our trailing byte.
     */
-   g_byte_array_append(bson->buf, &trailing, 1);
+   g_byte_array_append(buf, &trailing, 1);
 
    /*
     * Update the document length of the buffer.
     */
-   doc_len = GINT_TO_LE(bson->buf->len);
-   memcpy(bson->buf->data, &doc_len, sizeof doc_len);
+   doc_len = GUINT32_TO_LE(buf->len);
+   memcpy(buf->data, &doc_len, sizeof doc_len);
 }
 
 /**
@@ -454,9 +367,9 @@ mongo_bson_append (MongoBson    *bson,
  * ]]]
  */
 void
-mongo_bson_append_array (MongoBson   *bson,
-                         const gchar *key,
-                         MongoBson   *value)
+mongo_bson_append_array (MongoBson       *bson,
+                         const gchar     *key,
+                         const MongoBson *value)
 {
    g_return_if_fail(bson);
    g_return_if_fail(bson != value);
@@ -464,7 +377,7 @@ mongo_bson_append_array (MongoBson   *bson,
    g_return_if_fail(value);
 
    mongo_bson_append(bson, MONGO_BSON_ARRAY, key,
-                     value->buf->data, value->buf->len,
+                     value->data, value->len,
                      NULL, 0);
 }
 
@@ -503,20 +416,15 @@ mongo_bson_append_bson (MongoBson       *bson,
                         const gchar     *key,
                         const MongoBson *value)
 {
-   const guint8 *data;
-   gsize data_len;
-
    g_return_if_fail(bson);
    g_return_if_fail(bson != value);
    g_return_if_fail(key);
    g_return_if_fail(value);
 
-   data = mongo_bson_get_data(value, &data_len);
    mongo_bson_append(bson, MONGO_BSON_DOCUMENT, key,
-                     data, data_len, NULL, 0);
+                     value->data, value->len, NULL, 0);
 }
 
-#if GLIB_CHECK_VERSION(2, 26, 0)
 /**
  * mongo_bson_append_date_time:
  * @bson: (in): A #MongoBson.
@@ -543,7 +451,6 @@ mongo_bson_append_date_time (MongoBson   *bson,
 
    mongo_bson_append_timeval(bson, key, &tv);
 }
-#endif
 
 /**
  * mongo_bson_append_double:
@@ -766,31 +673,9 @@ mongo_bson_iter_init (MongoBsonIter   *iter,
    g_return_if_fail(bson != NULL);
 
    memset(iter, 0, sizeof *iter);
-   iter->user_data1 = bson->buf->data;
-   iter->user_data2 = GINT_TO_POINTER(bson->buf->len);
+   iter->user_data1 = bson->data;
+   iter->user_data2 = GINT_TO_POINTER(bson->len);
    iter->user_data3 = GINT_TO_POINTER(3); /* End of size buffer */
-}
-
-/**
- * mongo_bson_iter_set_trust_utf8:
- * @iter: (in): A #MongoBsonIter.
- * @trust_utf8: (in): If we should trust UTF-8.
- *
- * If the BSON document is known to have valid UTF-8 because it came
- * from a trusted source, then this may be used to disable UTF-8
- * validation. This can improve performance dramatically.
- */
-void
-mongo_bson_iter_set_trust_utf8 (MongoBsonIter *iter,
-                                gboolean       trust_utf8)
-{
-   g_return_if_fail(iter != NULL);
-
-   if (trust_utf8) {
-      iter->flags |= ITER_TRUST_UTF8;
-   } else {
-      iter->flags &= ~ITER_TRUST_UTF8;
-   }
 }
 
 /**
@@ -1135,14 +1020,11 @@ mongo_bson_iter_get_value_string (MongoBsonIter *iter,
    g_return_val_if_fail(iter->user_data7 != NULL, NULL);
 
    if (ITER_IS_TYPE(iter, MONGO_BSON_UTF8)) {
+      memcpy(&real_length, iter->user_data6, sizeof real_length);
+      real_length = GUINT32_FROM_LE(real_length);
+      real_length = MIN(real_length, strlen(iter->user_data7));
       if (length) {
-         memcpy(&real_length, iter->user_data6, sizeof real_length);
-         if ((iter->flags & ITER_INVALID_UTF8)) {
-            *length = strlen(iter->user_data7) + 1;
-         } else {
-            *length = GINT_FROM_LE(real_length);
-         }
-
+         *length = real_length;
       }
       return iter->user_data7;
    }
@@ -1328,11 +1210,6 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    value2 = (const guint8 *)iter->user_data7;
 
    /*
-    * Unset the invalid utf8 field.
-    */
-   iter->flags &= ~ITER_INVALID_UTF8;
-
-   /*
     * Check for end of buffer.
     */
    if ((offset + 1) >= rawbuf_len) {
@@ -1354,10 +1231,8 @@ mongo_bson_iter_next (MongoBsonIter *iter)
     */
    key = (const gchar *)&rawbuf[++offset];
    max_len = first_nul(key, rawbuf_len - offset - 1);
-   if (!(iter->flags & ITER_TRUST_UTF8)) {
-      if (!g_utf8_validate(key, max_len, &end)) {
-         GOTO(failure);
-      }
+   if (!g_utf8_validate(key, max_len, &end)) {
+      GOTO(failure);
    }
    offset += strlen(key) + 1;
 
@@ -1369,21 +1244,18 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value2 = &rawbuf[offset];
          max_len = GUINT32_FROM_LE(*(guint32 *)value1);
          if ((offset + max_len - 10) < rawbuf_len) {
-            if (!(iter->flags & ITER_TRUST_UTF8)) {
-               if ((end = (char *)u8_check((guint8 *)value2, max_len - 1))) {
-                  /*
-                   * Well, we have quite the delima here. The UTF-8 string is
-                   * invalid, but there was definitely a key here. Consumers
-                   * might need to get at data after this too. So the best
-                   * we can do is probably set the value to as long of a valid
-                   * utf-8 string as we can. We will simply NULL the end of
-                   * the buffer at the given error offset.
-                   */
-                  *(gchar *)end = '\0';
-                  offset += max_len - 1;
-                  iter->flags |= ITER_INVALID_UTF8;
-                  GOTO(success);
-               }
+            if ((end = (char *)u8_check((guint8 *)value2, max_len - 1))) {
+               /*
+                * Well, we have quite the delima here. The UTF-8 string is
+                * invalid, but there was definitely a key here. Consumers
+                * might need to get at data after this too. So the best
+                * we can do is probably set the value to as long of a valid
+                * utf-8 string as we can. We will simply NULL the end of
+                * the buffer at the given error offset.
+                */
+               *(gchar *)end = '\0';
+               offset += max_len - 1;
+               GOTO(success);
             }
             offset += max_len - 1;
             if (value2[max_len - 1] == '\0') {
@@ -1439,10 +1311,8 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    case MONGO_BSON_REGEX:
       value1 = &rawbuf[offset];
       max_len = first_nul((gchar *)value1, rawbuf_len - offset - 1);
-      if (!(iter->flags & ITER_TRUST_UTF8)) {
-         if (!g_utf8_validate((gchar *)value1, max_len, &end)) {
-            GOTO(failure);
-         }
+      if (!g_utf8_validate((gchar *)value1, max_len, &end)) {
+         GOTO(failure);
       }
       offset += max_len + 1;
       if ((offset + 1) >= rawbuf_len) {
@@ -1450,10 +1320,8 @@ mongo_bson_iter_next (MongoBsonIter *iter)
       }
       value2 = &rawbuf[offset];
       max_len = first_nul((gchar *)value2, rawbuf_len - offset - 1);
-      if (!(iter->flags & ITER_TRUST_UTF8)) {
-         if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
-            GOTO(failure);
-         }
+      if (!g_utf8_validate((gchar *)value2, max_len, &end)) {
+         GOTO(failure);
       }
       offset += max_len + 1;
       GOTO(success);
@@ -1640,28 +1508,17 @@ void
 mongo_bson_join (MongoBson       *bson,
                  const MongoBson *other)
 {
-   const guint8 *other_data;
+   GByteArray *ar = (GByteArray *)bson;
    guint32 new_size;
-   gsize other_len;
-   guint offset;
 
    g_return_if_fail(bson);
    g_return_if_fail(other);
 
-   if (!bson->buf) {
-      g_warning("Cannot join BSON document to static BSON.");
-      return;
+   if (other->len > 5) {
+      g_byte_array_remove_index(ar, ar->len - 1);
+      g_byte_array_append(ar, other->data + 4, other->len - 4);
    }
 
-   g_assert(bson->buf->len >= 5);
-
-   other_data = mongo_bson_get_data(other, &other_len);
-   g_assert_cmpint(other_len, >=, 5);
-
-   offset = bson->buf->len - 1;
-   g_byte_array_set_size(bson->buf, bson->buf->len + other_len - 5);
-   memcpy(&bson->buf->data[offset], other_data + 4, other_len - 4);
-
-   new_size = GUINT32_TO_LE(bson->buf->len);
-   memcpy(bson->buf->data, &new_size, sizeof new_size);
+   new_size = GUINT32_TO_LE(ar->len);
+   memcpy(bson->data, &new_size, sizeof new_size);
 }

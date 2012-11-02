@@ -194,11 +194,9 @@ mongo_message_update_save_to_data (MongoMessage *message,
    static const guint8 empty_bson[] = { 5, 0, 0, 0, 0 };
    MongoMessageUpdatePrivate *priv;
    MongoMessageUpdate *update = (MongoMessageUpdate *)message;
-   const guint8 *buf;
    GByteArray *bytes;
    guint32 v32;
    guint8 *ret;
-   gsize buflen;
 
    ENTRY;
 
@@ -234,15 +232,15 @@ mongo_message_update_save_to_data (MongoMessage *message,
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
    /* Query */
-   if (priv->query && (buf = mongo_bson_get_data(priv->query, &buflen))) {
-      g_byte_array_append(bytes, buf, buflen);
+   if (priv->query) {
+      g_byte_array_append(bytes, priv->query->data, priv->query->len);
    } else {
       g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
    }
 
    /* Update */
-   if (priv->update && (buf = mongo_bson_get_data(priv->update, &buflen))) {
-      g_byte_array_append(bytes, buf, buflen);
+   if (priv->update) {
+      g_byte_array_append(bytes, priv->update->data, priv->update->len);
    } else {
       g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
    }
