@@ -124,6 +124,15 @@ void               mongo_connection_update_async        (MongoConnection      *c
 gboolean           mongo_connection_update_finish       (MongoConnection      *connection,
                                                          GAsyncResult         *result,
                                                          GError              **error);
+void               mongo_connection_kill_cursors_async  (MongoConnection      *connection,
+                                                         guint64              *cursors,
+                                                         gsize                 n_cursors,
+                                                         GCancellable         *cancellable,
+                                                         GAsyncReadyCallback   callback,
+                                                         gpointer              user_data);
+gboolean           mongo_connection_kill_cursors_finish (MongoConnection      *connection,
+                                                         GAsyncResult         *result,
+                                                         GError              **error);
 void               mongo_connection_query_async         (MongoConnection      *connection,
                                                          const gchar          *db_and_collection,
                                                          MongoQueryFlags       flags,
@@ -134,15 +143,6 @@ void               mongo_connection_query_async         (MongoConnection      *c
                                                          GCancellable         *cancellable,
                                                          GAsyncReadyCallback   callback,
                                                          gpointer              user_data);
-void               mongo_connection_kill_cursors_async  (MongoConnection      *connection,
-                                                         guint64              *cursors,
-                                                         gsize                 n_cursors,
-                                                         GCancellable         *cancellable,
-                                                         GAsyncReadyCallback   callback,
-                                                         gpointer              user_data);
-gboolean           mongo_connection_kill_cursors_finish (MongoConnection      *connection,
-                                                         GAsyncResult         *result,
-                                                         GError              **error);
 MongoMessageReply *mongo_connection_query_finish        (MongoConnection      *connection,
                                                          GAsyncResult         *result,
                                                          GError              **error);
