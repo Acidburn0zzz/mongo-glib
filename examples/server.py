@@ -16,6 +16,12 @@ def whatsmyuri(server, client, message):
     b.append_string('you', client.get_uri())
     return b
 
+def replSetGetStatus(server, client, message):
+    b = Mongo.Bson.new_empty()
+    b.append_string('errmsg', 'not running with --replSet')
+    b.append_int('ok', 0)
+    return b
+
 def handleGetmore(server, client, message):
     reply = Mongo.MessageReply()
     message.set_reply(reply)
@@ -56,6 +62,7 @@ def handleQuery(server, client, message):
 
 COMMANDS['getlasterror'] = getlasterror
 COMMANDS['whatsmyuri'] = whatsmyuri
+COMMANDS['replSetGetStatus'] = replSetGetStatus
 
 Server = Mongo.Server()
 Server.add_inet_port(5201, None)
