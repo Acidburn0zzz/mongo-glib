@@ -74,7 +74,7 @@ mongo_message_reply_set_cursor_id (MongoMessageReply *reply,
  * Returns an array of documents for the reply. @count is set to the
  * number of documents returned.
  *
- * Returns: (transfer none) (element-type MongoBson*): An array of MongoBson.
+ * Returns: (transfer none) (element-type MongoBson*): A #GList of #MongoBson.
  */
 GList *
 mongo_message_reply_get_documents (MongoMessageReply *reply)
@@ -97,6 +97,8 @@ mongo_message_reply_set_documents (MongoMessageReply *reply,
                                    GList             *documents)
 {
    MongoMessageReplyPrivate *priv;
+   GList *list = NULL;
+   GList *iter;
 
    g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
 
@@ -104,9 +106,14 @@ mongo_message_reply_set_documents (MongoMessageReply *reply,
 
    g_list_foreach(priv->documents, (GFunc)mongo_bson_unref, NULL);
    g_list_free(priv->documents);
+   priv->documents = NULL;
 
-   priv->documents = g_list_copy(documents);
-   g_list_foreach(priv->documents, (GFunc)mongo_bson_ref, NULL);
+   for (iter = documents; iter; iter = iter->next) {
+      if (iter->data) {
+         list = g_list_prepend(list, mongo_bson_ref(iter->data));
+      }
+   }
+   priv->documents = g_list_reverse(list);
 
    g_object_notify_by_pspec(G_OBJECT(reply), gParamSpecs[PROP_COUNT]);
 }
