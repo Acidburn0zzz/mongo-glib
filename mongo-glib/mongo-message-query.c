@@ -301,6 +301,8 @@ mongo_message_query_save_to_data (MongoMessage *message,
    guint8 *ret;
    gsize buflen;
 
+   ENTRY;
+
    g_assert(MONGO_IS_MESSAGE_QUERY(query));
    g_assert(length);
 

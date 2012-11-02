@@ -200,6 +200,8 @@ mongo_message_update_save_to_data (MongoMessage *message,
    guint8 *ret;
    gsize buflen;
 
+   ENTRY;
+
    g_assert(MONGO_IS_MESSAGE_UPDATE(update));
    g_assert(length);
 

@@ -171,8 +171,11 @@ mongo_message_reply_save_to_data (MongoMessage *message,
    GByteArray *bytes;
    gint32 v32;
    gint64 v64;
+   guint8 *ret;
    gsize buflen;
    guint i;
+
+   ENTRY;
 
    g_assert(MONGO_IS_MESSAGE_REPLY(reply));
    g_assert(length);
@@ -227,7 +230,8 @@ mongo_message_reply_save_to_data (MongoMessage *message,
 
    DUMP_BYTES(buf, bytes->data, bytes->len);
 
-   return g_byte_array_free(bytes, FALSE);
+   ret = g_byte_array_free(bytes, FALSE);
+   RETURN(ret);
 }
 
 static gboolean

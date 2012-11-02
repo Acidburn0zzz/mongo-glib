@@ -147,6 +147,8 @@ mongo_message_getmore_save_to_data (MongoMessage *message,
    guint64 v64;
    guint8 *ret;
 
+   ENTRY;
+
    g_assert(MONGO_IS_MESSAGE_GETMORE(getmore));
    g_assert(length);
 

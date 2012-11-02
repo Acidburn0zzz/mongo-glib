@@ -207,6 +207,8 @@ mongo_message_insert_save_to_data (MongoMessage *message,
    gsize buflen;
    guint i;
 
+   ENTRY;
+
    g_assert(MONGO_IS_MESSAGE_INSERT(insert));
    g_assert(length);
 
