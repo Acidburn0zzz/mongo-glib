@@ -175,8 +175,6 @@ mongo_message_insert_load_from_data (MongoMessage *message,
       }
    }
 
-   RETURN(FALSE);
-
 failure:
    g_list_foreach(list, (GFunc)mongo_bson_unref, NULL);
    g_list_free(list);
