@@ -1,6 +1,8 @@
 #include <mongo-glib/mongo-glib.h>
+#include <signal.h>
 
 static GHashTable *gCollections;
+static GMainLoop  *gMainLoop;
 
 static void
 getlasterror (MongoMessage *message)
@@ -129,12 +131,18 @@ getmore_cb (MongoServer        *server,
    return TRUE;
 }
 
+static void
+sighup_cb (int signum)
+{
+   g_printerr("SIGHUP; shutting down.\n");
+   g_main_loop_quit(gMainLoop);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
 {
    MongoServer *server;
-   GMainLoop *loop;
 
    g_type_init();
 
@@ -150,10 +158,18 @@ main (gint   argc,
    g_socket_listener_add_inet_port(G_SOCKET_LISTENER(server), 5201, NULL, NULL);
    g_socket_service_start(G_SOCKET_SERVICE(server));
 
-   loop = g_main_loop_new(NULL, FALSE);
-   g_main_loop_run(loop);
-   g_object_unref(server);
-   g_main_loop_unref(loop);
+   signal(SIGHUP, sighup_cb);
+
+   gMainLoop = g_main_loop_new(NULL, FALSE);
+   g_main_loop_run(gMainLoop);
+
+   g_socket_service_stop(G_SOCKET_SERVICE(server));
+   g_clear_object(&server);
+   g_main_loop_unref(gMainLoop);
+   g_hash_table_unref(gCollections);
+
+   gMainLoop = NULL;
+   gCollections = NULL;
 
    return 0;
 }
