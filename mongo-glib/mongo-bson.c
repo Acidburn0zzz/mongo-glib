@@ -49,9 +49,6 @@ struct _MongoBson
 {
    volatile gint ref_count;
    GByteArray *buf;
-   const guint8 *static_data;
-   gsize static_len;
-   GDestroyNotify static_notify;
 };
 
 typedef enum
@@ -74,8 +71,6 @@ mongo_bson_dispose (MongoBson *bson)
 {
    if (bson->buf) {
       g_byte_array_free(bson->buf, TRUE);
-   } else if (bson->static_notify) {
-      bson->static_notify((guint *)bson->static_data);
    }
 }
 
@@ -148,64 +143,7 @@ mongo_bson_new_take_data (guint8 *buffer,
 
    bson = g_slice_new0(MongoBson);
    bson->ref_count = 1;
-#if GLIB_CHECK_VERSION(2, 32, 0)
    bson->buf = g_byte_array_new_take(buffer, length);
-#else
-   bson->buf = g_byte_array_new();
-   bson->buf->data = buffer;
-   bson->buf->len = length;
-#endif
-
-   return bson;
-}
-
-/**
- * mongo_bson_new_from_static_data: (skip)
- * @buffer: (in) (transfer full): The static buffer to use.
- * @length: (in): The number of bytes in @buffer.
- * @notify: (in): A #GDestroyNotify to free @buffer.
- *
- * Creates a new #MongoBson structure using @buffer. This does not copy
- * the content of the buffer and uses it directly. Therefore, you MUST make
- * sure that the structure outlives the buffer beneath it.
- *
- * If the structure is referenced with mongo_bson_ref(), the contents of
- * the buffer will be copied.
- *
- * When the structure is released, @notify will be called to release
- * @buffer.
- *
- * You MAY NOT modify the contents of @buffer using any of the
- * mongo_bson_append methods.
- *
- * Returns: A newly created #MongoBson structure.
- */
-MongoBson *
-mongo_bson_new_from_static_data (guint8         *buffer,
-                                 gsize           length,
-                                 GDestroyNotify  notify)
-{
-   MongoBson *bson;
-   guint32 bson_len;
-
-   g_return_val_if_fail(buffer, NULL);
-   g_return_val_if_fail(length >= 5, NULL);
-
-   /*
-    * The first 4 bytes of a BSON are the length, including the 4 bytes
-    * containing said length.
-    */
-   memcpy(&bson_len, buffer, sizeof bson_len);
-   bson_len = GUINT32_FROM_LE(bson_len);
-   if (bson_len != length) {
-      return NULL;
-   }
-
-   bson = g_slice_new0(MongoBson);
-   bson->ref_count = 1;
-   bson->static_data = buffer;
-   bson->static_len = length;
-   bson->static_notify = notify;
 
    return bson;
 }
@@ -290,8 +228,7 @@ mongo_bson_dup (const MongoBson *bson)
  * mongo_bson_ref:
  * @bson: (in): A #MongoBson.
  *
- * Atomically increments the reference count of @bson by one. If @bson
- * contains a static buffer, then a new structure will be returned.
+ * Atomically increments the reference count of @bson by one.
  *
  * Returns: (transfer full): @bson.
  */
@@ -301,9 +238,6 @@ mongo_bson_ref (MongoBson *bson)
    g_return_val_if_fail(bson != NULL, NULL);
    g_return_val_if_fail(bson->ref_count > 0, NULL);
 
-   if (G_UNLIKELY(bson->static_data)) {
-      return mongo_bson_new_from_data(bson->static_data, bson->static_len);
-   }
    g_atomic_int_inc(&bson->ref_count);
    return bson;
 }
@@ -334,16 +268,13 @@ mongo_bson_unref (MongoBson *bson)
  *
  * Checks to see if the contents of MongoBson are empty.
  *
- * Returns: None.
- * Side effects: None.
+ * Returns: %TRUE if @bson is empty.
  */
 gboolean
 mongo_bson_get_empty (MongoBson *bson)
 {
-   guint32 len;
    g_return_val_if_fail(bson != NULL, FALSE);
-   len = bson->buf ? bson->buf->len : bson->static_len;
-   return (len <= 5);
+   return (bson->buf->len == 5);
 }
 
 /**
@@ -362,13 +293,8 @@ mongo_bson_get_data (const MongoBson *bson,
    g_return_val_if_fail(bson != NULL, NULL);
    g_return_val_if_fail(length != NULL, NULL);
 
-   if (bson->buf) {
-      *length = bson->buf->len;
-      return bson->buf->data;
-   }
-
-   *length = bson->static_len;
-   return bson->static_data;
+   *length = bson->buf->len;
+   return bson->buf->data;
 }
 
 /**
@@ -396,8 +322,8 @@ mongo_bson_get_size (const MongoBson *bson)
 GType
 mongo_bson_get_type (void)
 {
-   static GType type_id = 0;
-   static gsize initialized = FALSE;
+   static GType type_id;
+   static gsize initialized;
 
    if (g_once_init_enter(&initialized)) {
       type_id = g_boxed_type_register_static("MongoBson",
@@ -840,13 +766,8 @@ mongo_bson_iter_init (MongoBsonIter   *iter,
    g_return_if_fail(bson != NULL);
 
    memset(iter, 0, sizeof *iter);
-   if (bson->static_data) {
-      iter->user_data1 = (guint8 *)bson->static_data;
-      iter->user_data2 = GINT_TO_POINTER(bson->static_len);
-   } else {
-      iter->user_data1 = bson->buf->data;
-      iter->user_data2 = GINT_TO_POINTER(bson->buf->len);
-   }
+   iter->user_data1 = bson->buf->data;
+   iter->user_data2 = GINT_TO_POINTER(bson->buf->len);
    iter->user_data3 = GINT_TO_POINTER(3); /* End of size buffer */
 }
 
