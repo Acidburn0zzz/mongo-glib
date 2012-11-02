@@ -29,7 +29,7 @@ struct _MongoMessageQueryPrivate
    MongoQueryFlags  flags;
    guint32          limit;
    MongoBson       *query;
-   MongoBson       *selector;
+   MongoBson       *fields;
    guint32          skip;
 };
 
@@ -37,10 +37,10 @@ enum
 {
    PROP_0,
    PROP_COLLECTION,
+   PROP_FIELDS,
    PROP_FLAGS,
    PROP_LIMIT,
    PROP_MESSAGE_QUERY,
-   PROP_SELECTOR,
    PROP_SKIP,
    LAST_PROP
 };
@@ -76,10 +76,10 @@ mongo_message_query_get_query (MongoMessageQuery *query)
 }
 
 const MongoBson *
-mongo_message_query_get_selector (MongoMessageQuery *query)
+mongo_message_query_get_fields (MongoMessageQuery *query)
 {
    g_return_val_if_fail(MONGO_IS_MESSAGE_QUERY(query), NULL);
-   return query->priv->selector;
+   return query->priv->fields;
 }
 
 guint
@@ -158,18 +158,19 @@ mongo_message_query_set_limit (MongoMessageQuery *query,
 
 void
 mongo_message_query_set_query (MongoMessageQuery *query,
-                               const MongoBson   *bson)
+                               MongoBson         *bson)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
-   mongo_message_query_take_query(query, bson ? mongo_bson_dup(bson) : NULL);
+   mongo_message_query_take_query(query, bson ? mongo_bson_ref(bson) : NULL);
 }
 
 void
-mongo_message_query_set_selector (MongoMessageQuery *query,
-                                  const MongoBson   *bson)
+mongo_message_query_set_fields (MongoMessageQuery *query,
+                                MongoBson         *fields)
 {
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
-   mongo_message_query_take_selector(query, bson ? mongo_bson_dup(bson) : NULL);
+   mongo_message_query_take_fields(query,
+                                   fields ? mongo_bson_ref(fields) : NULL);
 }
 
 void
@@ -185,40 +186,22 @@ void
 mongo_message_query_take_query (MongoMessageQuery *query,
                                 MongoBson         *bson)
 {
-   MongoMessageQueryPrivate *priv;
-
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
 
-   priv = query->priv;
-
-   if (priv->query) {
-      mongo_bson_unref(priv->query);
-      priv->query = NULL;
-   }
-
-   priv->query = bson;
-
+   mongo_clear_bson(&query->priv->query);
+   query->priv->query = bson;
    g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_MESSAGE_QUERY]);
 }
 
 void
-mongo_message_query_take_selector (MongoMessageQuery *query,
-                                   MongoBson         *bson)
+mongo_message_query_take_fields (MongoMessageQuery *query,
+                                 MongoBson         *fields)
 {
-   MongoMessageQueryPrivate *priv;
-
    g_return_if_fail(MONGO_IS_MESSAGE_QUERY(query));
 
-   priv = query->priv;
-
-   if (priv->selector) {
-      mongo_bson_unref(priv->selector);
-      priv->selector = NULL;
-   }
-
-   priv->selector = bson;
-
-   g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_SELECTOR]);
+   mongo_clear_bson(&query->priv->fields);
+   query->priv->fields = fields;
+   g_object_notify_by_pspec(G_OBJECT(query), gParamSpecs[PROP_FIELDS]);
 }
 
 static gboolean
@@ -281,13 +264,13 @@ mongo_message_query_load_from_data (MongoMessage *message,
                      data_len -= vu32;
                      data += vu32;
 
-                     /* Selector bson document */
+                     /* Fields bson document */
                      if (data_len > 4) {
                         memcpy(&vu32, data, sizeof vu32);
                         vu32 = GUINT32_FROM_LE(vu32);
                         if (data_len >= vu32) {
                            bson = mongo_bson_new_from_data(data, vu32);
-                           mongo_message_query_set_selector(query, bson);
+                           mongo_message_query_set_fields(query, bson);
                            mongo_bson_unref(bson);
                            data_len -= vu32;
                            data += vu32;
@@ -360,8 +343,8 @@ mongo_message_query_save_to_data (MongoMessage *message,
       g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
    }
 
-   /* Selector */
-   if (priv->selector && (buf = mongo_bson_get_data(priv->selector, &buflen))) {
+   /* Fields */
+   if (priv->fields && (buf = mongo_bson_get_data(priv->fields, &buflen))) {
       g_byte_array_append(bytes, buf, buflen);
    }
 
@@ -387,14 +370,8 @@ mongo_message_query_finalize (GObject *object)
    priv = MONGO_MESSAGE_QUERY(object)->priv;
 
    g_free(priv->collection);
-
-   if (priv->query) {
-      mongo_bson_unref(priv->query);
-   }
-
-   if (priv->selector) {
-      mongo_bson_unref(priv->selector);
-   }
+   mongo_clear_bson(&priv->query);
+   mongo_clear_bson(&priv->fields);
 
    G_OBJECT_CLASS(mongo_message_query_parent_class)->finalize(object);
 
@@ -422,8 +399,8 @@ mongo_message_query_get_property (GObject    *object,
    case PROP_MESSAGE_QUERY:
       g_value_set_boxed(value, mongo_message_query_get_query(query));
       break;
-   case PROP_SELECTOR:
-      g_value_set_boxed(value, mongo_message_query_get_selector(query));
+   case PROP_FIELDS:
+      g_value_set_boxed(value, mongo_message_query_get_fields(query));
       break;
    case PROP_SKIP:
       g_value_set_uint(value, mongo_message_query_get_skip(query));
@@ -454,8 +431,8 @@ mongo_message_query_set_property (GObject      *object,
    case PROP_MESSAGE_QUERY:
       mongo_message_query_set_query(query, g_value_get_boxed(value));
       break;
-   case PROP_SELECTOR:
-      mongo_message_query_set_selector(query, g_value_get_boxed(value));
+   case PROP_FIELDS:
+      mongo_message_query_set_fields(query, g_value_get_boxed(value));
       break;
    case PROP_SKIP:
       mongo_message_query_set_skip(query, g_value_get_uint(value));
@@ -521,14 +498,14 @@ mongo_message_query_class_init (MongoMessageQueryClass *klass)
    g_object_class_install_property(object_class, PROP_MESSAGE_QUERY,
                                    gParamSpecs[PROP_MESSAGE_QUERY]);
 
-   gParamSpecs[PROP_SELECTOR] =
-      g_param_spec_boxed("selector",
-                         _("Selector"),
+   gParamSpecs[PROP_FIELDS] =
+      g_param_spec_boxed("fields",
+                         _("Fields"),
                          _("A bson containing the fields to return."),
                          MONGO_TYPE_BSON,
                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-   g_object_class_install_property(object_class, PROP_SELECTOR,
-                                   gParamSpecs[PROP_SELECTOR]);
+   g_object_class_install_property(object_class, PROP_FIELDS,
+                                   gParamSpecs[PROP_FIELDS]);
 
    gParamSpecs[PROP_SKIP] =
       g_param_spec_uint("skip",

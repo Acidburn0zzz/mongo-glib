@@ -66,15 +66,15 @@ void             mongo_message_query_set_flags        (MongoMessageQuery *query,
 void             mongo_message_query_set_limit        (MongoMessageQuery *query,
                                                        guint              limit);
 void             mongo_message_query_set_query        (MongoMessageQuery *query,
-                                                       const MongoBson   *bson);
-void             mongo_message_query_set_selector     (MongoMessageQuery *query,
-                                                       const MongoBson   *bson);
+                                                       MongoBson         *bson);
+void             mongo_message_query_set_fields       (MongoMessageQuery *query,
+                                                       MongoBson         *fields);
 void             mongo_message_query_set_skip         (MongoMessageQuery *query,
                                                        guint              skip);
 void             mongo_message_query_take_query       (MongoMessageQuery *query,
                                                        MongoBson         *bson);
-void             mongo_message_query_take_selector    (MongoMessageQuery *query,
-                                                       MongoBson         *bson);
+void             mongo_message_query_take_fields      (MongoMessageQuery *query,
+                                                       MongoBson         *fields);
 
 G_END_DECLS
 
