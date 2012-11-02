@@ -532,6 +532,20 @@ join (void)
    mongo_bson_unref(b3);
 }
 
+static void
+invalid_tests (void)
+{
+   static const guint8 short_length[] = { 3, 0, 0, 0 };
+   static const guint8 short_data[] = { 6, 0, 0, 0, 0 };
+
+   g_assert(!mongo_bson_new_from_data(short_length, G_N_ELEMENTS(short_length)));
+   g_assert(!mongo_bson_new_from_data(short_data, G_N_ELEMENTS(short_data)));
+
+   /*
+    * TODO: Work on fuzzing tests.
+    */
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -540,5 +554,6 @@ main (gint   argc,
    g_test_add_func("/MongoBson/append_tests", append_tests);
    g_test_add_func("/MongoBson/iter_tests", iter_tests);
    g_test_add_func("/MongoBson/join", join);
+   g_test_add_func("/MongoBson/invalid", invalid_tests);
    return g_test_run();
 }
