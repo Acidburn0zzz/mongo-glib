@@ -72,6 +72,14 @@ mongo_message_insert_get_documents (MongoMessageInsert *insert)
    return insert->priv->documents;
 }
 
+/**
+ * mongo_message_insert_set_documents:
+ * @insert: (in): A #MongoMessageInsert.
+ * @documents: (in) (transfer none) (element-type MongoBson*): A #GList
+ *   of #MongoBson documents.
+ *
+ * Sets the documents for the #MongoMessageInsert message.
+ */
 void
 mongo_message_insert_set_documents (MongoMessageInsert *insert,
                                     GList              *documents)
