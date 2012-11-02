@@ -744,6 +744,7 @@ mongo_bson_iter_get_value_document (MongoBsonIter *iter,
                                     MongoBsonType  type)
 {
    const guint8 *buffer;
+   MongoBson *ret;
    gpointer endbuf;
    guint32 array_len;
 
@@ -768,7 +769,8 @@ mongo_bson_iter_get_value_document (MongoBsonIter *iter,
          return NULL;
       }
       buffer = iter->user_data6;
-      return mongo_bson_new_from_data(buffer, array_len);
+      ret = mongo_bson_new_from_data(buffer, array_len);
+      RETURN(ret);
    }
 
    if (type == MONGO_BSON_ARRAY) {
