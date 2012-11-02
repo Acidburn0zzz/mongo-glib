@@ -74,6 +74,15 @@ mongo_message_insert_set_flags (MongoMessageInsert *insert,
    g_object_notify_by_pspec(G_OBJECT(insert), gParamSpecs[PROP_FLAGS]);
 }
 
+/**
+ * mongo_message_insert_get_documents:
+ * @insert: (in): A #MongoMessageInsert.
+ * @length: (out): A location for the number of documents.
+ *
+ * Fetches the documents to be inserted as an array of #MongoBson.
+ *
+ * Returns: (transfer none) (array length=length): An array of #MongoBson.
+ */
 MongoBson **
 mongo_message_insert_get_documents (MongoMessageInsert *insert,
                                     gsize              *length)
@@ -85,6 +94,14 @@ mongo_message_insert_get_documents (MongoMessageInsert *insert,
    return insert->priv->documents;
 }
 
+/**
+ * mongo_message_insert_set_documents:
+ * @insert: (in): A #MongoMessageInsert.
+ * @documents: (in) (array length=length) (transfer none): Array of #MongoBson.
+ * @length: (in): Number of documents in @documents.
+ *
+ * Sets the documents to be inserted.
+ */
 void
 mongo_message_insert_set_documents (MongoMessageInsert  *insert,
                                     MongoBson          **documents,
