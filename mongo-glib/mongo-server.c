@@ -21,8 +21,14 @@
 #include "mongo-bson.h"
 #include "mongo-debug.h"
 #include "mongo-message.h"
+#include "mongo-message-delete.h"
+#include "mongo-message-insert.h"
+#include "mongo-message-getmore.h"
+#include "mongo-message-msg.h"
+#include "mongo-message-kill-cursors.h"
 #include "mongo-message-query.h"
 #include "mongo-message-reply.h"
+#include "mongo-message-update.h"
 #include "mongo-operation.h"
 #include "mongo-server.h"
 
@@ -597,25 +603,25 @@ mongo_client_context_dispatch (MongoClientContext *client)
       type_id = MONGO_TYPE_MESSAGE_REPLY;
       break;
    case MONGO_OPERATION_MSG:
-      //type_id = MONGO_TYPE_MESSAGE_MSG;
+      type_id = MONGO_TYPE_MESSAGE_MSG;
       break;
    case MONGO_OPERATION_UPDATE:
-      //type_id = MONGO_TYPE_MESSAGE_UPDATE;
+      type_id = MONGO_TYPE_MESSAGE_UPDATE;
       break;
    case MONGO_OPERATION_INSERT:
-      //type_id = MONGO_TYPE_MESSAGE_INSERT;
+      type_id = MONGO_TYPE_MESSAGE_INSERT;
       break;
    case MONGO_OPERATION_QUERY:
       type_id = MONGO_TYPE_MESSAGE_QUERY;
       break;
    case MONGO_OPERATION_GETMORE:
-      //type_id = MONGO_TYPE_MESSAGE_GETMORE;
+      type_id = MONGO_TYPE_MESSAGE_GETMORE;
       break;
    case MONGO_OPERATION_DELETE:
-      //type_id = MONGO_TYPE_MESSAGE_DELETE;
+      type_id = MONGO_TYPE_MESSAGE_DELETE;
       break;
    case MONGO_OPERATION_KILL_CURSORS:
-      //type_id = MONGO_TYPE_MESSAGE_KILL_CURSORS;
+      type_id = MONGO_TYPE_MESSAGE_KILL_CURSORS;
       break;
    default:
       mongo_client_context_fail(client);
