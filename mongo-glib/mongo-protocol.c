@@ -902,7 +902,6 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    DUMP_BYTES(buffer, buffer, count);
 
    if (count != (header.msg_len - sizeof header)) {
-      g_free(doc_buffer);
       GOTO(failure);
    }
 
@@ -946,11 +945,13 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
 
 cleanup:
    g_object_unref(protocol);
+   g_free(doc_buffer);
    EXIT;
 
 failure:
    mongo_protocol_fail(protocol, error);
    g_object_unref(protocol);
+   g_free(doc_buffer);
    EXIT;
 }
 
