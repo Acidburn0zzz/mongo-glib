@@ -1389,7 +1389,7 @@ mongo_bson_to_string (const MongoBson *bson,
 
    g_return_val_if_fail(bson, NULL);
 
-   str = g_string_new(is_array ? "[" : "{");
+   str = g_string_new(is_array ? "[ " : "{ ");
 
    mongo_bson_iter_init(&iter, bson);
    if (mongo_bson_iter_next(&iter)) {
@@ -1492,7 +1492,7 @@ again:
       }
    }
 
-   g_string_append(str, is_array ? "]" : "}");
+   g_string_append(str, is_array ? " ]" : " }");
 
    return g_string_free(str, FALSE);
 }
