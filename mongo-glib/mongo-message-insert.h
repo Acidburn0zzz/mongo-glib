@@ -48,7 +48,18 @@ struct _MongoMessageInsertClass
    MongoMessageClass parent_class;
 };
 
-GType mongo_message_insert_get_type (void) G_GNUC_CONST;
+const gchar       *mongo_message_insert_get_collection (MongoMessageInsert *insert);
+MongoBson        **mongo_message_insert_get_documents  (MongoMessageInsert  *insert,
+                                                        gsize               *length);
+MongoInsertFlags   mongo_message_insert_get_flags      (MongoMessageInsert *insert);
+GType              mongo_message_insert_get_type       (void) G_GNUC_CONST;
+void               mongo_message_insert_set_collection (MongoMessageInsert  *insert,
+                                                        const gchar         *collection);
+void               mongo_message_insert_set_documents  (MongoMessageInsert  *insert,
+                                                        MongoBson          **documents,
+                                                        gsize                length);
+void               mongo_message_insert_set_flags      (MongoMessageInsert  *insert,
+                                                        MongoInsertFlags     flags);
 
 G_END_DECLS
 
