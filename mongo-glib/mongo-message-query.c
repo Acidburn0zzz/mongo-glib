@@ -259,8 +259,7 @@ mongo_message_query_load_from_data (MongoMessage *message,
                   vu32 = GUINT32_FROM_LE(vu32);
                   if (data_len >= vu32) {
                      bson = mongo_bson_new_from_data(data, vu32);
-                     mongo_message_query_set_query(query, bson);
-                     mongo_bson_unref(bson);
+                     mongo_message_query_take_query(query, bson);
                      data_len -= vu32;
                      data += vu32;
 
@@ -270,8 +269,7 @@ mongo_message_query_load_from_data (MongoMessage *message,
                         vu32 = GUINT32_FROM_LE(vu32);
                         if (data_len >= vu32) {
                            bson = mongo_bson_new_from_data(data, vu32);
-                           mongo_message_query_set_fields(query, bson);
-                           mongo_bson_unref(bson);
+                           mongo_message_query_take_fields(query, bson);
                            data_len -= vu32;
                            data += vu32;
                         }
