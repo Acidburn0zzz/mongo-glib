@@ -335,6 +335,25 @@ mongo_message_insert_class_init (MongoMessageInsertClass *klass)
    message_class->operation = MONGO_OPERATION_INSERT;
    message_class->load_from_data = mongo_message_insert_load_from_data;
    message_class->save_to_data = mongo_message_insert_save_to_data;
+
+   gParamSpecs[PROP_COLLECTION] =
+      g_param_spec_string("collection",
+                          _("Collection"),
+                          _("The db.collection name."),
+                          NULL,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_COLLECTION,
+                                   gParamSpecs[PROP_COLLECTION]);
+
+   gParamSpecs[PROP_FLAGS] =
+      g_param_spec_flags("flags",
+                         _("Flags"),
+                         _("The insertion flags."),
+                         MONGO_TYPE_INSERT_FLAGS,
+                         MONGO_INSERT_NONE,
+                         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_FLAGS,
+                                   gParamSpecs[PROP_FLAGS]);
 }
 
 static void
