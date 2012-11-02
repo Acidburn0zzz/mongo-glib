@@ -27,7 +27,7 @@ struct _MongoMessageDeletePrivate
 {
    gchar            *collection;
    MongoDeleteFlags  flags;
-   MongoBson        *selector;
+   MongoBson        *query;
 };
 
 enum
@@ -35,7 +35,7 @@ enum
    PROP_0,
    PROP_COLLECTION,
    PROP_FLAGS,
-   PROP_SELECTOR,
+   PROP_QUERY,
    LAST_PROP
 };
 
@@ -64,15 +64,15 @@ mongo_message_delete_set_collection (MongoMessageDelete *delete,
 }
 
 MongoBson *
-mongo_message_delete_get_selector (MongoMessageDelete *delete)
+mongo_message_delete_get_query (MongoMessageDelete *delete)
 {
    g_return_val_if_fail(MONGO_IS_MESSAGE_DELETE(delete), NULL);
-   return delete->priv->selector;
+   return delete->priv->query;
 }
 
 void
-mongo_message_delete_set_selector (MongoMessageDelete *delete,
-                                   MongoBson          *selector)
+mongo_message_delete_set_query (MongoMessageDelete *delete,
+                                   MongoBson          *query)
 {
    MongoMessageDeletePrivate *priv;
 
@@ -80,11 +80,11 @@ mongo_message_delete_set_selector (MongoMessageDelete *delete,
 
    priv = delete->priv;
 
-   mongo_clear_bson(&priv->selector);
-   if (selector) {
-      priv->selector = mongo_bson_ref(selector);
+   mongo_clear_bson(&priv->query);
+   if (query) {
+      priv->query = mongo_bson_ref(query);
    }
-   g_object_notify_by_pspec(G_OBJECT(delete), gParamSpecs[PROP_SELECTOR]);
+   g_object_notify_by_pspec(G_OBJECT(delete), gParamSpecs[PROP_QUERY]);
 }
 
 MongoDeleteFlags
@@ -143,7 +143,7 @@ mongo_message_delete_load_from_data (MongoMessage *message,
                      len = GUINT32_FROM_LE(len);
                      if (len == length) {
                         bson = mongo_bson_new_from_data(data, len);
-                        mongo_message_delete_set_selector(delete, bson);
+                        mongo_message_delete_set_query(delete, bson);
                         mongo_bson_unref(bson);
                         RETURN(TRUE);
                      }
@@ -203,8 +203,8 @@ mongo_message_delete_save_to_data (MongoMessage *message,
    v32 = GUINT32_TO_LE(priv->flags);
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
-   /* Selector */
-   if ((buf = mongo_bson_get_data(priv->selector, &buflen))) {
+   /* Query */
+   if ((buf = mongo_bson_get_data(priv->query, &buflen))) {
       g_byte_array_append(bytes, buf, buflen);
    } else {
       g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
@@ -231,7 +231,7 @@ mongo_message_delete_finalize (GObject *object)
 
    priv = MONGO_MESSAGE_DELETE(object)->priv;
 
-   mongo_clear_bson(&priv->selector);
+   mongo_clear_bson(&priv->query);
    g_free(priv->collection);
 
    G_OBJECT_CLASS(mongo_message_delete_parent_class)->finalize(object);
@@ -254,8 +254,8 @@ mongo_message_delete_get_property (GObject    *object,
    case PROP_FLAGS:
       g_value_set_flags(value, mongo_message_delete_get_flags(delete));
       break;
-   case PROP_SELECTOR:
-      g_value_set_boxed(value, mongo_message_delete_get_selector(delete));
+   case PROP_QUERY:
+      g_value_set_boxed(value, mongo_message_delete_get_query(delete));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -277,8 +277,8 @@ mongo_message_delete_set_property (GObject      *object,
    case PROP_FLAGS:
       mongo_message_delete_set_flags(delete, g_value_get_flags(value));
       break;
-   case PROP_SELECTOR:
-      mongo_message_delete_set_selector(delete, g_value_get_boxed(value));
+   case PROP_QUERY:
+      mongo_message_delete_set_query(delete, g_value_get_boxed(value));
       break;
    default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -321,14 +321,14 @@ mongo_message_delete_class_init (MongoMessageDeleteClass *klass)
    g_object_class_install_property(object_class, PROP_FLAGS,
                                    gParamSpecs[PROP_FLAGS]);
 
-   gParamSpecs[PROP_SELECTOR] =
-      g_param_spec_boxed("selector",
-                         _("Selector"),
+   gParamSpecs[PROP_QUERY] =
+      g_param_spec_boxed("query",
+                         _("Query"),
                          _("The query to select the document(s)."),
                          MONGO_TYPE_BSON,
                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-   g_object_class_install_property(object_class, PROP_SELECTOR,
-                                   gParamSpecs[PROP_SELECTOR]);
+   g_object_class_install_property(object_class, PROP_QUERY,
+                                   gParamSpecs[PROP_QUERY]);
 }
 
 static void
