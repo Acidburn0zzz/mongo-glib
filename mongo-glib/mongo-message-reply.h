@@ -19,8 +19,6 @@
 #ifndef MONGO_MESSAGE_REPLY_H
 #define MONGO_MESSAGE_REPLY_H
 
-#include "mongo-bson.h"
-#include "mongo-flags.h"
 #include "mongo-message.h"
 
 G_BEGIN_DECLS

@@ -19,7 +19,6 @@
 #ifndef MONGO_MESSAGE_UPDATE_H
 #define MONGO_MESSAGE_UPDATE_H
 
-#include "mongo-flags.h"
 #include "mongo-message.h"
 
 G_BEGIN_DECLS
