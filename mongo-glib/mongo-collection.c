@@ -216,9 +216,8 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    MongoMessageReply *reply;
-   MongoBson **documents;
    MongoBson *ret = NULL;
-   gsize length;
+   GList *list;
 
    ENTRY;
 
@@ -230,8 +229,8 @@ mongo_collection_find_one_finish (MongoCollection  *collection,
       RETURN(NULL);
    }
 
-   if ((documents = mongo_message_reply_get_documents(reply, &length)) && length) {
-      ret = mongo_bson_dup(documents[0]);
+   if ((list = mongo_message_reply_get_documents(reply))) {
+      ret = mongo_bson_ref(list->data);
    } else {
       g_set_error(error,
                   MONGO_COLLECTION_ERROR,
@@ -348,11 +347,10 @@ mongo_collection_count_finish (MongoCollection  *collection,
                                GError          **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoBsonIter iter;
    MongoMessageReply *reply;
-   MongoBson **documents;
+   MongoBsonIter iter;
    gboolean ret = FALSE;
-   gsize length;
+   GList *list;
 
    ENTRY;
 
@@ -364,11 +362,11 @@ mongo_collection_count_finish (MongoCollection  *collection,
       GOTO(failure);
    }
 
-   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
+   if (!(list = mongo_message_reply_get_documents(reply))) {
       GOTO(failure);
    }
 
-   mongo_bson_iter_init(&iter, documents[0]);
+   mongo_bson_iter_init(&iter, list->data);
    if (!mongo_bson_iter_find(&iter, "n") ||
        (mongo_bson_iter_get_value_type(&iter) != MONGO_BSON_DOUBLE)) {
       GOTO(failure);

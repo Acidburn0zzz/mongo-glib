@@ -581,14 +581,15 @@ mongo_client_context_write (MongoClientContext  *client,
 static void
 mongo_client_context_dispatch (MongoClientContext *client)
 {
+   MongoMessageReply *reply;
    MongoMessage *message = NULL;
-   MongoMessage *reply;
-   MongoBson **documents;
+   MongoBson *bson;
    gboolean handled;
    gboolean wants_reply = FALSE;
    guint8 *data = NULL;
    gsize data_len;
    GType type_id = G_TYPE_NONE;
+   GList list = { 0 };
 
    ENTRY;
 
@@ -667,8 +668,8 @@ mongo_client_context_dispatch (MongoClientContext *client)
 
    if (wants_reply) {
       if (!_mongo_message_get_paused(message)) {
-         if ((reply = mongo_message_get_reply(message))) {
-            mongo_client_context_write(client, message, reply);
+         if ((reply = MONGO_MESSAGE_REPLY(mongo_message_get_reply(message)))) {
+            mongo_client_context_write(client, message, MONGO_MESSAGE(reply));
          } else {
             reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
                                  "cursor-id", G_GUINT64_CONSTANT(0),
@@ -676,14 +677,13 @@ mongo_client_context_dispatch (MongoClientContext *client)
                                  "request-id", -1,
                                  "response-to", client->header.request_id,
                                  NULL);
-            documents = g_new0(MongoBson*, 1);
-            documents[0] = mongo_bson_new_empty();
-            mongo_bson_append_string(documents[0], "$err",
-                                     "Your request is denied.");
-            mongo_bson_append_int(documents[0], "code", 0);
-            mongo_message_reply_set_documents(MONGO_MESSAGE_REPLY(reply),
-                                              documents, 1);
-            mongo_client_context_write(client, message, reply);
+            bson = mongo_bson_new_empty();
+            mongo_bson_append_string(bson, "$err", "Your request is denied.");
+            mongo_bson_append_int(bson, "code", 0);
+            list.data = bson;
+            mongo_message_reply_set_documents(reply, &list);
+            mongo_client_context_write(client, message, MONGO_MESSAGE(reply));
+            mongo_bson_unref(bson);
             g_object_unref(reply);
          }
       }

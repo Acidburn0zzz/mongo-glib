@@ -48,22 +48,20 @@ struct _MongoMessageReplyClass
    MongoMessageClass parent_class;
 };
 
-gsize             mongo_message_reply_get_count      (MongoMessageReply   *reply);
-guint64           mongo_message_reply_get_cursor_id  (MongoMessageReply   *reply);
-MongoBson       **mongo_message_reply_get_documents  (MongoMessageReply   *reply,
-                                                      gsize               *count);
-MongoReplyFlags   mongo_message_reply_get_flags      (MongoMessageReply   *reply);
-guint             mongo_message_reply_get_offset     (MongoMessageReply   *reply);
-GType             mongo_message_reply_get_type       (void) G_GNUC_CONST;
-void              mongo_message_reply_set_cursor_id  (MongoMessageReply   *reply,
-                                                      guint64              cursor_id);
-void              mongo_message_reply_set_documents  (MongoMessageReply   *reply,
-                                                      MongoBson         **documents,
-                                                      gsize               count);
-void              mongo_message_reply_set_flags      (MongoMessageReply  *reply,
-                                                      MongoReplyFlags     flags);
-void              mongo_message_reply_set_offset     (MongoMessageReply  *reply,
-                                                      guint               offset);
+gsize            mongo_message_reply_get_count      (MongoMessageReply   *reply);
+guint64          mongo_message_reply_get_cursor_id  (MongoMessageReply   *reply);
+GList           *mongo_message_reply_get_documents  (MongoMessageReply   *reply);
+MongoReplyFlags  mongo_message_reply_get_flags      (MongoMessageReply   *reply);
+guint            mongo_message_reply_get_offset     (MongoMessageReply   *reply);
+GType            mongo_message_reply_get_type       (void) G_GNUC_CONST;
+void             mongo_message_reply_set_cursor_id  (MongoMessageReply   *reply,
+                                                     guint64              cursor_id);
+void             mongo_message_reply_set_documents  (MongoMessageReply   *reply,
+                                                     GList               *documents);
+void             mongo_message_reply_set_flags      (MongoMessageReply  *reply,
+                                                     MongoReplyFlags     flags);
+void             mongo_message_reply_set_offset     (MongoMessageReply  *reply,
+                                                     guint               offset);
 
 G_END_DECLS
 

@@ -519,11 +519,10 @@ mongo_connection_ismaster_cb (GObject      *object,
    const gchar *primary;
    const gchar *replica_set;
    MongoMessageReply *reply = NULL;
-   MongoBson **documents;
    gboolean ismaster = FALSE;
    Request *request;
    GError *error = NULL;
-   gsize length;
+   GList *list = NULL;
 
    ENTRY;
 
@@ -544,14 +543,14 @@ mongo_connection_ismaster_cb (GObject      *object,
    /*
     * Make sure we got a valid document back.
     */
-   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
+   if (!(list = mongo_message_reply_get_documents(reply))) {
       GOTO(failure);
    }
 
    /*
     * Make sure we got a valid response back.
     */
-   mongo_bson_iter_init(&iter, documents[0]);
+   mongo_bson_iter_init(&iter, list->data);
    if (mongo_bson_iter_find(&iter, "ok")) {
       if (!mongo_bson_iter_get_value_boolean(&iter)) {
          GOTO(failure);
@@ -563,7 +562,7 @@ mongo_connection_ismaster_cb (GObject      *object,
     * If so, verify that it is the one we should be talking to.
     */
    if (priv->replica_set) {
-      mongo_bson_iter_init(&iter, documents[0]);
+      mongo_bson_iter_init(&iter, list->data);
       if (mongo_bson_iter_find(&iter, "setName") &&
           (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8)) {
          replica_set = mongo_bson_iter_get_value_string(&iter, NULL);
@@ -578,7 +577,7 @@ mongo_connection_ismaster_cb (GObject      *object,
     * Update who we think the primary is now so that we can reconnect
     * if this isn't the primary.
     */
-   mongo_bson_iter_init(&iter, documents[0]);
+   mongo_bson_iter_init(&iter, list->data);
    if (mongo_bson_iter_find(&iter, "primary") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8)) {
       primary = mongo_bson_iter_get_value_string(&iter, NULL);
@@ -589,7 +588,7 @@ mongo_connection_ismaster_cb (GObject      *object,
     * Update who we think is in the list of nodes for this replica set
     * so that we can iterate through them upon inability to find master.
     */
-   mongo_bson_iter_init(&iter, documents[0]);
+   mongo_bson_iter_init(&iter, list->data);
    if (mongo_bson_iter_find(&iter, "hosts") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_ARRAY)) {
       if (mongo_bson_iter_recurse(&iter, &iter2)) {
@@ -605,7 +604,7 @@ mongo_connection_ismaster_cb (GObject      *object,
    /*
     * Check to see if this host is PRIMARY.
     */
-   mongo_bson_iter_init(&iter, documents[0]);
+   mongo_bson_iter_init(&iter, list->data);
    if (mongo_bson_iter_find(&iter, "ismaster") &&
        (mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_BOOLEAN)) {
       if (!(ismaster = mongo_bson_iter_get_value_boolean(&iter))) {
@@ -881,13 +880,12 @@ mongo_connection_command_cb (GObject      *object,
                              gpointer      user_data)
 {
    GSimpleAsyncResult *simple = user_data;
+   MongoMessageReply *reply = NULL;
    MongoConnection *connection = (MongoConnection *)object;
    MongoBsonIter iter;
-   MongoBson **documents;
    const gchar *errmsg;
-   MongoMessageReply *reply = NULL;
    GError *error = NULL;
-   gsize length;
+   GList *list;
 
    ENTRY;
 
@@ -905,11 +903,11 @@ mongo_connection_command_cb (GObject      *object,
    /*
     * Check to see if the command provided a failure document.
     */
-   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
-      mongo_bson_iter_init(&iter, documents[0]);
+   if (!(list = mongo_message_reply_get_documents(reply))) {
+      mongo_bson_iter_init(&iter, list->data);
       if (mongo_bson_iter_find(&iter, "ok")) {
          if (!mongo_bson_iter_get_value_boolean(&iter)) {
-            mongo_bson_iter_init(&iter, documents[0]);
+            mongo_bson_iter_init(&iter, list->data);
             if (mongo_bson_iter_find(&iter, "errmsg") &&
                 mongo_bson_iter_get_value_type(&iter) == MONGO_BSON_UTF8) {
                errmsg = mongo_bson_iter_get_value_string(&iter, NULL);

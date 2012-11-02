@@ -318,11 +318,10 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
                            GError       **error)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   MongoBsonIter iter;
    MongoMessageReply *reply;
-   MongoBson **documents;
+   MongoBsonIter iter;
    gboolean ret = FALSE;
-   gsize length;
+   GList *list;
 
    g_return_val_if_fail(MONGO_IS_CURSOR(cursor), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
@@ -333,11 +332,11 @@ mongo_cursor_count_finish (MongoCursor   *cursor,
       GOTO(failure);
    }
 
-   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
+   if (!(list = mongo_message_reply_get_documents(reply))) {
       GOTO(failure);
    }
 
-   mongo_bson_iter_init(&iter, documents[0]);
+   mongo_bson_iter_init(&iter, list->data);
    if (!mongo_bson_iter_find(&iter, "n") ||
        (mongo_bson_iter_get_value_type(&iter) != MONGO_BSON_DOUBLE)) {
       GOTO(failure);
@@ -364,19 +363,20 @@ mongo_cursor_kill_cursors_cb (GObject      *object,
 
 static void
 mongo_cursor_foreach_dispatch (MongoConnection    *connection,
-                               MongoMessageReply         *reply,
+                               MongoMessageReply  *reply,
                                GSimpleAsyncResult *simple)
 {
    MongoCursorCallback func;
    MongoCursorPrivate *priv;
    GCancellable *cancellable;
    MongoCursor *cursor;
-   MongoBson **documents;
+   MongoBson *bson;
    gpointer func_data;
    guint64 cursor_id;
    gchar *db_and_collection;
+   GList *iter;
+   GList *list;
    guint offset;
-   gsize length;
    guint i;
 
    ENTRY;
@@ -397,15 +397,15 @@ mongo_cursor_foreach_dispatch (MongoConnection    *connection,
 
    priv = cursor->priv;
 
-   if (!(documents = mongo_message_reply_get_documents(reply, &length)) || !length) {
+   if (!(list = mongo_message_reply_get_documents(reply))) {
       GOTO(stop);
    }
 
    offset = mongo_message_reply_get_offset(reply);
 
-   for (i = 0; i < length; i++) {
-      if (((offset + i) >= priv->limit) ||
-          !func(cursor, documents[i], func_data)) {
+   for (iter = list, i = 0; iter; iter = iter->next, i++) {
+      bson = iter->data;
+      if (((offset + i) >= priv->limit) || !func(cursor, bson, func_data)) {
          GOTO(stop);
       }
    }
@@ -413,7 +413,7 @@ mongo_cursor_foreach_dispatch (MongoConnection    *connection,
    offset = mongo_message_reply_get_offset(reply);
    cursor_id = mongo_message_reply_get_cursor_id(reply);
 
-   if (!cursor_id || ((offset + length) >= priv->limit)) {
+   if (!cursor_id || ((offset + g_list_length(list)) >= priv->limit)) {
       GOTO(stop);
    }
 
@@ -426,12 +426,12 @@ mongo_cursor_foreach_dispatch (MongoConnection    *connection,
                                           cursor->priv->database,
                                           cursor->priv->collection);
       mongo_connection_getmore_async(connection,
-                                 db_and_collection,
-                                 cursor->priv->batch_size,
-                                 cursor_id,
-                                 cancellable,
-                                 mongo_cursor_foreach_getmore_cb,
-                                 simple);
+                                     db_and_collection,
+                                     cursor->priv->batch_size,
+                                     cursor_id,
+                                     cancellable,
+                                     mongo_cursor_foreach_getmore_cb,
+                                     simple);
       g_free(db_and_collection);
    }
 

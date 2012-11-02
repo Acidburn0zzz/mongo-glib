@@ -92,8 +92,8 @@ mongo_message_set_reply_bson (MongoMessage    *message,
                               MongoBson       *bson)
 {
    MongoMessagePrivate *priv;
-   MongoMessage *reply;
-   MongoBson **docs;
+   MongoMessageReply *reply;
+   GList list = { 0 };
 
    g_return_if_fail(MONGO_IS_MESSAGE(message));
 
@@ -106,10 +106,9 @@ mongo_message_set_reply_bson (MongoMessage    *message,
                         "response-to", priv->request_id,
                         "flags", flags,
                         NULL);
-   docs = g_new0(MongoBson*, 1);
-   docs[0] = mongo_bson_ref(bson);
-   mongo_message_reply_set_documents(MONGO_MESSAGE_REPLY(reply), docs, 1);
-   mongo_message_set_reply(message, reply);
+   list.data = bson;
+   mongo_message_reply_set_documents(reply, &list);
+   mongo_message_set_reply(message, MONGO_MESSAGE(reply));
    g_object_unref(reply);
 }
 

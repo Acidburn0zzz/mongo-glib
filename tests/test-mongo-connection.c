@@ -46,22 +46,21 @@ test2_query_cb (GObject      *object,
                 GAsyncResult *result,
                 gpointer      user_data)
 {
-   MongoConnection *connection = (MongoConnection *)object;
    MongoMessageReply *reply;
-   MongoBson **documents;
+   MongoConnection *connection = (MongoConnection *)object;
    gboolean *success = user_data;
    GError *error = NULL;
-   gsize length;
-   guint i;
+   GList *list;
+   GList *iter;
 
    reply = mongo_connection_query_finish(connection, result, &error);
    g_assert_no_error(error);
    g_assert(reply);
 
-   documents = mongo_message_reply_get_documents(reply, &length);
+   list = mongo_message_reply_get_documents(reply);
 
-   for (i = 0; i < length; i++) {
-      g_assert(documents[i]);
+   for (iter = list; iter; iter = iter->next) {
+      g_assert(iter->data);
    }
 
    g_object_unref(reply);

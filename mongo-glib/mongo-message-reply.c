@@ -26,9 +26,8 @@ G_DEFINE_TYPE(MongoMessageReply, mongo_message_reply, MONGO_TYPE_MESSAGE)
 
 struct _MongoMessageReplyPrivate
 {
-   guint32           count;
    guint64           cursor_id;
-   MongoBson       **documents;
+   GList            *documents;
    MongoReplyFlags   flags;
    guint32           offset;
 };
@@ -49,7 +48,7 @@ gsize
 mongo_message_reply_get_count (MongoMessageReply *reply)
 {
    g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), 0);
-   return reply->priv->count;
+   return g_list_length(reply->priv->documents);
 }
 
 guint64
@@ -71,59 +70,43 @@ mongo_message_reply_set_cursor_id (MongoMessageReply *reply,
 /**
  * mongo_message_reply_get_documents:
  * @reply: (in): A #MongoMessageReply.
- * @count: (out): Location for number of documents.
  *
  * Returns an array of documents for the reply. @count is set to the
  * number of documents returned.
  *
- * Returns: (transfer none) (array length=count): An array of MongoBson.
+ * Returns: (transfer none) (element-type MongoBson*): An array of MongoBson.
  */
-MongoBson **
-mongo_message_reply_get_documents (MongoMessageReply *reply,
-                                   gsize      *count)
+GList *
+mongo_message_reply_get_documents (MongoMessageReply *reply)
 {
    g_return_val_if_fail(MONGO_IS_MESSAGE_REPLY(reply), NULL);
-
-   if (count) {
-      *count = reply->priv->count;
-   }
-
    return reply->priv->documents;
 }
 
 /**
  * mongo_message_reply_set_documents:
  * @reply: (in): A #MongoMessageReply.
- * @documents: (in) (array length=count) (transfer full): Array of #MongoBson.
- * @count: (in): The number of #MongoBson in @documents.
+ * @documents: (in) (transfer none) (element-type MongoBson*): A #GList
+ *   of #MongoBson documents.
  *
- * Sets the documents for the reply. Ownership of documents is taken and
- * will unref each document when the reply has finalized as well as freeing
- * the memory for the array with g_free().
- *
- * Count should be set to the number of documents in @documents.
+ * Sets the documents for the reply. @documents is copied and each #MongoBson
+ * inside has its reference count increased by one.
  */
 void
-mongo_message_reply_set_documents (MongoMessageReply  *reply,
-                                   MongoBson  **documents,
-                                   gsize        count)
+mongo_message_reply_set_documents (MongoMessageReply *reply,
+                                   GList             *documents)
 {
    MongoMessageReplyPrivate *priv;
-   guint i;
 
    g_return_if_fail(MONGO_IS_MESSAGE_REPLY(reply));
 
    priv = reply->priv;
 
-   if (priv->documents) {
-      for (i = 0; i < priv->count; i++) {
-         mongo_bson_unref(priv->documents[i]);
-      }
-      g_free(priv->documents);
-   }
+   g_list_foreach(priv->documents, (GFunc)mongo_bson_unref, NULL);
+   g_list_free(priv->documents);
 
-   priv->documents = documents;
-   priv->count = count;
+   priv->documents = g_list_copy(documents);
+   g_list_foreach(priv->documents, (GFunc)mongo_bson_ref, NULL);
 
    g_object_notify_by_pspec(G_OBJECT(reply), gParamSpecs[PROP_COUNT]);
 }
@@ -164,7 +147,6 @@ static guint8 *
 mongo_message_reply_save_to_data (MongoMessage *message,
                                   gsize        *length)
 {
-   static const guint8 empty_bson[] = { 5, 0, 0, 0, 0 };
    MongoMessageReplyPrivate *priv;
    const guint8 *buf;
    MongoMessageReply *reply = (MongoMessageReply *)message;
@@ -172,8 +154,8 @@ mongo_message_reply_save_to_data (MongoMessage *message,
    gint32 v32;
    gint64 v64;
    guint8 *ret;
+   GList *iter;
    gsize buflen;
-   guint i;
 
    ENTRY;
 
@@ -209,17 +191,13 @@ mongo_message_reply_save_to_data (MongoMessage *message,
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
    /* Number of documents returned */
-   v32 = GUINT32_TO_LE(priv->count);
+   v32 = GUINT32_TO_LE(g_list_length(priv->documents));
    g_byte_array_append(bytes, (guint8 *)&v32, sizeof v32);
 
    /* encode BSON documents */
-   for (i = 0; i < priv->count; i++) {
-      if (priv->documents[i] &&
-          (buf = mongo_bson_get_data(priv->documents[i], &buflen))) {
-         g_byte_array_append(bytes, buf, buflen);
-      } else {
-         g_byte_array_append(bytes, empty_bson, G_N_ELEMENTS(empty_bson));
-      }
+   for (iter = priv->documents; iter; iter = iter->next) {
+      buf = mongo_bson_get_data(iter->data, &buflen);
+      g_byte_array_append(bytes, buf, buflen);
    }
 
    /* Update message length */
@@ -241,7 +219,6 @@ mongo_message_reply_load_from_data (MongoMessage *message,
 {
    MongoMessageReplyPrivate *priv;
    MongoMessageReply *reply = (MongoMessageReply *)message;
-   GPtrArray *docs = NULL;
    MongoBson *bson;
    guint64 cursor;
    guint32 flags;
@@ -249,6 +226,7 @@ mongo_message_reply_load_from_data (MongoMessage *message,
    guint32 count;
    guint32 msg_len;
    gssize len = length;
+   GList *list = NULL;
    guint i;
 
    ENTRY;
@@ -279,8 +257,6 @@ mongo_message_reply_load_from_data (MongoMessage *message,
    data += 4;
    len -= 4;
 
-   docs = g_ptr_array_new();
-
    for (i = 0; i < count; i++) {
       if (len <= 0) {
          GOTO(failure);
@@ -291,7 +267,7 @@ mongo_message_reply_load_from_data (MongoMessage *message,
 
       if (msg_len <= len) {
          if ((bson = mongo_bson_new_from_data(data, msg_len))) {
-            g_ptr_array_add(docs, bson);
+            list = g_list_append(list, bson);
          } else {
             GOTO(failure);
          }
@@ -300,18 +276,19 @@ mongo_message_reply_load_from_data (MongoMessage *message,
       data += msg_len;
    }
 
-   priv->count = count;
+   if (g_list_length(list) != count) {
+      GOTO(failure);
+   }
+
    priv->cursor_id = cursor;
    priv->flags = flags;
    priv->offset = offset;
-   priv->documents = (MongoBson **)g_ptr_array_free(docs, FALSE);
-
+   priv->documents = list;
    RETURN(TRUE);
 
 failure:
-   if (docs) {
-      g_ptr_array_free(docs, TRUE);
-   }
+   g_list_foreach(list, (GFunc)mongo_bson_unref, NULL);
+   g_list_free(list);
    RETURN(FALSE);
 }
 
@@ -319,17 +296,13 @@ static void
 mongo_message_reply_finalize (GObject *object)
 {
    MongoMessageReplyPrivate *priv;
-   guint i;
 
    ENTRY;
 
    priv = MONGO_MESSAGE_REPLY(object)->priv;
 
-   for (i = 0; i < priv->count; i++) {
-      mongo_bson_unref(priv->documents[i]);
-   }
-
-   g_free(priv->documents);
+   g_list_foreach(priv->documents, (GFunc)mongo_bson_unref, NULL);
+   g_list_free(priv->documents);
 
    G_OBJECT_CLASS(mongo_message_reply_parent_class)->finalize(object);
 
