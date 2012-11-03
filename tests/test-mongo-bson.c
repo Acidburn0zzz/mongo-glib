@@ -537,9 +537,18 @@ invalid_tests (void)
 {
    static const guint8 short_length[] = { 3, 0, 0, 0 };
    static const guint8 short_data[] = { 6, 0, 0, 0, 0 };
+   static const guint8 bad_key[] = { 5, 0, 0, 0, 1 };
+   MongoBsonIter iter;
+   MongoBson *b;
 
    g_assert(!mongo_bson_new_from_data(short_length, G_N_ELEMENTS(short_length)));
    g_assert(!mongo_bson_new_from_data(short_data, G_N_ELEMENTS(short_data)));
+
+   b = mongo_bson_new_from_data(bad_key, G_N_ELEMENTS(bad_key));
+   g_assert(b);
+   mongo_bson_iter_init(&iter, b);
+   g_assert(!mongo_bson_iter_next(&iter));
+   mongo_bson_unref(b);
 
    /*
     * TODO: Work on fuzzing tests.
