@@ -360,11 +360,13 @@ mongo_bson_append (MongoBson    *bson,
  * @value: (in): The #MongoBson array to append.
  *
  * Appends a #MongoBson containing an array. A #MongoBson array is a document
- * that contains fields with string keys containing integers incrementally.
+ * that contains fields with string keys containing integers monotonically.
  *
- * [[[
+ * <informalexample>
+ *   <programlisting>
  * {"0": "First Value", "1": "Second Value"}
- * ]]]
+ *   </programlisting>
+ * </informalexample>
  */
 void
 mongo_bson_append_array (MongoBson       *bson,
