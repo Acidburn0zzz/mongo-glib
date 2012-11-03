@@ -260,7 +260,7 @@ mongo_bson_type_get_type (void)
 {
    static GType type_id;
    static gsize initialized;
-   static GEnumValue values[] = {
+   static const GEnumValue values[] = {
       { MONGO_BSON_DOUBLE,    "MONGO_BSON_DOUBLE",    "DOUBLE" },
       { MONGO_BSON_UTF8,      "MONGO_BSON_UTF8",      "UTF8" },
       { MONGO_BSON_DOCUMENT,  "MONGO_BSON_DOCUMENT",  "DOCUMENT" },
