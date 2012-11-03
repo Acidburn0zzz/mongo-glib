@@ -538,6 +538,7 @@ invalid_tests (void)
    static const guint8 short_length[] = { 3, 0, 0, 0 };
    static const guint8 short_data[] = { 6, 0, 0, 0, 0 };
    static const guint8 bad_key[] = { 5, 0, 0, 0, 1 };
+   static const guint8 empty_key[] = { 11, 0, 0, 0, 16, 0, 9, 0, 0, 0, 0 };
    MongoBsonIter iter;
    MongoBson *b;
 
@@ -548,6 +549,14 @@ invalid_tests (void)
    g_assert(b);
    mongo_bson_iter_init(&iter, b);
    g_assert(!mongo_bson_iter_next(&iter));
+   mongo_bson_unref(b);
+
+   b = mongo_bson_new_from_data(empty_key, G_N_ELEMENTS(empty_key));
+   g_assert(b);
+   mongo_bson_iter_init(&iter, b);
+   g_assert(mongo_bson_iter_next(&iter));
+   g_assert_cmpstr(mongo_bson_iter_get_key(&iter), ==, "");
+   g_assert_cmpint(mongo_bson_iter_get_value_int(&iter), ==, 9);
    mongo_bson_unref(b);
 
    /*
