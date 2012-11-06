@@ -17,7 +17,7 @@ m4_define([lt_age], [m4_eval(mongo_binary_age - mongo_interface_age)])
 dnl **************************************************************************
 dnl Initialize Automake
 dnl **************************************************************************
-AC_PREREQ([2.69])
+AC_PREREQ([2.64])
 AC_INIT([mongo-glib],[mongo_version],[https://github.com/chergert/mongo-glib])
 
 AC_CONFIG_HEADERS([config.h])
