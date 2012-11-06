@@ -16,8 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <string.h>
+
+#ifdef HAVE_UNISTR_H
 #include <unistr.h>
+#endif
 
 #include "mongo-bson.h"
 #include "mongo-debug.h"
@@ -46,6 +53,21 @@
  */
 
 #define ITER_IS_TYPE(iter, type) (GPOINTER_TO_INT(iter->user_data5) == type)
+
+const gchar *
+utf8_check (const gchar *str,
+            gssize       len)
+{
+#ifdef HAVE_UNISTR_H
+   return (const gchar *)u8_check((const guint8 *)str, len);
+#else
+   const gchar *end = NULL;
+   if (!g_utf8_validate(str, len, &end)) {
+      return NULL;
+   }
+   return end;
+#endif
+}
 
 /**
  * mongo_bson_new_from_data:
@@ -1268,7 +1290,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value2 = &rawbuf[offset];
          max_len = GUINT32_FROM_LE(*(guint32 *)value1);
          if ((offset + max_len - 10) < rawbuf_len) {
-            if ((end = (char *)u8_check((guint8 *)value2, max_len - 1))) {
+            if ((end = utf8_check((const gchar *)value2, max_len - 1))) {
                /*
                 * Well, we have quite the delima here. The UTF-8 string is
                 * invalid, but there was definitely a key here. Consumers

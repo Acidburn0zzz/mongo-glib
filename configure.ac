@@ -58,8 +58,10 @@ PKG_CHECK_MODULES(GOBJECT, [gobject-2.0 >= 2.32])
 dnl **************************************************************************
 dnl Check for libunistring
 dnl **************************************************************************
-AC_CHECK_HEADERS([unistr.h],[],[
-	AC_MSG_ERROR([unistr.h missing; please install libunistring.])
+AC_CHECK_HEADERS([unistr.h], [
+	utf8_support="libunistring; full UTF-8 support."
+], [
+	utf8_support="glib; only modified UTF-8."
 ])
 
 
@@ -152,4 +154,5 @@ echo "  Enable Introspection.......: ${found_introspection}"
 echo "  Enable Test Suite..........: ${enable_glibtest}"
 echo "  Debug Level................: ${enable_debug}"
 echo "  Compiler Flags.............: ${CFLAGS}"
+echo "  UTF-8 .....................: ${utf8_support}"
 echo ""
