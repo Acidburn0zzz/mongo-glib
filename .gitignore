@@ -17,6 +17,7 @@ libtool
 ltmain.sh
 Makefile
 Makefile.in
+mongo-glib.spec
 missing
 *.o
 *.pc
