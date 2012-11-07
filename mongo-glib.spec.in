@@ -8,7 +8,7 @@ Summary:	Library for connecting to or emulating MongoDB.
 Group:		System Environment/Libraries
 License:	LGPLv2+
 URL:		https://github.com/chergert/mongo-glib
-Source0:	https://github.com/downloads/chergert/mongo-glib/mongo-glib-0.3.2.tar.xz
+Source0:	https://github.com/downloads/chergert/mongo-glib/mongo-glib-@VERSION@.tar.xz
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:	glib2-devel >= %{glib_ver}
