@@ -5,17 +5,13 @@ include tests/Makefile.include
 SUBDIRS = . doc
 
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
-DISTCHECK_CONFIGURE_FLAGS = --enable-maintainer-flags --enable-gtk-doc --enable-introspection=yes --enable-silent-rules
+DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --enable-introspection=yes --enable-silent-rules
 
-mongodocdir = ${prefix}/doc/mongo-glib-1.0
+mongodocdir = ${datadir}/doc/mongo-glib-@VERSION@
 mongodoc_DATA =
-mongodoc_DATA += README
-mongodoc_DATA += README.md
 mongodoc_DATA += COPYING
-mongodoc_DATA += AUTHORS
-mongodoc_DATA += ChangeLog
-mongodoc_DATA += INSTALL
 mongodoc_DATA += NEWS
+mongodoc_DATA += README.md
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =
