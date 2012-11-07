@@ -111,7 +111,6 @@ AS_CASE([$enable_debug],
 	],
 	[AC_MSG_ERROR([Unknown argument to --enable-debug])]
 )
-AC_SUBST(MONGO_DEBUG_CFLAGS)
 
 
 dnl **************************************************************************
