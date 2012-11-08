@@ -1881,5 +1881,5 @@ mongo_connection_init (MongoConnection *connection)
 GQuark
 mongo_connection_error_quark (void)
 {
-   return g_quark_from_static_string("mongo-connection-error-quark");
+   return g_quark_from_static_string("MongoConnectionError");
 }
