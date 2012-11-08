@@ -731,6 +731,8 @@ mongo_connection_start_connecting (MongoConnection *connection)
 {
    MongoConnectionPrivate *priv;
    const gchar *host;
+   Request *r;
+   GError *error;
    guint delay = 0;
 
    ENTRY;
@@ -744,6 +746,18 @@ mongo_connection_start_connecting (MongoConnection *connection)
    priv->state = STATE_CONNECTING;
 
    if (!(host = mongo_manager_next(priv->manager, &delay))) {
+      /*
+       * No more hosts to connect to this round. We need to therefore cancel
+       * any pending requests immediately.
+       */
+      error = g_error_new(MONGO_CONNECTION_ERROR,
+                          MONGO_CONNECTION_ERROR_CONNECT_FAILED,
+                          _("Failed to connect to MongoDB."));
+      while ((r = g_queue_pop_head(priv->queue))) {
+         request_fail(r, error);
+         request_free(r);
+      }
+      g_error_free(error);
       g_message("No more hosts, delaying for %u milliseconds.", delay);
       g_timeout_add(delay,
                     mongo_connection_start_connecting_timeout,
