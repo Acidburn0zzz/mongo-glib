@@ -825,7 +825,7 @@ mongo_connection_new (void)
 
 /**
  * mongo_connection_new_from_uri:
- * @uri: (in): A URI string.
+ * @uri: (in) (allow-none): A URI string.
  *
  * Creates a new #MongoConnection using the URI provided. The URI should be in
  * the mongodb://host:port form.
@@ -849,7 +849,6 @@ mongo_connection_new_from_uri (const gchar *uri)
    MongoConnection *ret;
 
    ENTRY;
-   g_return_val_if_fail(uri, NULL);
    ret = g_object_new(MONGO_TYPE_CONNECTION, "uri", uri, NULL);
    RETURN(ret);
 }
@@ -1574,9 +1573,12 @@ mongo_connection_set_uri (MongoConnection *connection,
    ENTRY;
 
    g_return_if_fail(MONGO_IS_CONNECTION(connection));
-   g_return_if_fail(uri);
 
    priv = connection->priv;
+
+   if (!uri) {
+      uri = "mongodb://127.0.0.1:27017";
+   }
 
    if (!g_str_has_prefix(uri, "mongodb://")) {
       g_warning("\"uri\" must start with mongodb://");
