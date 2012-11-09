@@ -837,7 +837,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    const guint8 *buffer;
    MongoMessageReply *reply;
    GError *error = NULL;
-   guint8 *doc_buffer = NULL;
+   guint8 *reply_buffer = NULL;
    gsize count;
 #pragma pack(push, 1)
    struct {
@@ -890,16 +890,22 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
                        NULL,
                        NULL);
 
+   /*
+    * TODO: If the message size is decently small, we should use alloca()
+    *       to allocate space on the stack instead of the heap. I suspect
+    *       this could be a decent speedup when handling lots of packets.
+    */
+
    count = 0;
-   doc_buffer = g_malloc(header.msg_len);
+   reply_buffer = g_malloc(header.msg_len);
    g_input_stream_read_all(G_INPUT_STREAM(input_stream),
-                           doc_buffer,
+                           reply_buffer,
                            header.msg_len - sizeof header,
                            &count,
                            NULL,
                            &error);
 
-   DUMP_BYTES(buffer, buffer, count);
+   DUMP_BYTES(reply_buffer, reply_buffer, count);
 
    if (count != (header.msg_len - sizeof header)) {
       GOTO(failure);
@@ -910,7 +916,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
                         "response-to", header.response_to,
                         NULL);
    if (!mongo_message_load_from_data(MONGO_MESSAGE(reply),
-                                     doc_buffer,
+                                     reply_buffer,
                                      count)) {
       g_clear_object(&reply);
       GOTO(failure);
@@ -945,13 +951,13 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
 
 cleanup:
    g_object_unref(protocol);
-   g_free(doc_buffer);
+   g_free(reply_buffer);
    EXIT;
 
 failure:
    mongo_protocol_fail(protocol, error);
    g_object_unref(protocol);
-   g_free(doc_buffer);
+   g_free(reply_buffer);
    EXIT;
 }
 
