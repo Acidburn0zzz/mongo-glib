@@ -1,4 +1,4 @@
-headerdir = $(prefix)/include/mongo-glib-1.0/mongo-glib
+headerdir = $(prefix)/include/mongo-glib-1.0
 header_DATA = $(INST_H_FILES)
 
 lib_LTLIBRARIES =
