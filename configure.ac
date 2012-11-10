@@ -99,7 +99,6 @@ AS_CASE([$enable_debug],
 		CFLAGS="$CFLAGS -Wmissing-format-attribute"
 		CFLAGS="$CFLAGS -Wnested-externs"
 		CFLAGS="$CFLAGS -Wshadow"
-		CFLAGS="$CFLAGS -DMONGO_TRACE"
 	],
 	[minimum], [
 		CFLAGS="$CFLAGS -DG_DISABLE_CAST_CHECKS"
@@ -112,13 +111,25 @@ AS_CASE([$enable_debug],
 	[AC_MSG_ERROR([Unknown argument to --enable-debug])]
 )
 
+AC_ARG_ENABLE([trace],
+	      [AS_HELP_STRING([--enable-trace=@<:@no/yes@:>@],
+	      		      [turn on tracing @<:@default=no@:>@])],
+	      		      [],
+	      		      [enable_trace=no])
+AS_CASE([$enable_trace],
+	[yes], [
+		CFLAGS="$CFLAGS -DMONGO_TRACE"
+	],
+	[no], [],
+	[AC_MSG_ERROR([Unknown argument to --enable-trace])]
+)
+
 
 dnl **************************************************************************
 dnl Unit Tests
 dnl **************************************************************************
 AC_PATH_PROG([GTESTER], [gtester])
 AC_PATH_PROG([GTESTER_REPORT], [gtester-report])
-AM_CONDITIONAL(ENABLE_GLIB_TEST, test "x$enable_glibtest" = "xyes")
 
 
 dnl **************************************************************************
@@ -149,10 +160,10 @@ AC_OUTPUT
 echo ""
 echo "Mongo-GLib $VERSION"
 echo ""
-echo "  Prefix.....................: ${prefix}"
-echo "  Enable Introspection.......: ${found_introspection}"
-echo "  Enable Test Suite..........: ${enable_glibtest}"
-echo "  Debug Level................: ${enable_debug}"
-echo "  Compiler Flags.............: ${CFLAGS}"
+echo "  Prefix ....................: ${prefix}"
+echo "  Enable Introspection ......: ${found_introspection}"
+echo "  API Documentation .........: ${enable_gtk_doc}"
+echo "  Debug Level ...............: ${enable_debug}"
+echo "  Tracing ...................: ${enable_trace}"
 echo "  UTF-8 .....................: ${utf8_support}"
 echo ""
