@@ -564,6 +564,20 @@ invalid_tests (void)
     */
 }
 
+static void
+null_string (void)
+{
+   MongoBson *b;
+   MongoBsonIter i;
+
+   b = mongo_bson_new_empty();
+   mongo_bson_append_string(b, "key", NULL);
+   g_assert(mongo_bson_iter_init_find(&i, b, "key"));
+   g_assert_cmpint(mongo_bson_iter_get_value_type(&i), ==, MONGO_BSON_NULL);
+
+   mongo_bson_unref(b);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -573,5 +587,6 @@ main (gint   argc,
    g_test_add_func("/MongoBson/iter_tests", iter_tests);
    g_test_add_func("/MongoBson/join", join);
    g_test_add_func("/MongoBson/invalid", invalid_tests);
+   g_test_add_func("/MongoBson/null_string", null_string);
    return g_test_run();
 }

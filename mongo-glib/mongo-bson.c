@@ -610,9 +610,10 @@ mongo_bson_append_regex (MongoBson   *bson,
  * mongo_bson_append_string:
  * @bson: (in): A #MongoBson.
  * @key: (in): A string containing the key.
- * @value: (in): A string containing the value.
+ * @value: (in) (allow-none): A string containing the value.
  *
- * Stores the string @value in the document under @key.
+ * Stores the string @value in the document under @key. If @value is
+ * %NULL, then a %MONGO_BSON_NULL field will be added instead of a string.
  */
 void
 mongo_bson_append_string (MongoBson   *bson,
@@ -624,6 +625,12 @@ mongo_bson_append_string (MongoBson   *bson,
 
    g_return_if_fail(bson != NULL);
    g_return_if_fail(key != NULL);
+
+   if (!value) {
+      mongo_bson_append_null(bson, key);
+      return;
+   }
+
    g_return_if_fail(g_utf8_validate(value, -1, NULL));
 
    value = value ? value : "";
