@@ -246,7 +246,7 @@ mongo_server_request_read (MongoServer        *server,
 {
    MongoMessageClass *klass;
    gboolean handled = FALSE;
-   guint signal;
+   guint _signal;
 
    g_assert(MONGO_IS_SERVER(server));
    g_assert(client);
@@ -256,34 +256,34 @@ mongo_server_request_read (MongoServer        *server,
 
    switch (klass->operation) {
    case MONGO_OPERATION_REPLY:
-      signal = REQUEST_REPLY;
+      _signal = REQUEST_REPLY;
       break;
    case MONGO_OPERATION_UPDATE:
-      signal = REQUEST_UPDATE;
+      _signal = REQUEST_UPDATE;
       break;
    case MONGO_OPERATION_INSERT:
-      signal = REQUEST_INSERT;
+      _signal = REQUEST_INSERT;
       break;
    case MONGO_OPERATION_QUERY:
-      signal = REQUEST_QUERY;
+      _signal = REQUEST_QUERY;
       break;
    case MONGO_OPERATION_GETMORE:
-      signal = REQUEST_GETMORE;
+      _signal = REQUEST_GETMORE;
       break;
    case MONGO_OPERATION_DELETE:
-      signal = REQUEST_DELETE;
+      _signal = REQUEST_DELETE;
       break;
    case MONGO_OPERATION_KILL_CURSORS:
-      signal = REQUEST_KILL_CURSORS;
+      _signal = REQUEST_KILL_CURSORS;
       break;
    case MONGO_OPERATION_MSG:
-      signal = REQUEST_MSG;
+      _signal = REQUEST_MSG;
       break;
    default:
       g_assert_not_reached();
    }
 
-   g_signal_emit(server, gSignals[signal], 0, client, message, &handled);
+   g_signal_emit(server, gSignals[_signal], 0, client, message, &handled);
 
    return handled;
 }
