@@ -47,14 +47,22 @@ struct _MongoProtocolPrivate
    guint32 last_request_id;
    GCancellable *shutdown;
    GHashTable *requests;
+   gboolean getlasterror_fsync;
    gint getlasterror_w;
+   gint getlasterror_wtimeoutms;
    gboolean getlasterror_j;
+   gboolean safe;
 };
 
 enum
 {
    PROP_0,
+   PROP_FSYNC,
    PROP_IO_STREAM,
+   PROP_JOURNAL,
+   PROP_SAFE,
+   PROP_WRITE_QUORUM,
+   PROP_WRITE_TIMEOUT,
    LAST_PROP
 };
 
@@ -1140,6 +1148,21 @@ mongo_protocol_set_property (GObject      *object,
    MongoProtocol *protocol = MONGO_PROTOCOL(object);
 
    switch (prop_id) {
+   case PROP_FSYNC:
+      protocol->priv->getlasterror_fsync = g_value_get_boolean(value);
+      break;
+   case PROP_JOURNAL:
+      protocol->priv->getlasterror_j = g_value_get_boolean(value);
+      break;
+   case PROP_SAFE:
+      protocol->priv->safe = g_value_get_boolean(value);
+      break;
+   case PROP_WRITE_QUORUM:
+      protocol->priv->getlasterror_w = g_value_get_int(value);
+      break;
+   case PROP_WRITE_TIMEOUT:
+      protocol->priv->getlasterror_wtimeoutms = g_value_get_uint(value);
+      break;
    case PROP_IO_STREAM:
       mongo_protocol_set_io_stream(protocol, g_value_get_object(value));
       break;
@@ -1161,14 +1184,63 @@ mongo_protocol_class_init (MongoProtocolClass *klass)
    object_class->set_property = mongo_protocol_set_property;
    g_type_class_add_private(object_class, sizeof(MongoProtocolPrivate));
 
+   gParamSpecs[PROP_FSYNC] =
+      g_param_spec_boolean("fsync",
+                           _("Fsync"),
+                           _("Wait for filesystem sync on getlasterror."),
+                           FALSE,
+                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_FSYNC,
+                                   gParamSpecs[PROP_FSYNC]);
+
    gParamSpecs[PROP_IO_STREAM] =
       g_param_spec_object("io-stream",
                           _("I/O Stream"),
                           _("I/O stream to communicate over."),
                           G_TYPE_IO_STREAM,
-                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT_ONLY);
    g_object_class_install_property(object_class, PROP_IO_STREAM,
                                    gParamSpecs[PROP_IO_STREAM]);
+
+   gParamSpecs[PROP_JOURNAL] =
+      g_param_spec_boolean("journal",
+                           _("Journal"),
+                           _("Journal on getlasterror."),
+                           FALSE,
+                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_JOURNAL,
+                                   gParamSpecs[PROP_JOURNAL]);
+
+   gParamSpecs[PROP_SAFE] =
+      g_param_spec_boolean("safe",
+                           _("Safe"),
+                           _("Perform getlasterror after operation."),
+                           TRUE,
+                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_SAFE,
+                                   gParamSpecs[PROP_SAFE]);
+
+   gParamSpecs[PROP_WRITE_QUORUM] =
+      g_param_spec_int("write-quorum",
+                       _("Write Quorum"),
+                       _("Number of nodes that must safely write to disk."),
+                       -1,
+                       G_MAXINT,
+                       0,
+                       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_WRITE_QUORUM,
+                                   gParamSpecs[PROP_WRITE_QUORUM]);
+
+   gParamSpecs[PROP_WRITE_TIMEOUT] =
+      g_param_spec_uint("write-timeout",
+                        _("Write Timeout"),
+                        _("Write timeout in milliseconds."),
+                        0,
+                        G_MAXUINT,
+                        0,
+                        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT_ONLY);
+   g_object_class_install_property(object_class, PROP_WRITE_TIMEOUT,
+                                   gParamSpecs[PROP_WRITE_TIMEOUT]);
 
    gSignals[FAILED] = g_signal_new("failed",
                                    MONGO_TYPE_PROTOCOL,
