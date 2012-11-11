@@ -692,7 +692,12 @@ mongo_connection_connect_to_host_cb (GObject      *object,
     * Build a protocol using our connection.
     */
    protocol = g_object_new(MONGO_TYPE_PROTOCOL,
+                           "fsync", priv->fsync,
                            "io-stream", conn,
+                           "journal", priv->journal,
+                           "safe", priv->safe,
+                           "write-timeout", priv->wtimeoutms,
+                           "write-quorum", priv->w,
                            NULL);
 
    /*
@@ -1869,6 +1874,7 @@ mongo_connection_init (MongoConnection *connection)
    connection->priv->manager = mongo_manager_new();
    mongo_manager_add_seed(connection->priv->manager, "127.0.0.1:27017");
    connection->priv->queue = g_queue_new();
+   connection->priv->safe = TRUE;
    connection->priv->socket_client =
          g_object_new(G_TYPE_SOCKET_CLIENT,
                       "timeout", 0,
