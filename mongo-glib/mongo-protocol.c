@@ -235,6 +235,12 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    g_assert(array);
    g_assert(db_and_collection);
 
+   /*
+    * TODO: If the user did not request safe=True, we should either make us not
+    *       call this and return success immediately or handle it here for
+    *       everything and synthesize the result here.
+    */
+
    priv = protocol->priv;
 
    offset = array->len;
@@ -250,6 +256,12 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
       mongo_bson_append_string(bson, "w", "majority");
    } else if (priv->getlasterror_w > 0) {
       mongo_bson_append_int(bson, "w", priv->getlasterror_w);
+   }
+   if (priv->getlasterror_wtimeoutms) {
+      mongo_bson_append_int(bson, "wtimeout", priv->getlasterror_wtimeoutms);
+   }
+   if (priv->getlasterror_fsync) {
+      mongo_bson_append_boolean(bson, "fsync", priv->getlasterror_fsync);
    }
 
    /*
