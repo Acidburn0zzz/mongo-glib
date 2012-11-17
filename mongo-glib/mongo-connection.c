@@ -150,6 +150,12 @@ enum
 
 enum
 {
+   CONNECTED,
+   LAST_SIGNAL
+};
+
+enum
+{
    STATE_0,
    STATE_CONNECTING,
    STATE_CONNECTED,
@@ -157,6 +163,7 @@ enum
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
+static guint       gSignals[LAST_SIGNAL];
 
 static void mongo_connection_start_connecting (MongoConnection *connection);
 
@@ -632,6 +639,11 @@ mongo_connection_ismaster_cb (GObject      *object,
    g_signal_connect(protocol, "failed",
                     G_CALLBACK(mongo_connection_protocol_failed),
                     connection);
+
+   /*
+    * Emit the "connected" signal.
+    */
+   g_signal_emit(connection, gSignals[CONNECTED], 0);
 
    /*
     * Flush any pending requests.
@@ -1857,6 +1869,16 @@ mongo_connection_class_init (MongoConnectionClass *klass)
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY);
    g_object_class_install_property(object_class, PROP_URI,
                                    gParamSpecs[PROP_URI]);
+
+   gSignals[CONNECTED] = g_signal_new("connected",
+                                      MONGO_TYPE_CONNECTION,
+                                      G_SIGNAL_RUN_FIRST,
+                                      0,
+                                      NULL,
+                                      NULL,
+                                      g_cclosure_marshal_VOID__VOID,
+                                      G_TYPE_NONE,
+                                      0);
 
    EXIT;
 }
