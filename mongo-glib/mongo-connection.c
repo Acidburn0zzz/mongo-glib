@@ -641,7 +641,13 @@ mongo_connection_ismaster_cb (GObject      *object,
                     connection);
 
    /*
-    * Emit the "connected" signal.
+    * Emit the ::connected signal.
+    *
+    * This is emitted before flushing pending requests so that it fires
+    * whether or not those pending requests cause it to disconnect. The
+    * queuing mechanism will check to see if the queue is empty so that
+    * requests from this signal stay in proper FIFO order behind queued
+    * requests.
     */
    g_signal_emit(connection, gSignals[CONNECTED], 0);
 
@@ -812,8 +818,17 @@ mongo_connection_queue (MongoConnection *connection,
       g_queue_push_tail(priv->queue, request);
       break;
    case STATE_CONNECTED:
-      request_run(request, priv->protocol);
-      request_free(request);
+      /*
+       * If we were called via ::connected callback then there could
+       * be other requests to service first. Push to the back of the
+       * queue in that case.
+       */
+      if (g_queue_is_empty(priv->queue)) {
+         request_run(request, priv->protocol);
+         request_free(request);
+      } else {
+         g_queue_push_tail(priv->queue, request);
+      }
       break;
    case STATE_DISPOSED:
    default:
