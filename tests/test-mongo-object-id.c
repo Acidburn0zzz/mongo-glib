@@ -77,6 +77,24 @@ test5 (void)
    mongo_object_id_free(oid);
 }
 
+static void
+test6 (void)
+{
+   static const guint8 data[12] = { 0, 1, 0, 1, 255 };
+   MongoObjectId *oid;
+   gchar *str;
+   gchar oidstr[25];
+
+   oid = mongo_object_id_new_from_data(data);
+   str = mongo_object_id_to_string(oid);
+   g_assert_cmpstr(str, ==, "00010001ff00000000000000");
+   mongo_object_id_to_string_r(oid, oidstr);
+   g_assert_cmpstr(oidstr, ==, str);
+
+   g_free(str);
+   mongo_object_id_free(oid);
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -89,6 +107,7 @@ main (gint   argc,
    g_test_add_func("/MongoObjectId/copy", test2);
    g_test_add_func("/MongoObjectId/clear", test3);
    g_test_add_func("/MongoObjectId/to_string", test5);
+   g_test_add_func("/MongoObjectId/to_string_r", test6);
 
    return g_test_run();
 }
