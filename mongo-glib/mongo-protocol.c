@@ -266,7 +266,7 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
       mongo_bson_append_boolean(bson, "fsync", priv->getlasterror_fsync);
    }
 
-   split = g_strsplit(db_and_collection, ".", 1);
+   split = g_strsplit(db_and_collection, ".", 2);
    db_cmd = g_strdup_printf("%s.$cmd", split[0]);
    g_strfreev(split);
 
