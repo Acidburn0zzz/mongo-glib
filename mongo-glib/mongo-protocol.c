@@ -227,6 +227,8 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    MongoProtocolPrivate *priv;
    MongoBson *bson;
    guint32 request_id;
+   gchar **split;
+   gchar *db_cmd;
    guint offset;
 
    ENTRY;
@@ -264,6 +266,10 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
       mongo_bson_append_boolean(bson, "fsync", priv->getlasterror_fsync);
    }
 
+   split = g_strsplit(db_and_collection, ".", 1);
+   db_cmd = g_strdup_printf("%s.$cmd", split[0]);
+   g_strfreev(split);
+
    /*
     * Build the MONGO_OPERATION_QUERY message.
     */
@@ -272,13 +278,14 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    mongo_protocol_append_int32(array, 0);
    mongo_protocol_append_int32(array, GINT32_TO_LE(MONGO_OPERATION_QUERY));
    mongo_protocol_append_int32(array, GINT32_TO_LE(MONGO_QUERY_NONE));
-   mongo_protocol_append_cstring(array, "admin.$cmd");
+   mongo_protocol_append_cstring(array, db_cmd);
    mongo_protocol_append_int32(array, 0);
    mongo_protocol_append_int32(array, 1);
    mongo_protocol_append_bson(array, bson);
    mongo_protocol_overwrite_int32(array, offset,
-                                 GINT32_TO_LE(array->len - offset));
+                                  GINT32_TO_LE(array->len - offset));
 
+   g_free(db_cmd);
    mongo_bson_unref(bson);
 
    EXIT;
