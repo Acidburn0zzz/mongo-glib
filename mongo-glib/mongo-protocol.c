@@ -274,7 +274,7 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    mongo_protocol_append_int32(array, GINT32_TO_LE(MONGO_QUERY_NONE));
    mongo_protocol_append_cstring(array, "admin.$cmd");
    mongo_protocol_append_int32(array, 0);
-   mongo_protocol_append_int32(array, 0);
+   mongo_protocol_append_int32(array, 1);
    mongo_protocol_append_bson(array, bson);
    mongo_protocol_overwrite_int32(array, offset,
                                  GINT32_TO_LE(array->len - offset));
