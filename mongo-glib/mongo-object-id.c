@@ -224,7 +224,7 @@ mongo_object_id_new_from_string (const gchar *string)
 }
 
 /**
- * mongo_object_id_to_string_r: (skip):
+ * mongo_object_id_to_string_r:
  * @object_id: (in): A #MongoObjectId.
  * @string: (out): A location for the resulting string bytes.
  *
