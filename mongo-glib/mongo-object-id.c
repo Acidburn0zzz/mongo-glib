@@ -397,6 +397,27 @@ mongo_object_id_get_data (const MongoObjectId *object_id,
 }
 
 /**
+ * mongo_object_id_get_timeval:
+ * @object_id: (in): A #MongoObjectId.
+ * @tv: (out): A location for a #GTimeVal.
+ *
+ * Gets the timestamp portion of @object_id and stores it in @tv.
+ */
+void
+mongo_object_id_get_timeval (const MongoObjectId *object_id,
+                             GTimeVal            *tv)
+{
+   guint32 t;
+
+   g_return_if_fail(object_id);
+   g_return_if_fail(tv);
+
+   memcpy(&t, object_id, sizeof t);
+   tv->tv_sec = GUINT32_FROM_BE(t);
+   tv->tv_sec = 0;
+}
+
+/**
  * mongo_object_id_free:
  * @object_id: (in): A #MongoObjectId.
  *
