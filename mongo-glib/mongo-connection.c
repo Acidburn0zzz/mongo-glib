@@ -505,6 +505,9 @@ mongo_connection_protocol_failed (MongoProtocol   *protocol,
    g_assert(MONGO_IS_PROTOCOL(protocol));
    g_assert(MONGO_IS_CONNECTION(connection));
 
+   g_warning("Mongo protocol failure: %s.",
+             error ? error->message : "Unknown error");
+
    /*
     * Clear the protocol so we can connect to the next host.
     */
