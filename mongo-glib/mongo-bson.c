@@ -71,12 +71,13 @@ utf8_check (const gchar *str,
 
 /**
  * mongo_bson_new_from_data:
- * @buffer: (in): The buffer to create a #MongoBson.
- * @length: (in): The length of @buffer.
+ * @buffer: (array length=length): The buffer to create a #MongoBson.
+ * @length: The length of @buffer.
  *
  * Creates a new #MongoBson instance using the buffer and the length.
  *
- * Returns: A new #MongoBson that should be freed with mongo_bson_unref().
+ * Returns: (transfer full): A new #MongoBson that should be freed
+ *   with mongo_bson_unref().
  */
 MongoBson *
 mongo_bson_new_from_data (const guint8 *buffer,
