@@ -140,6 +140,7 @@ mongo_protocol_fail (MongoProtocol *protocol,
 
    if (error) {
       local_error = g_error_copy(error);
+      g_warning("%s(): %s", G_STRFUNC, error->message);
    } else {
       local_error = g_error_new(MONGO_PROTOCOL_ERROR,
                                 MONGO_PROTOCOL_ERROR_UNEXPECTED,
