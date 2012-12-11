@@ -403,7 +403,7 @@ request_run (Request       *request,
    case MONGO_OPERATION_KILL_CURSORS:
       mongo_protocol_kill_cursors_async(
             protocol,
-            (guint64 *)request->u.kill_cursors.cursors->data,
+            (guint64 *)(gpointer)request->u.kill_cursors.cursors->data,
             request->u.kill_cursors.cursors->len,
             request->cancellable,
             mongo_connection_kill_cursors_cb,

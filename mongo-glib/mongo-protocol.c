@@ -1021,6 +1021,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    const guint8 *buffer;
    guint32 msg_len;
    guint32 op_code;
+   guint32 v32;
    GError *error = NULL;
    gsize count;
 
@@ -1064,8 +1065,10 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    /*
     * Determine the size of incoming message and op_code.
     */
-   msg_len = GUINT32_FROM_LE(*(const guint32 *)buffer);
-   op_code = GUINT32_FROM_LE(*(const guint32 *)(buffer + 12));
+   memcpy(&v32, buffer, sizeof v32);
+   msg_len = GUINT32_FROM_LE(v32);
+   memcpy(&v32, buffer + 12, sizeof v32);
+   op_code = GUINT32_FROM_LE(v32);
 
    /*
     * We only know about MONGO_OPERATION_REPLY from the server. Everything

@@ -1247,6 +1247,7 @@ mongo_bson_iter_next (MongoBsonIter *iter)
    const guint8 *value2;
    const gchar *end = NULL;
    guint32 max_len;
+   guint32 v32;
 
    ENTRY;
 
@@ -1296,7 +1297,8 @@ mongo_bson_iter_next (MongoBsonIter *iter)
          value1 = &rawbuf[offset];
          offset += 4;
          value2 = &rawbuf[offset];
-         max_len = GUINT32_FROM_LE(*(guint32 *)value1);
+         memcpy(&v32, value1, sizeof v32);
+         max_len = GUINT32_FROM_LE(v32);
          if ((offset + max_len - 10) < rawbuf_len) {
             if ((end = utf8_check((const gchar *)value2, max_len - 1))) {
                /*
