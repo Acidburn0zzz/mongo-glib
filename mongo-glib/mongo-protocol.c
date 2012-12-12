@@ -890,6 +890,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    MongoMessage *reply;
    GError *error = NULL;
    guint8 *reply_buffer = NULL;
+   gssize filled;
    gsize count;
    GType gtype;
    struct {
@@ -926,15 +927,30 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    g_assert_cmpint(count, >=, 16);
 
    /*
-    * Make sure we got a reply.
+    * Check the message header.
     */
    memcpy(&header, buffer, sizeof header);
    header.msg_len = GUINT32_FROM_LE(header.msg_len);
    header.request_id = GUINT32_FROM_LE(header.request_id);
    header.response_to = GUINT32_FROM_LE(header.response_to);
    header.op_code = GUINT32_FROM_LE(header.op_code);
-   if (!mongo_operation_is_known(header.op_code)) {
+
+   /*
+    * Make sure we have enough bytes in the buffer for the whole message.
+    * Otherwise, delay and call ourselves again.
+    */
+   filled = g_buffered_input_stream_fill_finish(input_stream, result, &error);
+   if (filled <= 0) {
       GOTO(failure);
+   } else if (header.msg_len > count) {
+      g_buffered_input_stream_fill_async(
+            input_stream,
+            header.msg_len,
+            G_PRIORITY_DEFAULT,
+            priv->shutdown,
+            (GAsyncReadyCallback)mongo_protocol_fill_message_cb,
+            protocol);
+      EXIT;
    }
 
    /*
@@ -1086,6 +1102,19 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    op_code = GUINT32_FROM_LE(v32);
 
    /*
+    * Check if message length is less than valid.
+    */
+   if (msg_len <= 16) {
+      g_warning("Invalid message length of %u", msg_len);
+      error = g_error_new(MONGO_PROTOCOL_ERROR,
+                          MONGO_PROTOCOL_ERROR_UNEXPECTED,
+                          _("Invalid message length of %u"),
+                          msg_len);
+      mongo_protocol_fail(protocol, error);
+      GOTO(cleanup);
+   }
+
+   /*
     * We only know about MONGO_OPERATION_REPLY from the server. Everything
     * else is a protocol error.
     */
@@ -1106,7 +1135,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    if (g_buffered_input_stream_get_available(input_stream) < msg_len) {
       g_buffered_input_stream_fill_async(
             input_stream,
-            MAX(16, msg_len),
+            msg_len,
             G_PRIORITY_DEFAULT,
             priv->shutdown,
             (GAsyncReadyCallback)mongo_protocol_fill_message_cb,
@@ -1118,6 +1147,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
 cleanup:
    g_clear_error(&error);
    g_object_unref(protocol);
+
    EXIT;
 }
 
