@@ -10,7 +10,7 @@ test_MongoInputStream_read_message (void)
    GFile *file;
    guint i;
 
-   file = g_file_new_for_path("tests/capture/capture.recv");
+   file = g_file_new_for_path("tests/capture/100queries.dat");
    g_assert(file);
 
    input = g_file_read(file, NULL, &error);
@@ -23,7 +23,9 @@ test_MongoInputStream_read_message (void)
       message = mongo_input_stream_read_message(stream, NULL, &error);
       g_assert_no_error(error);
       g_assert(message);
-      g_assert(MONGO_IS_MESSAGE_REPLY(message));
+      g_assert(MONGO_IS_MESSAGE_QUERY(message));
+      g_assert_cmpint(mongo_message_get_request_id(message), ==, i);
+      g_assert_cmpint(mongo_message_get_response_to(message), ==, i);
       g_object_unref(message);
    }
 
