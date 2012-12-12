@@ -923,7 +923,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
 
    buffer = g_buffered_input_stream_peek_buffer(input_stream, &count);
    g_assert(buffer);
-   g_assert_cmpint(count, >=, 36);
+   g_assert_cmpint(count, >=, 16);
 
    /*
     * Make sure we got a reply.
@@ -933,7 +933,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    header.request_id = GUINT32_FROM_LE(header.request_id);
    header.response_to = GUINT32_FROM_LE(header.response_to);
    header.op_code = GUINT32_FROM_LE(header.op_code);
-   if (header.op_code != MONGO_OPERATION_REPLY) {
+   if (!mongo_operation_is_known(header.op_code)) {
       GOTO(failure);
    }
 
@@ -1106,7 +1106,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    if (g_buffered_input_stream_get_available(input_stream) < msg_len) {
       g_buffered_input_stream_fill_async(
             input_stream,
-            MAX(36, msg_len),
+            MAX(16, msg_len),
             G_PRIORITY_DEFAULT,
             priv->shutdown,
             (GAsyncReadyCallback)mongo_protocol_fill_message_cb,
