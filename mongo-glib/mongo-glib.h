@@ -46,6 +46,7 @@ G_BEGIN_DECLS
 #include "mongo-message-update.h"
 #include "mongo-object-id.h"
 #include "mongo-operation.h"
+#include "mongo-output-stream.h"
 #include "mongo-protocol.h"
 #include "mongo-server.h"
 #include "mongo-version.h"
