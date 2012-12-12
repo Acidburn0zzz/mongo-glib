@@ -143,8 +143,58 @@ test_MongoProtocol_replies (void)
 
    PUMP_MAIN_LOOP;
 
+   /*
+    * Try some short writes to simulate split up packets.
+    */
+
+   for (i = 0; i < 10; i++) {
+      gboolean r;
+      GError *error = NULL;
+      guint8 *buf;
+      gsize buflen;
+      gsize written;
+
+      message = g_object_new(MONGO_TYPE_MESSAGE_MSG,
+                             "message", "Hello, there with split packets!",
+                             "request-id", 4321,
+                             "response-to", 1234,
+                             NULL);
+      buf = mongo_message_save_to_data(message, &buflen);
+      g_assert(buf);
+      g_assert_cmpint(buflen, >, 16);
+
+      r = g_output_stream_write_all(g_io_stream_get_output_stream(key),
+                                    buf,
+                                    buflen / 2,
+                                    &written,
+                                    NULL,
+                                    &error);
+      g_assert_no_error(error);
+      g_assert(r);
+
+      PUMP_MAIN_LOOP;
+
+      buf += written;
+      buflen -= written;
+
+      r = g_output_stream_write_all(g_io_stream_get_output_stream(key),
+                                    buf,
+                                    buflen,
+                                    &written,
+                                    NULL,
+                                    &error);
+      g_assert_no_error(error);
+      g_assert(r);
+
+      g_assert_cmpint(written, ==, buflen);
+
+      g_clear_object(&message);
+   }
+
+   PUMP_MAIN_LOOP;
+
    g_assert_cmpint(failed, !=, TRUE);
-   g_assert_cmpint(count, ==, 20);
+   g_assert_cmpint(count, ==, 30);
 
    g_clear_object(&client);
    g_clear_object(&connection);
