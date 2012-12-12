@@ -886,18 +886,19 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    MongoProtocolPrivate *priv;
    GSimpleAsyncResult *request;
    const guint8 *buffer;
-   MongoMessageReply *reply;
+   MongoMessage *reply;
    GError *error = NULL;
    guint8 *reply_buffer = NULL;
    gsize count;
-#pragma pack(push, 1)
+   GType gtype;
    struct {
+#pragma pack(push, 1)
       guint32 msg_len;
       guint32 request_id;
       guint32 response_to;
       guint32 op_code;
-   } header;
 #pragma pack(pop)
+   } header;
 
    ENTRY;
 
@@ -911,12 +912,11 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
     * Check if succeeded filling buffered input with Mongo reply message.
     */
    if (result) {
-      if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
+      if (0 >= g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
          /*
           * TODO: Check if this was a cancellation from our finalizer.
           */
-         g_assert_not_reached();
-         GOTO(cleanup);
+         GOTO(failure);
       }
    }
 
@@ -934,6 +934,17 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
    header.op_code = GUINT32_FROM_LE(header.op_code);
    if (header.op_code != MONGO_OPERATION_REPLY) {
       GOTO(failure);
+   }
+
+   /*
+    * Get the GType for the incoming operation code.
+    */
+   if (!(gtype = mongo_operation_get_message_type(header.op_code))) {
+      g_input_stream_skip(G_INPUT_STREAM(input_stream),
+                          header.msg_len,
+                          NULL,
+                          NULL);
+      GOTO(skipped);
    }
 
    g_input_stream_skip(G_INPUT_STREAM(input_stream),
@@ -962,13 +973,11 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       GOTO(failure);
    }
 
-   reply = g_object_new(MONGO_TYPE_MESSAGE_REPLY,
+   reply = g_object_new(gtype,
                         "request-id", header.request_id,
                         "response-to", header.response_to,
                         NULL);
-   if (!mongo_message_load_from_data(MONGO_MESSAGE(reply),
-                                     reply_buffer,
-                                     count)) {
+   if (!mongo_message_load_from_data(reply, reply_buffer, count)) {
       g_clear_object(&reply);
       GOTO(failure);
    }
@@ -983,6 +992,7 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       g_hash_table_remove(priv->requests, GINT_TO_POINTER(header.response_to));
    }
 
+skipped:
    /*
     * Wait for the next message to arrive.
     */
@@ -1000,15 +1010,17 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
                                     g_object_ref(protocol));
    }
 
-cleanup:
    g_object_unref(protocol);
    g_free(reply_buffer);
+
    EXIT;
 
 failure:
    mongo_protocol_fail(protocol, error);
    g_object_unref(protocol);
+   g_clear_error(&error);
    g_free(reply_buffer);
+
    EXIT;
 }
 
@@ -1039,8 +1051,8 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
     * to worry about finishing an async request.
     */
    if (result) {
-      if (!g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
-         mongo_protocol_fail(protocol, NULL);
+      if (0 >= g_buffered_input_stream_fill_finish(input_stream, result, &error)) {
+         mongo_protocol_fail(protocol, error);
          GOTO(cleanup);
       }
    }
@@ -1074,8 +1086,15 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
     * We only know about MONGO_OPERATION_REPLY from the server. Everything
     * else is a protocol error.
     */
-   if (op_code != MONGO_OPERATION_REPLY) {
-      mongo_protocol_fail(protocol, NULL);
+   if (!mongo_operation_is_known(op_code)) {
+      g_warning("%s(): Unsupported operation from server: %u",
+                G_STRFUNC, op_code);
+      error = g_error_new(MONGO_PROTOCOL_ERROR,
+                          MONGO_PROTOCOL_ERROR_UNEXPECTED,
+                          _("Unsupported operation from server: %u"),
+                          op_code);
+      mongo_protocol_fail(protocol, error);
+      GOTO(cleanup);
    }
 
    /*
@@ -1094,6 +1113,7 @@ mongo_protocol_fill_header_cb (GBufferedInputStream *input_stream,
    }
 
 cleanup:
+   g_clear_error(&error);
    g_object_unref(protocol);
    EXIT;
 }
