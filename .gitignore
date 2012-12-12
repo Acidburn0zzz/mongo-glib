@@ -32,3 +32,4 @@ test-mongo-manager
 test-mongo-message-insert
 test-mongo-message-reply
 test-mongo-object-id
+test-mongo-protocol
