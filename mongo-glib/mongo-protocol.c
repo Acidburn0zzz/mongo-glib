@@ -68,6 +68,7 @@ enum
 
 enum
 {
+   MESSAGE_READ,
    FAILED,
    LAST_SIGNAL
 };
@@ -982,6 +983,8 @@ mongo_protocol_fill_message_cb (GBufferedInputStream *input_stream,
       GOTO(failure);
    }
 
+   g_signal_emit(protocol, gSignals[MESSAGE_READ], 0, reply);
+
    /*
     * See if there was someone waiting for this request.
     */
@@ -1318,6 +1321,17 @@ mongo_protocol_class_init (MongoProtocolClass *klass)
                                    G_TYPE_NONE,
                                    1,
                                    G_TYPE_ERROR);
+
+   gSignals[MESSAGE_READ] = g_signal_new("message-read",
+                                         MONGO_TYPE_PROTOCOL,
+                                         G_SIGNAL_RUN_FIRST,
+                                         0,
+                                         NULL,
+                                         NULL,
+                                         g_cclosure_marshal_VOID__OBJECT,
+                                         G_TYPE_NONE,
+                                         1,
+                                         MONGO_TYPE_MESSAGE);
 
    EXIT;
 }
