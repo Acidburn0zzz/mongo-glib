@@ -28,6 +28,7 @@ test-mongo-bson
 test-mongo-collection
 test-mongo-connection
 test-mongo-cursor
+test-mongo-input-stream
 test-mongo-manager
 test-mongo-message-insert
 test-mongo-message-reply

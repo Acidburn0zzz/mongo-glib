@@ -33,6 +33,7 @@ G_BEGIN_DECLS
 #include "mongo-cursor.h"
 #include "mongo-database.h"
 #include "mongo-flags.h"
+#include "mongo-input-stream.h"
 #include "mongo-manager.h"
 #include "mongo-message.h"
 #include "mongo-message-delete.h"
