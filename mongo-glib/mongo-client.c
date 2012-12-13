@@ -112,8 +112,8 @@ mongo_client_read_message_cb (GObject      *object,
    MongoInputStream *input = (MongoInputStream *)object;
    MongoMessage *message;
    MongoClient *client = user_data;
+   gpointer response_to;
    GError *error = NULL;
-   gint32 response_to;
 
    ENTRY;
 
@@ -133,9 +133,9 @@ mongo_client_read_message_cb (GObject      *object,
       EXIT;
    }
 
-   response_to = mongo_message_get_response_to(message);
-   if ((simple = g_hash_table_steal(priv->async_results,
-                                    GINT_TO_POINTER(response_to)))) {
+   response_to = GINT_TO_POINTER(mongo_message_get_response_to(message));
+   if ((simple = g_hash_table_lookup(priv->async_results, response_to))) {
+      g_hash_table_steal(priv->async_results, response_to);
       if (!IS_COMPLETED(simple)) {
          SET_COMPLETED(simple);
          g_simple_async_result_set_op_res_gpointer(simple,
@@ -303,8 +303,8 @@ mongo_client_send_cb (GObject      *object,
                       gpointer      user_data)
 {
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
-   GSimpleAsyncResult **waiter;
-   MongoClient *client = (MongoClient *)client;
+   GSimpleAsyncResult **waiter = user_data;
+   MongoClient *client = (MongoClient *)object;
 
    ENTRY;
 
