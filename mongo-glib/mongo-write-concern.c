@@ -37,7 +37,7 @@ mongo_write_concern_new_unsafe (void)
 {
    MongoWriteConcern *concern;
 
-   concern = g_slice_new(MongoWriteConcern);
+   concern = g_slice_new0(MongoWriteConcern);
    return concern;
 }
 
