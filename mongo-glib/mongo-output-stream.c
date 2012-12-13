@@ -35,11 +35,12 @@ G_DEFINE_TYPE(MongoOutputStream, mongo_output_stream, G_TYPE_FILTER_OUTPUT_STREA
 
 struct _MongoOutputStreamPrivate
 {
-   MongoSource *source;
-   GHashTable  *async_results;
-   gint32       next_request_id;
-   GQueue      *queue;
-   gboolean     flushing;
+   MongoSource  *source;
+   GCancellable *shutdown;
+   GHashTable   *async_results;
+   GQueue       *queue;
+   gint32        next_request_id;
+   gboolean      flushing;
 };
 
 typedef struct
@@ -224,7 +225,7 @@ mongo_output_stream_flush_cb (GObject      *object,
    g_output_stream_write_bytes_async(G_OUTPUT_STREAM(stream),
                                      request->bytes,
                                      G_PRIORITY_DEFAULT,
-                                     NULL,
+                                     priv->shutdown,
                                      mongo_output_stream_flush_cb,
                                      request);
 
@@ -256,7 +257,7 @@ mongo_output_stream_flush (MongoOutputStream *stream)
    g_output_stream_write_bytes_async(G_OUTPUT_STREAM(stream),
                                      request->bytes,
                                      G_PRIORITY_DEFAULT,
-                                     NULL,
+                                     priv->shutdown,
                                      mongo_output_stream_flush_cb,
                                      request);
 
@@ -522,6 +523,24 @@ mongo_output_stream_set_property (GObject      *object,
 }
 
 static void
+mongo_output_stream_dispose (GObject *object)
+{
+   MongoOutputStreamPrivate *priv;
+
+   ENTRY;
+
+   priv = MONGO_OUTPUT_STREAM(object)->priv;
+
+   if (priv->shutdown) {
+      g_cancellable_cancel(priv->shutdown);
+   }
+
+   G_OBJECT_CLASS(mongo_output_stream_parent_class)->dispose(object);
+
+   EXIT;
+}
+
+static void
 mongo_output_stream_finalize (GObject *object)
 {
    MongoOutputStreamPrivate *priv;
@@ -547,6 +566,8 @@ mongo_output_stream_finalize (GObject *object)
    g_queue_free(priv->queue);
    priv->queue = NULL;
 
+   g_clear_object(&priv->shutdown);
+
    G_OBJECT_CLASS(mongo_output_stream_parent_class)->finalize(object);
 
    EXIT;
@@ -560,6 +581,7 @@ mongo_output_stream_class_init (MongoOutputStreamClass *klass)
    ENTRY;
 
    object_class = G_OBJECT_CLASS(klass);
+   object_class->dispose = mongo_output_stream_dispose;
    object_class->finalize = mongo_output_stream_finalize;
    object_class->get_property = mongo_output_stream_get_property;
    object_class->set_property = mongo_output_stream_set_property;
@@ -598,6 +620,7 @@ mongo_output_stream_init (MongoOutputStream *stream)
    stream->priv->async_results = g_hash_table_new(g_direct_hash,
                                                   g_direct_equal);
    stream->priv->queue = g_queue_new();
+   stream->priv->shutdown = g_cancellable_new();
    EXIT;
 }
 
