@@ -59,7 +59,8 @@ struct _MongoClientPrivate
    GHashTable        *async_results;
    GMainContext      *async_context;
    MongoSource       *source;
-   GCancellable      *shutdown;
+   GCancellable      *input_shutdown;
+   GCancellable      *output_shutdown;
 };
 
 enum
@@ -128,18 +129,23 @@ mongo_client_read_message_cb (GObject      *object,
 
    g_assert(MONGO_IS_INPUT_STREAM(input));
    g_assert(G_IS_ASYNC_RESULT(result));
-   g_assert(MONGO_IS_CLIENT(client));
 
-   priv = client->priv;
-
+   /*
+    * Check for read failure before using client. As it could have been
+    * cancelled by dispose of our client. If thathappened, it is also
+    * possible that the client has been finalized.
+    */
    if (!(message = mongo_input_stream_read_message_finish(input,
                                                           result,
                                                           &error))) {
-      g_warning("Failed to read message: %s", error->message);
       g_input_stream_close(G_INPUT_STREAM(input), NULL, NULL);
       g_error_free(error);
       EXIT;
    }
+
+   g_assert(MONGO_IS_CLIENT(client));
+
+   priv = client->priv;
 
    response_to = GINT_TO_POINTER(mongo_message_get_response_to(message));
    if ((simple = g_hash_table_lookup(priv->async_results, response_to))) {
@@ -156,7 +162,7 @@ mongo_client_read_message_cb (GObject      *object,
    }
 
    mongo_input_stream_read_message_async(input,
-                                         priv->shutdown,
+                                         priv->input_shutdown,
                                          mongo_client_read_message_cb,
                                          client);
 
@@ -196,7 +202,7 @@ mongo_client_set_stream (MongoClient *client,
                                NULL);
 
    mongo_input_stream_read_message_async(priv->input,
-                                         priv->shutdown,
+                                         priv->input_shutdown,
                                          mongo_client_read_message_cb,
                                          client);
 
@@ -409,8 +415,17 @@ mongo_client_send (MongoClient        *client,
 static void
 mongo_client_dispose (GObject *object)
 {
+   MongoClientPrivate *priv;
+
    ENTRY;
+
+   priv = MONGO_CLIENT(object)->priv;
+
+   g_cancellable_cancel(priv->input_shutdown);
+   g_cancellable_cancel(priv->output_shutdown);
+
    G_OBJECT_CLASS(mongo_client_parent_class)->dispose(object);
+
    EXIT;
 }
 
@@ -436,7 +451,8 @@ mongo_client_finalize (GObject *object)
       priv->async_context = NULL;
    }
 
-   g_clear_object(&priv->shutdown);
+   g_clear_object(&priv->input_shutdown);
+   g_clear_object(&priv->output_shutdown);
 
    G_OBJECT_CLASS(mongo_client_parent_class)->finalize(object);
 
@@ -532,7 +548,8 @@ mongo_client_init (MongoClient *client)
    client->priv->concern = mongo_write_concern_new();
    client->priv->async_results = g_hash_table_new(g_direct_hash,
                                                   g_direct_equal);
-   client->priv->shutdown = g_cancellable_new();
+   client->priv->input_shutdown = g_cancellable_new();
+   client->priv->output_shutdown = g_cancellable_new();
 
    EXIT;
 }

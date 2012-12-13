@@ -6,6 +6,7 @@ test_MongoClient_dispose (void)
    MongoClient *client;
    GSocketClient *socket_client;
    GSocketConnection *connection;
+   GMainContext *main_context;
 
    socket_client = g_socket_client_new();
    connection = g_socket_client_connect_to_host(socket_client, "localhost", 27017, NULL, NULL);
@@ -18,8 +19,9 @@ test_MongoClient_dispose (void)
    g_object_unref(client);
    g_assert(!client);
 
-   while (g_main_context_pending(g_main_context_default())) {
-      g_main_context_iteration(g_main_context_default(), FALSE);
+   main_context = g_main_context_default();
+   while (g_main_context_pending(main_context)) {
+      g_main_context_iteration(main_context, FALSE);
    }
 }
 

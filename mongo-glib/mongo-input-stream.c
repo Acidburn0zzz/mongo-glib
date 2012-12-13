@@ -28,7 +28,6 @@ G_DEFINE_TYPE(MongoInputStream, mongo_input_stream, G_TYPE_FILTER_INPUT_STREAM)
 struct _MongoInputStreamPrivate
 {
    MongoSource *source;
-   GCancellable *shutdown;
    gint32 msg_len;
    guint8 *buffer;
 };
@@ -41,6 +40,7 @@ enum
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
+static GQuark      gQuarkCancellable;
 
 MongoInputStream *
 mongo_input_stream_new (GInputStream *base_stream)
@@ -208,7 +208,8 @@ mongo_input_stream_read_message_header_cb (GObject      *object,
                              priv->buffer + 4,
                              priv->msg_len - 4,
                              G_PRIORITY_DEFAULT,
-                             priv->shutdown,
+                             g_object_get_qdata(G_OBJECT(simple),
+                                                gQuarkCancellable),
                              mongo_input_stream_read_message_body_cb,
                              simple);
 
@@ -243,12 +244,16 @@ mongo_input_stream_read_message_async (MongoInputStream    *stream,
    simple = g_simple_async_result_new(G_OBJECT(stream), callback, user_data,
                                       mongo_input_stream_read_message_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
+   g_object_set_qdata_full(G_OBJECT(simple),
+                           gQuarkCancellable,
+                           cancellable ? g_object_ref(cancellable) : NULL,
+                           cancellable ? g_object_unref : NULL);
 
    g_input_stream_read_async(G_INPUT_STREAM(stream),
                              &priv->msg_len,
                              sizeof priv->msg_len,
                              G_PRIORITY_DEFAULT,
-                             priv->shutdown,
+                             cancellable,
                              mongo_input_stream_read_message_header_cb,
                              simple);
 
@@ -431,6 +436,8 @@ mongo_input_stream_class_init (MongoInputStreamClass *klass)
                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
    g_object_class_install_property(object_class, PROP_ASYNC_CONTEXT,
                                    gParamSpecs[PROP_ASYNC_CONTEXT]);
+
+   gQuarkCancellable = g_quark_from_static_string("cancellable");
 
    EXIT;
 }
