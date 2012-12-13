@@ -78,6 +78,55 @@ test_MongoOutputStream_write_message (void)
    mongo_write_concern_free(concern);
 }
 
+static void
+test_MongoOutputStream_cancel_cb (GObject      *object,
+                                  GAsyncResult *result,
+                                  gpointer      user_data)
+{
+   gboolean ret;
+   GError *error = NULL;
+
+   ret = mongo_output_stream_write_message_finish(MONGO_OUTPUT_STREAM(object),
+                                                  result,
+                                                  &error);
+   g_assert(error);
+   g_assert(error->domain == G_IO_ERROR);
+   g_assert(error->code == G_IO_ERROR_CANCELLED);
+   g_assert(!ret);
+
+   *(gboolean *)user_data = TRUE;
+}
+
+static void
+test_MongoOutputStream_cancel (void)
+{
+   MongoOutputStream *output;
+   MongoWriteConcern *concern;
+   GOutputStream *memory;
+   MongoMessage *message;
+   GCancellable *cancellable;
+   gboolean done = FALSE;
+
+   memory = g_memory_output_stream_new(NULL, 0, g_realloc, g_free);
+   output = mongo_output_stream_new(memory);
+   concern = mongo_write_concern_new();
+   cancellable = g_cancellable_new();
+   message = g_object_new(MONGO_TYPE_MESSAGE_QUERY,
+                          "collection", "test.documents",
+                          NULL);
+   mongo_output_stream_write_message_async(output,
+                                           message,
+                                           concern,
+                                           cancellable,
+                                           test_MongoOutputStream_cancel_cb,
+                                           &done);
+   g_cancellable_cancel(cancellable);
+
+   while (!done) {
+      g_main_context_iteration(g_main_context_default(), TRUE);
+   }
+}
+
 gint
 main (gint   argc,
       gchar *argv[])
@@ -86,5 +135,7 @@ main (gint   argc,
    g_test_init(&argc, &argv, NULL);
    g_test_add_func("/MongoOutputStream/write_message",
                    test_MongoOutputStream_write_message);
+   g_test_add_func("/MongoOutputStream/cancel",
+                   test_MongoOutputStream_cancel);
    return g_test_run();
 }
