@@ -467,8 +467,9 @@ mongo_output_stream_write_message (MongoOutputStream  *stream,
                                            mongo_output_stream_write_message_cb,
                                            &simple);
 
+   main_context = mongo_output_stream_get_async_context(stream);
+
    while (!simple) {
-      main_context = mongo_output_stream_get_async_context(stream);
       g_main_context_iteration(main_context, TRUE);
    }
 
