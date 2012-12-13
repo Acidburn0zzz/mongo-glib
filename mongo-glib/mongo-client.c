@@ -251,6 +251,18 @@ mongo_client_send_write_message_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_send_async:
+ * @client: A #MongoClient.
+ * @message: A #MongoMessage.
+ * @concern: (allow-none): A #MongoWriteConcern or %NULL.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: (allow-none): A callback to execute upon completion.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously sends a message to the MongoDB server.
+ * @callback must call mongo_client_send_finish() to complete the request.
+ */
 void
 mongo_client_send_async (MongoClient         *client,
                          MongoMessage        *message,
@@ -284,7 +296,7 @@ mongo_client_send_async (MongoClient         *client,
     */
    request_id = mongo_output_stream_write_message_async(priv->output,
                                                         message,
-                                                        concern,
+                                                        concern ?: priv->concern,
                                                         cancellable,
                                                         mongo_client_send_write_message_cb,
                                                         simple);
@@ -317,6 +329,21 @@ mongo_client_send_cb (GObject      *object,
    EXIT;
 }
 
+/**
+ * mongo_client_send:
+ * @client: A #MongoClient.
+ * @message: A #MongoMessage.
+ * @concern: (allow-none): A #MongoWriteConcern or %NULL.
+ * @reply: (out): A location for a #MongoMessage or %NULL.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @error: (out): A location for a #GError or %NULL.
+ *
+ * Synchronously sends a message to the MongoDB server. If there was a reply
+ * from the MongoDB server, it will be placed in @reply. The caller is
+ * responsible for freeing it with g_object_unref().
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
 gboolean
 mongo_client_send (MongoClient        *client,
                    MongoMessage       *message,
