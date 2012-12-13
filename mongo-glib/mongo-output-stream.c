@@ -24,6 +24,13 @@
 #include "mongo-source.h"
 #include "mongo-write-concern.h"
 
+/*
+ * TODO:
+ *
+ *   - Make sure that multiple operations cannot happen concurrently.
+ *     Only one async or sync command at a time.
+ */
+
 G_DEFINE_TYPE(MongoOutputStream, mongo_output_stream, G_TYPE_DATA_OUTPUT_STREAM)
 
 struct _MongoOutputStreamPrivate
