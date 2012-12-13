@@ -329,6 +329,7 @@ mongo_output_stream_write_message_async (MongoOutputStream   *stream,
    case MONGO_OPERATION_MSG:
    case MONGO_OPERATION_REPLY:
       complete = COMPLETE_ON_WRITE;
+      request_id = 0;
       break;
    case MONGO_OPERATION_UPDATE:
    case MONGO_OPERATION_INSERT:
