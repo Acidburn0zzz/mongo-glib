@@ -107,6 +107,7 @@ test_MongoProtocol_replies (void)
       g_assert(r);
       g_assert_cmpint(written, ==, buflen);
 
+      g_free(buf);
       g_clear_object(&message);
    }
 
@@ -138,6 +139,7 @@ test_MongoProtocol_replies (void)
       g_assert(r);
       g_assert_cmpint(written, ==, buflen);
 
+      g_free(buf);
       g_clear_object(&message);
    }
 
@@ -151,6 +153,7 @@ test_MongoProtocol_replies (void)
       gboolean r;
       GError *error = NULL;
       guint8 *buf;
+      guint8 *orig;
       gsize buflen;
       gsize written;
 
@@ -174,6 +177,7 @@ test_MongoProtocol_replies (void)
 
       PUMP_MAIN_LOOP;
 
+      orig = buf;
       buf += written;
       buflen -= written;
 
@@ -188,6 +192,7 @@ test_MongoProtocol_replies (void)
 
       g_assert_cmpint(written, ==, buflen);
 
+      g_free(orig);
       g_clear_object(&message);
    }
 
@@ -196,11 +201,28 @@ test_MongoProtocol_replies (void)
    g_assert_cmpint(failed, !=, TRUE);
    g_assert_cmpint(count, ==, 30);
 
-   g_clear_object(&client);
-   g_clear_object(&connection);
-   g_clear_object(&connectable);
-   g_clear_object(&protocol);
-   g_clear_object(&server);
+   g_socket_service_stop(G_SOCKET_SERVICE(server));
+
+   g_object_add_weak_pointer(G_OBJECT(client), (gpointer *)&client);
+   g_object_add_weak_pointer(G_OBJECT(connection), (gpointer *)&connection);
+   g_object_add_weak_pointer(G_OBJECT(connectable), (gpointer *)&connectable);
+   g_object_add_weak_pointer(G_OBJECT(protocol), (gpointer *)&protocol);
+   g_object_add_weak_pointer(G_OBJECT(server), (gpointer *)&server);
+
+   g_object_unref(client);
+   g_object_unref(connection);
+   g_object_unref(connectable);
+   g_object_unref(protocol);
+   g_object_unref(server);
+
+   g_assert(!client);
+   g_assert(!connectable);
+   g_assert(!protocol);
+   g_assert(!connection);
+
+   PUMP_MAIN_LOOP;
+
+   g_assert(!server);
 }
 
 gint
