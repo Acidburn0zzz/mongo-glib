@@ -22,7 +22,7 @@
 #include "mongo-message.h"
 #include "mongo-message-reply.h"
 
-G_DEFINE_ABSTRACT_TYPE(MongoMessage, mongo_message, G_TYPE_INITIALLY_UNOWNED)
+G_DEFINE_ABSTRACT_TYPE(MongoMessage, mongo_message, G_TYPE_OBJECT)
 
 struct _MongoMessagePrivate
 {

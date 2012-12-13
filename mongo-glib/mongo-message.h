@@ -48,7 +48,7 @@ enum _MongoMessageError
 
 struct _MongoMessage
 {
-   GInitiallyUnowned parent;
+   GObject parent;
 
    /*< private >*/
    MongoMessagePrivate *priv;
@@ -56,7 +56,7 @@ struct _MongoMessage
 
 struct _MongoMessageClass
 {
-   GInitiallyUnownedClass parent_class;
+   GObjectClass parent_class;
 
    MongoOperation operation;
 
