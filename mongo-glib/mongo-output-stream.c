@@ -412,14 +412,13 @@ mongo_output_stream_write_message_finish (MongoOutputStream  *stream,
    GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
    gboolean ret;
 
+   ENTRY;
+
    g_return_val_if_fail(MONGO_IS_OUTPUT_STREAM(stream), FALSE);
    g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
 
-   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
-      g_simple_async_result_propagate_error(simple, error);
-   }
-
-   return ret;
+   ret = !g_simple_async_result_propagate_error(simple, error);
+   RETURN(ret);
 }
 
 static void
