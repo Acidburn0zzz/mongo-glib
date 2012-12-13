@@ -526,6 +526,11 @@ static void
 mongo_output_stream_dispose (GObject *object)
 {
    MongoOutputStreamPrivate *priv;
+   GSimpleAsyncResult *simple;
+   GHashTableIter iter;
+   GHashTable *hashtable;
+   Request *request;
+   GQueue *queue;
 
    ENTRY;
 
@@ -533,6 +538,31 @@ mongo_output_stream_dispose (GObject *object)
 
    if (priv->shutdown) {
       g_cancellable_cancel(priv->shutdown);
+   }
+
+   hashtable = priv->async_results;
+   priv->async_results = g_hash_table_new(g_int_hash, g_int_equal);
+
+   g_hash_table_iter_init(&iter, hashtable);
+   while (g_hash_table_iter_next(&iter, NULL, (gpointer *)&simple)) {
+      g_simple_async_result_set_error(simple,
+                                      G_IO_ERROR,
+                                      G_IO_ERROR_CANCELLED,
+                                      _("The request was cancelled."));
+      mongo_source_complete_in_idle(priv->source, simple);
+      g_object_unref(simple);
+   }
+   g_hash_table_unref(hashtable);
+
+   queue = priv->queue;
+   priv->queue = g_queue_new();
+
+   while ((request = g_queue_pop_tail(queue))) {
+      g_simple_async_result_set_error(request->simple,
+                                      G_IO_ERROR,
+                                      G_IO_ERROR_CANCELLED,
+                                      _("The request was cancelled."));
+      request_free(request);
    }
 
    G_OBJECT_CLASS(mongo_output_stream_parent_class)->dispose(object);
