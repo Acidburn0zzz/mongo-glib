@@ -59,12 +59,19 @@ struct _MongoInputStreamClass
    GDataInputStreamClass parent_class;
 };
 
-GQuark            mongo_input_stream_error_quark  (void) G_GNUC_CONST;
-GType             mongo_input_stream_get_type     (void) G_GNUC_CONST;
-MongoInputStream *mongo_input_stream_new          (GInputStream      *base_stream);
-MongoMessage     *mongo_input_stream_read_message (MongoInputStream  *stream,
-                                                   GCancellable      *cancellable,
-                                                   GError           **error);
+GQuark            mongo_input_stream_error_quark        (void) G_GNUC_CONST;
+GType             mongo_input_stream_get_type           (void) G_GNUC_CONST;
+MongoInputStream *mongo_input_stream_new                (GInputStream          *base_stream);
+MongoMessage     *mongo_input_stream_read_message       (MongoInputStream      *stream,
+                                                         GCancellable          *cancellable,
+                                                         GError               **error);
+void              mongo_input_stream_read_message_async (MongoInputStream      *stream,
+                                                          GCancellable         *cancellable,
+                                                          GAsyncReadyCallback   callback,
+                                                          gpointer              user_data);
+MongoMessage     *mongo_input_stream_read_message_finish (MongoInputStream     *stream,
+                                                          GAsyncResult         *result,
+                                                          GError              **error);
 
 G_END_DECLS
 
