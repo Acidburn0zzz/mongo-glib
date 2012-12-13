@@ -29,6 +29,7 @@ struct _MongoClientPrivate
 {
    MongoInputStream  *input;
    MongoOutputStream *output;
+   MongoWriteConcern *concern;
 };
 
 enum
@@ -95,6 +96,7 @@ mongo_client_send (MongoClient   *client,
 
    if (!mongo_output_stream_write_message(priv->output,
                                           message,
+                                          priv->concern,
                                           cancellable,
                                           error)) {
       RETURN(FALSE);
@@ -127,6 +129,11 @@ mongo_client_finalize (GObject *object)
 
    g_clear_object(&priv->input);
    g_clear_object(&priv->output);
+
+   if (priv->concern) {
+      mongo_write_concern_free(priv->concern);
+      priv->concern = NULL;
+   }
 
    G_OBJECT_CLASS(mongo_client_parent_class)->finalize(object);
 
@@ -199,6 +206,7 @@ mongo_client_init (MongoClient *client)
       G_TYPE_INSTANCE_GET_PRIVATE(client,
                                   MONGO_TYPE_CLIENT,
                                   MongoClientPrivate);
+   client->priv->concern = mongo_write_concern_new();
    EXIT;
 }
 
