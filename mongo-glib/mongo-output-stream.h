@@ -58,14 +58,23 @@ struct _MongoOutputStreamClass
    GDataOutputStreamClass parent_class;
 };
 
-GQuark             mongo_output_stream_error_quark   (void) G_GNUC_CONST;
-GType              mongo_output_stream_get_type      (void) G_GNUC_CONST;
-MongoOutputStream *mongo_output_stream_new           (GOutputStream      *base_stream);
-gboolean           mongo_output_stream_write_message (MongoOutputStream  *stream,
-                                                      MongoMessage       *message,
-                                                      MongoWriteConcern  *concern,
-                                                      GCancellable       *cancellable,
-                                                      GError            **error);
+GQuark             mongo_output_stream_error_quark          (void) G_GNUC_CONST;
+GType              mongo_output_stream_get_type             (void) G_GNUC_CONST;
+MongoOutputStream *mongo_output_stream_new                  (GOutputStream        *base_stream);
+gboolean           mongo_output_stream_write_message        (MongoOutputStream    *stream,
+                                                             MongoMessage         *message,
+                                                             MongoWriteConcern    *concern,
+                                                             GCancellable         *cancellable,
+                                                             GError              **error);
+gint32             mongo_output_stream_write_message_async  (MongoOutputStream    *stream,
+                                                             MongoMessage         *message,
+                                                             MongoWriteConcern    *concern,
+                                                             GCancellable         *cancellable,
+                                                             GAsyncReadyCallback   callback,
+                                                             gpointer              user_data);
+gboolean           mongo_output_stream_write_message_finish (MongoOutputStream    *stream,
+                                                             GAsyncResult         *result,
+                                                             GError              **error);
 
 G_END_DECLS
 
