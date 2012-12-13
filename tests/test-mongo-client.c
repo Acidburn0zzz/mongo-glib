@@ -17,6 +17,10 @@ test_MongoClient_dispose (void)
 
    g_object_unref(client);
    g_assert(!client);
+
+   while (g_main_context_pending(g_main_context_default())) {
+      g_main_context_iteration(g_main_context_default(), FALSE);
+   }
 }
 
 gint
