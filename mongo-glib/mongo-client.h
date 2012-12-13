@@ -23,6 +23,7 @@
 
 #include "mongo-bson.h"
 #include "mongo-message.h"
+#include "mongo-write-concern.h"
 
 G_BEGIN_DECLS
 
@@ -65,11 +66,13 @@ MongoClient *mongo_client_new_from_uri     (const gchar          *uri);
 MongoClient *mongo_client_new_from_stream  (GIOStream            *stream);
 gboolean     mongo_client_send             (MongoClient          *client,
                                             MongoMessage         *message,
+                                            MongoWriteConcern    *concern,
                                             MongoMessage        **reply,
                                             GCancellable         *cancellable,
                                             GError              **error);
 void         mongo_client_send_async       (MongoClient          *client,
                                             MongoMessage         *message,
+                                            MongoWriteConcern    *concern,
                                             GCancellable         *cancellable,
                                             GAsyncReadyCallback   callback,
                                             gpointer              user_data);
