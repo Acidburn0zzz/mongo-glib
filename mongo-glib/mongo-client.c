@@ -138,9 +138,11 @@ mongo_client_read_message_cb (GObject      *object,
       g_hash_table_steal(priv->async_results, response_to);
       if (!IS_COMPLETED(simple)) {
          SET_COMPLETED(simple);
-         g_simple_async_result_set_op_res_gpointer(simple,
-                                                   g_object_ref(message),
-                                                   g_object_unref);
+         g_simple_async_result_set_op_res_gboolean(simple, TRUE);
+         g_object_set_qdata_full(G_OBJECT(simple),
+                                 gQuarkReply,
+                                 g_object_ref(message),
+                                 g_object_unref);
          mongo_source_complete_in_idle(priv->source, simple);
       }
    }
