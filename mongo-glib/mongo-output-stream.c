@@ -116,6 +116,7 @@ mongo_output_stream_set_async_context (MongoOutputStream *stream,
    }
 
    priv->source = mongo_source_new();
+   g_source_set_name((GSource *)priv->source, "MongoOutputStream");
    g_source_attach((GSource *)priv->source, async_context);
 
    g_object_notify_by_pspec(G_OBJECT(stream), gParamSpecs[PROP_ASYNC_CONTEXT]);
