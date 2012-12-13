@@ -161,6 +161,8 @@ mongo_client_set_stream (MongoClient *client,
                          GIOStream   *stream)
 {
    MongoClientPrivate *priv;
+   GInputStream *base_input;
+   GOutputStream *base_output;
 
    ENTRY;
 
@@ -172,15 +174,22 @@ mongo_client_set_stream (MongoClient *client,
    g_clear_object(&priv->input);
    g_clear_object(&priv->output);
 
-   priv->input = mongo_input_stream_new(g_io_stream_get_input_stream(stream));
-   priv->output = mongo_output_stream_new(g_io_stream_get_output_stream(stream));
+   base_input = g_io_stream_get_input_stream(stream);
+   base_output = g_io_stream_get_output_stream(stream);
 
-   if (priv->input) {
-      mongo_input_stream_read_message_async(priv->input,
-                                            NULL, // priv->shutdown,
-                                            mongo_client_read_message_cb,
-                                            g_object_ref(client));
-   }
+   priv->input = g_object_new(MONGO_TYPE_INPUT_STREAM,
+                              "base-stream", base_input,
+                              "async-context", priv->async_context,
+                              NULL);
+   priv->output = g_object_new(MONGO_TYPE_OUTPUT_STREAM,
+                               "base-stream", base_output,
+                               "async-context", priv->async_context,
+                               NULL);
+
+   mongo_input_stream_read_message_async(priv->input,
+                                         NULL, // priv->shutdown,
+                                         mongo_client_read_message_cb,
+                                         g_object_ref(client));
 
    g_object_notify_by_pspec(G_OBJECT(client), gParamSpecs[PROP_STREAM]);
 
