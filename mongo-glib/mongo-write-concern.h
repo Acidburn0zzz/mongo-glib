@@ -34,12 +34,13 @@ MongoWriteConcern *mongo_write_concern_new_unsafe         (void);
 MongoWriteConcern *mongo_write_concern_copy               (MongoWriteConcern *concern);
 void               mongo_write_concern_free               (MongoWriteConcern *concern);
 
+gint               mongo_write_concern_get_w              (MongoWriteConcern *concern);
 void               mongo_write_concern_set_fsync          (MongoWriteConcern *concern,
                                                            gboolean           _fsync);
 void               mongo_write_concern_set_journal        (MongoWriteConcern *concern,
                                                            gboolean           journal);
 void               mongo_write_concern_set_w              (MongoWriteConcern *concern,
-                                                           guint              w);
+                                                           gint               w);
 void               mongo_write_concern_set_w_majority     (MongoWriteConcern *concern);
 void               mongo_write_concern_set_w_tags         (MongoWriteConcern *concern,
                                                            const MongoBson   *tags);

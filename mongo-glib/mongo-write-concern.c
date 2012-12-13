@@ -109,9 +109,16 @@ mongo_write_concern_set_journal (MongoWriteConcern *concern,
    concern->journal = journal;
 }
 
+gint
+mongo_write_concern_get_w (MongoWriteConcern *concern)
+{
+   g_return_val_if_fail(concern, 0);
+   return concern->w;
+}
+
 void
 mongo_write_concern_set_w (MongoWriteConcern *concern,
-                           guint              w)
+                           gint               w)
 {
    g_return_if_fail(concern);
 
