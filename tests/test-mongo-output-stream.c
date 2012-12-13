@@ -25,6 +25,7 @@ static void
 test_MongoOutputStream_write_message (void)
 {
    MongoOutputStream *output;
+   MongoWriteConcern *concern;
    GOutputStream *memory;
    MongoMessage *message;
    MongoBson *q;
@@ -39,8 +40,13 @@ test_MongoOutputStream_write_message (void)
    r = g_file_get_contents("tests/capture/100queries.dat", &capture, &length, NULL);
    g_assert(r);
 
+   concern = mongo_write_concern_new_unsafe();
+
    memory = g_memory_output_stream_new(NULL, 0, g_realloc, g_free);
-   output = mongo_output_stream_new(G_OUTPUT_STREAM(memory));
+   output = g_object_new(MONGO_TYPE_OUTPUT_STREAM,
+                         "base-stream", memory,
+                         "next-request-id", 0,
+                         NULL);
    q = mongo_bson_new_empty();
 
    for (i = 0; i < 100; i++) {
@@ -50,7 +56,7 @@ test_MongoOutputStream_write_message (void)
                              "request-id", i,
                              "response-to", i,
                              NULL);
-      r = mongo_output_stream_write_message(output, message, NULL, &error);
+      r = mongo_output_stream_write_message(output, message, concern, NULL, &error);
       g_assert_no_error(error);
       g_assert(r);
       g_object_unref(message);
@@ -69,6 +75,7 @@ test_MongoOutputStream_write_message (void)
    g_object_unref(output);
    mongo_bson_unref(q);
    g_free(capture);
+   mongo_write_concern_free(concern);
 }
 
 gint

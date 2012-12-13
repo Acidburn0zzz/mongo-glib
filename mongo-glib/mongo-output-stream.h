@@ -22,6 +22,7 @@
 #include <gio/gio.h>
 
 #include "mongo-message.h"
+#include "mongo-write-concern.h"
 
 G_BEGIN_DECLS
 
@@ -41,8 +42,7 @@ typedef enum   _MongoOutputStreamError   MongoOutputStreamError;
 
 enum _MongoOutputStreamError
 {
-   MONGO_OUTPUT_STREAM_ERROR_INVALID_MESSAGE = 1,
-   MONGO_OUTPUT_STREAM_ERROR_SHORT_WRITE,
+   MONGO_OUTPUT_STREAM_ERROR_SHORT_WRITE = 1,
 };
 
 struct _MongoOutputStream
@@ -63,6 +63,7 @@ GType              mongo_output_stream_get_type      (void) G_GNUC_CONST;
 MongoOutputStream *mongo_output_stream_new           (GOutputStream      *base_stream);
 gboolean           mongo_output_stream_write_message (MongoOutputStream  *stream,
                                                       MongoMessage       *message,
+                                                      MongoWriteConcern  *concern,
                                                       GCancellable       *cancellable,
                                                       GError            **error);
 

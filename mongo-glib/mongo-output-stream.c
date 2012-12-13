@@ -19,109 +19,579 @@
 #include <glib/gi18n.h>
 
 #include "mongo-debug.h"
+#include "mongo-message-query.h"
 #include "mongo-output-stream.h"
+#include "mongo-source.h"
+#include "mongo-write-concern.h"
 
 G_DEFINE_TYPE(MongoOutputStream, mongo_output_stream, G_TYPE_DATA_OUTPUT_STREAM)
+
+struct _MongoOutputStreamPrivate
+{
+   MongoSource *source;
+   GHashTable  *async_results;
+   gint32       next_request_id;
+   GQueue      *queue;
+   gboolean     flushing;
+};
+
+typedef struct
+{
+   GSimpleAsyncResult *simple;
+   GBytes             *bytes;
+   gboolean            ignore_error;
+} Request;
+
+enum
+{
+   PROP_0,
+   PROP_ASYNC_CONTEXT,
+   PROP_NEXT_REQUEST_ID,
+   LAST_PROP
+};
+
+enum
+{
+   COMPLETE_0,
+   COMPLETE_ON_WRITE,
+   COMPLETE_ON_REPLY,
+   COMPLETE_ON_GETLASTERROR,
+   LAST_COMPLETE
+};
+
+static GParamSpec *gParamSpecs[LAST_PROP];
+
+static void
+request_free (Request *request)
+{
+   if (request) {
+      g_clear_object(&request->simple);
+      if (request->bytes) {
+         g_bytes_unref(request->bytes);
+         request->bytes = NULL;
+      }
+      request->ignore_error = FALSE;
+      g_slice_free(Request, request);
+   }
+}
 
 MongoOutputStream *
 mongo_output_stream_new (GOutputStream *base_stream)
 {
    return g_object_new(MONGO_TYPE_OUTPUT_STREAM,
                        "base-stream", base_stream,
+                       "next-request-id", g_random_int_range(1, G_MAXINT32),
                        NULL);
+}
+
+GMainContext *
+mongo_output_stream_get_async_context (MongoOutputStream *stream)
+{
+   g_return_val_if_fail(MONGO_IS_OUTPUT_STREAM(stream), NULL);
+   if (stream->priv->source)
+      return g_source_get_context((GSource *)stream->priv->source);
+   return NULL;
+}
+
+static void
+mongo_output_stream_set_async_context (MongoOutputStream *stream,
+                                       GMainContext      *async_context)
+{
+   MongoOutputStreamPrivate *priv;
+
+   g_return_if_fail(MONGO_IS_OUTPUT_STREAM(stream));
+   g_return_if_fail(!stream->priv->source);
+
+   priv = stream->priv;
+
+   if (!async_context) {
+      async_context = g_main_context_default();
+   }
+
+   priv->source = mongo_source_new();
+   g_source_attach((GSource *)priv->source, async_context);
+
+   g_object_notify_by_pspec(G_OBJECT(stream), gParamSpecs[PROP_ASYNC_CONTEXT]);
+}
+
+static gint32
+mongo_output_stream_get_next_request_id (MongoOutputStream *stream)
+{
+   g_return_val_if_fail(MONGO_IS_OUTPUT_STREAM(stream), -1);
+   if (stream->priv->next_request_id == G_MAXINT32)
+      stream->priv->next_request_id = 1;
+   return stream->priv->next_request_id++;
+}
+
+static void
+mongo_output_stream_add_async_result (MongoOutputStream  *stream,
+                                      gint32              request_id,
+                                      GSimpleAsyncResult *simple)
+{
+   g_return_if_fail(MONGO_IS_OUTPUT_STREAM(stream));
+   g_return_if_fail(request_id >= 0);
+   g_return_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple));
+   g_hash_table_insert(stream->priv->async_results,
+                       GINT_TO_POINTER(request_id),
+                       g_object_ref(simple));
+}
+
+static void
+mongo_output_stream_queue (MongoOutputStream  *stream,
+                           GSimpleAsyncResult *simple,
+                           GBytes             *bytes,
+                           gboolean            ignore_error)
+{
+   Request *request;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_OUTPUT_STREAM(stream));
+   g_return_if_fail(!simple || G_IS_SIMPLE_ASYNC_RESULT(simple));
+   g_return_if_fail(bytes);
+
+   request = g_slice_new(Request);
+   request->simple = simple ? g_object_ref(simple) : NULL;
+   request->bytes = g_bytes_ref(bytes);
+   request->ignore_error = ignore_error;
+
+   g_queue_push_head(stream->priv->queue, request);
+
+   EXIT;
+}
+
+static void
+mongo_output_stream_flush_cb (GObject      *object,
+                              GAsyncResult *result,
+                              gpointer      user_data)
+{
+   MongoOutputStreamPrivate *priv;
+   MongoOutputStream *stream = (MongoOutputStream *)object;
+   GOutputStream *output = (GOutputStream *)object;
+   Request *request = user_data;
+   GError *error = NULL;
+   gssize bytes_written;
+   gsize expected;
+
+   ENTRY;
+
+   g_assert(G_IS_OUTPUT_STREAM(output));
+   g_assert(MONGO_IS_OUTPUT_STREAM(stream));
+   g_assert(G_IS_ASYNC_RESULT(result));
+   g_assert(request);
+
+   priv = stream->priv;
+
+   expected = g_bytes_get_size(request->bytes);
+   bytes_written = g_output_stream_write_bytes_finish(output, result, &error);
+
+   if (bytes_written != expected) {
+      g_output_stream_close(output, NULL, NULL);
+      if (request->simple && !request->ignore_error) {
+         if (!error) {
+            error = g_error_new(MONGO_OUTPUT_STREAM_ERROR,
+                                MONGO_OUTPUT_STREAM_ERROR_SHORT_WRITE,
+                                _("Failed to write all data to stream."));
+         }
+         g_simple_async_result_take_error(request->simple, error);
+         mongo_source_complete_in_idle(priv->source, request->simple);
+      }
+      request_free(request);
+      priv->flushing = FALSE;
+      EXIT;
+   }
+
+   if (request->simple) {
+      g_simple_async_result_set_op_res_gboolean(request->simple, TRUE);
+      mongo_source_complete_in_idle(priv->source, request->simple);
+   }
+
+   request_free(request);
+
+   if (!(request = g_queue_pop_tail(priv->queue))) {
+      priv->flushing = FALSE;
+      EXIT;
+   }
+
+   g_output_stream_write_bytes_async(G_OUTPUT_STREAM(stream),
+                                     request->bytes,
+                                     G_PRIORITY_DEFAULT,
+                                     NULL,
+                                     mongo_output_stream_flush_cb,
+                                     request);
+
+   EXIT;
+}
+
+static void
+mongo_output_stream_flush (MongoOutputStream *stream)
+{
+   MongoOutputStreamPrivate *priv;
+   Request *request;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_OUTPUT_STREAM(stream));
+
+   priv = stream->priv;
+
+   if (priv->flushing) {
+      EXIT;
+   }
+
+   if (!(request = g_queue_pop_tail(priv->queue))) {
+      EXIT;
+   }
+
+   priv->flushing = TRUE;
+
+   g_output_stream_write_bytes_async(G_OUTPUT_STREAM(stream),
+                                     request->bytes,
+                                     G_PRIORITY_DEFAULT,
+                                     NULL,
+                                     mongo_output_stream_flush_cb,
+                                     request);
+
+   EXIT;
+}
+
+/**
+ * mongo_output_stream_write_message_async:
+ * @stream: A #MongoOutputStream.
+ * @message: A #MongoMessage.
+ * @concern: A #MongoWriteConcern or %NULL.
+ * @cancellable : (allow-none): A #GCancellable or %NULL.
+ * @callback: (allow-none): A #GAsyncReadyCallback or %NULL.
+ * @user_data: (allow-none): User data for @callback.
+ *
+ * Asynchronously writes a message to the underlying stream. If a write concern
+ * is provided, then a supplimental getlasterror command will be written if
+ * necessary.
+ *
+ * Returns: 0 if no reply is expected, otherwise of the request-id of the
+ *   request to expect a reply for. In some cases this may be for a
+ *   supplimental getlasterror command.
+ */
+gint32
+mongo_output_stream_write_message_async (MongoOutputStream   *stream,
+                                         MongoMessage        *message,
+                                         MongoWriteConcern   *concern,
+                                         GCancellable        *cancellable,
+                                         GAsyncReadyCallback  callback,
+                                         gpointer             user_data)
+{
+   MongoOutputStreamPrivate *priv;
+   GSimpleAsyncResult *simple;
+   MongoMessage *gle;
+   gboolean ignore_error;
+   GError *error = NULL;
+   GBytes *bytes;
+   gint32 request_id;
+   guint complete;
+
+   g_return_val_if_fail(MONGO_IS_OUTPUT_STREAM(stream), 0);
+   g_return_val_if_fail(MONGO_IS_MESSAGE(message), 0);
+   g_return_val_if_fail(concern, 0);
+   g_return_val_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable), 0);
+
+   priv = stream->priv;
+
+   /*
+    * Build our GAsyncResult to be used when completing this async request.
+    */
+   simple = g_simple_async_result_new(G_OBJECT(stream), callback, user_data,
+                                      mongo_output_stream_write_message_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+
+   /*
+    * Get the next request-id for this message.
+    */
+   request_id = mongo_output_stream_get_next_request_id(stream);
+   mongo_message_set_request_id(message, request_id);
+
+   /*
+    * Determine how this should be completed. Some require completion at
+    * different stages.
+    */
+   switch (MONGO_MESSAGE_GET_CLASS(message)->operation) {
+   case MONGO_OPERATION_QUERY:
+   case MONGO_OPERATION_GETMORE:
+      complete = COMPLETE_ON_REPLY;
+      break;
+   case MONGO_OPERATION_KILL_CURSORS:
+   case MONGO_OPERATION_MSG:
+   case MONGO_OPERATION_REPLY:
+      complete = COMPLETE_ON_WRITE;
+      break;
+   case MONGO_OPERATION_UPDATE:
+   case MONGO_OPERATION_INSERT:
+   case MONGO_OPERATION_DELETE:
+      complete = COMPLETE_ON_GETLASTERROR;
+      request_id = mongo_output_stream_get_next_request_id(stream);
+      break;
+   default:
+      g_assert_not_reached();
+      RETURN(0);
+   }
+
+   /*
+    * Save the message to GBytes to be delivered to the MongoDB server.
+    */
+   if (!(bytes = mongo_message_save_to_bytes(message, &error))) {
+      g_simple_async_result_take_error(simple, error);
+      mongo_source_complete_in_idle(priv->source, simple);
+      g_object_unref(simple);
+      RETURN(0);
+   }
+
+   /*
+    * Add GAsyncResult to be fired after the request has been written to
+    * the underlying stream.
+    */
+   mongo_output_stream_add_async_result(stream, request_id, simple);
+
+   /*
+    * Queue the bytes to be written to the underlying stream.
+    */
+   ignore_error = (mongo_write_concern_get_w(concern) == -1);
+   mongo_output_stream_queue(stream, simple, bytes, ignore_error);
+   g_bytes_unref(bytes);
+
+   /*
+    * If this message requires a getlasterror to retrieve the completion,
+    * then send that now.
+    */
+   if (complete == COMPLETE_ON_GETLASTERROR) {
+      gle = mongo_write_concern_build_getlasterror(concern, "admin"); // FIXME
+      g_assert(MONGO_IS_MESSAGE_QUERY(gle));
+
+      bytes = mongo_message_save_to_bytes(gle, NULL);
+      g_assert(bytes);
+
+      mongo_output_stream_queue(stream, NULL, bytes, FALSE);
+
+      g_bytes_unref(bytes);
+      g_object_unref(gle);
+   }
+
+   /*
+    * If we do not currently have a write loop, then start the asynchronous
+    * write loop now.
+    */
+   mongo_output_stream_flush(stream);
+
+   RETURN(request_id);
+}
+
+/**
+ * mongo_output_stream_write_message_finish:
+ * @stream: A #MongoOutputStream.
+ *
+ * Completes an asynchronous request to write a message to the output stream.
+ * If no #MongoWriteConcern was provided to
+ * mongo_output_stream_write_message_async() or a write concern w=-1, then
+ * this will never fail. However, if w=0 or more, then socket errors can
+ * cause this to fail.
+ *
+ * Returns: %TRUE if successful; otherwise %FALSE and @error is set.
+ */
+gboolean
+mongo_output_stream_write_message_finish (MongoOutputStream  *stream,
+                                          GAsyncResult       *result,
+                                          GError            **error)
+{
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   gboolean ret;
+
+   g_return_val_if_fail(MONGO_IS_OUTPUT_STREAM(stream), FALSE);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), FALSE);
+
+   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   }
+
+   return ret;
+}
+
+static void
+mongo_output_stream_write_message_cb (GObject      *object,
+                                      GAsyncResult *result,
+                                      gpointer      user_data)
+{
+   MongoOutputStream *stream = (MongoOutputStream *)object;
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   GSimpleAsyncResult **waiter = user_data;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_OUTPUT_STREAM(stream));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+   g_assert(waiter);
+
+   *waiter = g_object_ref(simple);
+
+   EXIT;
 }
 
 gboolean
 mongo_output_stream_write_message (MongoOutputStream  *stream,
                                    MongoMessage       *message,
+                                   MongoWriteConcern  *concern,
                                    GCancellable       *cancellable,
                                    GError            **error)
 {
-   GDataOutputStream *data_stream = (GDataOutputStream *)stream;
-#if 0
-   MongoOperation op_code;
-   guint32 msg_len;
-   gint32 request_id;
-   gint32 response_to;
-#endif
-   guint8 *buffer;
-   gsize length;
-   gsize bytes_written;
+   GSimpleAsyncResult *simple = NULL;
+   GMainContext *main_context;
+   gboolean ret;
 
    ENTRY;
 
    g_return_val_if_fail(MONGO_IS_OUTPUT_STREAM(stream), FALSE);
-   g_return_val_if_fail(G_IS_DATA_OUTPUT_STREAM(data_stream), FALSE);
    g_return_val_if_fail(MONGO_IS_MESSAGE(message), FALSE);
+   g_return_val_if_fail(concern, FALSE);
+   g_return_val_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable), FALSE);
 
-   if (!(buffer = mongo_message_save_to_data(message, &length))) {
-      g_set_error(error,
-                  MONGO_OUTPUT_STREAM_ERROR,
-                  MONGO_OUTPUT_STREAM_ERROR_INVALID_MESSAGE,
-                  _("Failed to serialize message."));
-      g_output_stream_close(G_OUTPUT_STREAM(stream), cancellable, NULL);
-      RETURN(FALSE);
+   mongo_output_stream_write_message_async(stream,
+                                           message,
+                                           concern,
+                                           cancellable,
+                                           mongo_output_stream_write_message_cb,
+                                           &simple);
+
+   while (!simple) {
+      main_context = mongo_output_stream_get_async_context(stream);
+      g_main_context_iteration(main_context, TRUE);
    }
 
-   /*
-    * XXX: I would really like to make the messages not write headers.
-    */
-#if 0
-   msg_len = 16 + length;
-   request_id = mongo_message_get_request_id(message);
-   response_to = mongo_message_get_response_to(message);
-   op_code = MONGO_MESSAGE_GET_CLASS(message)->operation;
-
-   /*
-    * Write the message header to the stream.
-    */
-   if (!g_data_output_stream_put_uint32(data_stream, msg_len, cancellable, error) ||
-       !g_data_output_stream_put_int32(data_stream, request_id, cancellable, error) ||
-       !g_data_output_stream_put_int32(data_stream, response_to, cancellable, error) ||
-       !g_data_output_stream_put_int32(data_stream, op_code, cancellable, error)) {
-      g_output_stream_close(G_OUTPUT_STREAM(stream), cancellable, NULL);
-      g_free(buffer);
-      RETURN(FALSE);
-   }
-#endif
-
-   /*
-    * Write the message contents.
-    */
-   if (!g_output_stream_write_all(G_OUTPUT_STREAM(stream),
-                                  buffer,
-                                  length,
-                                  &bytes_written,
-                                  cancellable,
-                                  error)) {
-      g_output_stream_close(G_OUTPUT_STREAM(stream), NULL, NULL);
-      g_free(buffer);
-      RETURN(FALSE);
+   if (!(ret = g_simple_async_result_get_op_res_gboolean(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
    }
 
-   g_free(buffer);
+   g_object_unref(simple);
 
-   if (bytes_written != length) {
-      g_set_error(error,
-                  MONGO_OUTPUT_STREAM_ERROR,
-                  MONGO_OUTPUT_STREAM_ERROR_SHORT_WRITE,
-                  _("Failed to write all data to stream."));
-      RETURN(FALSE);
+   RETURN(ret);
+}
+
+static void
+mongo_output_stream_get_property (GObject    *object,
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
+{
+   MongoOutputStream *stream = MONGO_OUTPUT_STREAM(object);
+
+   switch (prop_id) {
+   case PROP_ASYNC_CONTEXT:
+      g_value_set_boxed(value, mongo_output_stream_get_async_context(stream));
+      break;
+   case PROP_NEXT_REQUEST_ID:
+      g_value_set_int(value, stream->priv->next_request_id);
+      break;
+   default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+   }
+}
+
+static void
+mongo_output_stream_set_property (GObject      *object,
+                                  guint         prop_id,
+                                  const GValue *value,
+                                  GParamSpec   *pspec)
+{
+   MongoOutputStream *stream = MONGO_OUTPUT_STREAM(object);
+
+   switch (prop_id) {
+   case PROP_ASYNC_CONTEXT:
+      mongo_output_stream_set_async_context(stream, g_value_get_boxed(value));
+      break;
+   case PROP_NEXT_REQUEST_ID:
+      stream->priv->next_request_id = g_value_get_int(value);
+      break;
+   default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+   }
+}
+
+static void
+mongo_output_stream_finalize (GObject *object)
+{
+   MongoOutputStreamPrivate *priv;
+
+   ENTRY;
+
+   priv = MONGO_OUTPUT_STREAM(object)->priv;
+
+   if (g_hash_table_size(priv->async_results)) {
+      g_warning("%s() called with in flight requests.", G_STRFUNC);
    }
 
-   RETURN(TRUE);
+   if (!g_queue_is_empty(priv->queue)) {
+      g_warning("%s() called with queued requests.", G_STRFUNC);
+   }
+
+   g_hash_table_unref(priv->async_results);
+   priv->async_results = NULL;
+
+   g_source_destroy((GSource *)priv->source);
+   priv->source = NULL;
+
+   g_queue_free(priv->queue);
+   priv->queue = NULL;
+
+   G_OBJECT_CLASS(mongo_output_stream_parent_class)->finalize(object);
+
+   EXIT;
 }
 
 static void
 mongo_output_stream_class_init (MongoOutputStreamClass *klass)
 {
+   GObjectClass *object_class;
+
+   ENTRY;
+
+   object_class = G_OBJECT_CLASS(klass);
+   object_class->finalize = mongo_output_stream_finalize;
+   object_class->get_property = mongo_output_stream_get_property;
+   object_class->set_property = mongo_output_stream_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoOutputStreamPrivate));
+
+   gParamSpecs[PROP_ASYNC_CONTEXT] =
+      g_param_spec_boxed("async-context",
+                          _("Async Context"),
+                          _("The GMainContext to perform callbacks within."),
+                          G_TYPE_MAIN_CONTEXT,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_ASYNC_CONTEXT,
+                                   gParamSpecs[PROP_ASYNC_CONTEXT]);
+
+   gParamSpecs[PROP_NEXT_REQUEST_ID] =
+      g_param_spec_int("next-request-id",
+                       _("Next Request Id"),
+                       _("The next request id to use."),
+                       0,
+                       G_MAXINT32,
+                       0,
+                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_NEXT_REQUEST_ID,
+                                   gParamSpecs[PROP_NEXT_REQUEST_ID]);
+
+   EXIT;
 }
 
 static void
 mongo_output_stream_init (MongoOutputStream *stream)
 {
+   ENTRY;
+   stream->priv = G_TYPE_INSTANCE_GET_PRIVATE(stream,
+                                              MONGO_TYPE_OUTPUT_STREAM,
+                                              MongoOutputStreamPrivate);
    g_data_output_stream_set_byte_order(G_DATA_OUTPUT_STREAM(stream),
                                        G_DATA_STREAM_BYTE_ORDER_LITTLE_ENDIAN);
+   stream->priv->async_results = g_hash_table_new(g_direct_hash,
+                                                  g_direct_equal);
+   stream->priv->queue = g_queue_new();
+   EXIT;
 }
 
 GQuark
