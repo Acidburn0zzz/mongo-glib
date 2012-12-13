@@ -31,7 +31,7 @@
  *     Only one async or sync command at a time.
  */
 
-G_DEFINE_TYPE(MongoOutputStream, mongo_output_stream, G_TYPE_DATA_OUTPUT_STREAM)
+G_DEFINE_TYPE(MongoOutputStream, mongo_output_stream, G_TYPE_FILTER_OUTPUT_STREAM)
 
 struct _MongoOutputStreamPrivate
 {
@@ -594,8 +594,6 @@ mongo_output_stream_init (MongoOutputStream *stream)
    stream->priv = G_TYPE_INSTANCE_GET_PRIVATE(stream,
                                               MONGO_TYPE_OUTPUT_STREAM,
                                               MongoOutputStreamPrivate);
-   g_data_output_stream_set_byte_order(G_DATA_OUTPUT_STREAM(stream),
-                                       G_DATA_STREAM_BYTE_ORDER_LITTLE_ENDIAN);
    stream->priv->async_results = g_hash_table_new(g_direct_hash,
                                                   g_direct_equal);
    stream->priv->queue = g_queue_new();

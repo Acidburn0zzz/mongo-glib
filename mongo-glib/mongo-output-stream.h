@@ -47,7 +47,7 @@ enum _MongoOutputStreamError
 
 struct _MongoOutputStream
 {
-   GDataOutputStream parent;
+   GFilterOutputStream parent;
 
    /*< private >*/
    MongoOutputStreamPrivate *priv;
@@ -55,7 +55,7 @@ struct _MongoOutputStream
 
 struct _MongoOutputStreamClass
 {
-   GDataOutputStreamClass parent_class;
+   GFilterOutputStreamClass parent_class;
 };
 
 GQuark             mongo_output_stream_error_quark          (void) G_GNUC_CONST;
