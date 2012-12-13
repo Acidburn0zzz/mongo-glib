@@ -21,18 +21,99 @@
 #include "mongo-debug.h"
 #include "mongo-input-stream.h"
 #include "mongo-operation.h"
+#include "mongo-source.h"
 
-G_DEFINE_TYPE(MongoInputStream, mongo_input_stream, G_TYPE_DATA_INPUT_STREAM)
+G_DEFINE_TYPE(MongoInputStream, mongo_input_stream, G_TYPE_FILTER_INPUT_STREAM)
+
+struct _MongoInputStreamPrivate
+{
+   MongoSource *source;
+};
+
+enum
+{
+   PROP_0,
+   PROP_ASYNC_CONTEXT,
+   LAST_PROP
+};
+
+static GParamSpec *gParamSpecs[LAST_PROP];
 
 MongoInputStream *
 mongo_input_stream_new (GInputStream *base_stream)
 {
    return g_object_new(MONGO_TYPE_INPUT_STREAM,
                        "base-stream", base_stream,
-                       "byte-order", G_DATA_STREAM_BYTE_ORDER_LITTLE_ENDIAN,
                        NULL);
 }
 
+GMainContext *
+mongo_input_stream_get_async_context (MongoInputStream *stream)
+{
+   g_return_val_if_fail(MONGO_IS_INPUT_STREAM(stream), NULL);
+   return g_source_get_context((GSource *)stream->priv->source);
+}
+
+static void
+mongo_input_stream_set_async_context (MongoInputStream *stream,
+                                      GMainContext     *async_context)
+{
+   MongoInputStreamPrivate *priv;
+
+   g_return_if_fail(MONGO_IS_INPUT_STREAM(stream));
+   g_return_if_fail(!stream->priv->source);
+
+   priv = stream->priv;
+
+   if (!async_context) {
+      async_context = g_main_context_default();
+   }
+
+   priv->source = mongo_source_new();
+   g_source_set_name((GSource *)priv->source, "MongoInputStream");
+   g_source_attach((GSource *)priv->source, async_context);
+
+   g_object_notify_by_pspec(G_OBJECT(stream), gParamSpecs[PROP_ASYNC_CONTEXT]);
+}
+
+/**
+ * mongo_input_stream_read_message_async:
+ * @stream: A #MongoInputStream.
+ * @cancellable: (allow-none): A #GCancellable or %NULL.
+ * @callback: (allow-none): A #GAsyncReadyCallback or %NULL.
+ * @user_data: user data for @callback.
+ *
+ * Asynchronously reads the next message from the #MongoInputStream.
+ */
+void
+mongo_input_stream_read_message_async (MongoInputStream    *stream,
+                                       GCancellable        *cancellable,
+                                       GAsyncReadyCallback  callback,
+                                       gpointer             user_data)
+{
+}
+
+/**
+ * mongo_input_stream_read_message_finish:
+ * @stream: A #MongoInputStream.
+ *
+ * Completes an asynchronous request to read the next message from the
+ * underlying #GInputStream.
+ *
+ * Upon failure, %NULL is returned and @error is set.
+ *
+ * Returns: (transfer full): A #MongoMessage if successful; otherwise
+ *    %NULL and @error is set.
+ */
+MongoMessage *
+mongo_input_stream_read_message_finish (MongoInputStream  *stream,
+                                        GAsyncResult      *result,
+                                        GError           **error)
+{
+   return NULL;
+}
+
+#if 0
 /**
  * mongo_input_stream_read_message:
  * @stream: A #MongoInputStream.
@@ -71,9 +152,9 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
    /*
     * Read the message length.
     */
-   if (!(msg_len = g_data_input_stream_read_uint32(data_stream,
-                                                   cancellable,
-                                                   error))) {
+   if (!(msg_len = mongo_input_stream_read_int32(data_stream,
+                                                 cancellable,
+                                                 error))) {
       RETURN(NULL);
    }
 
@@ -91,9 +172,9 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
    /*
     * Read the request_id field.
     */
-   if (!(request_id = g_data_input_stream_read_int32(data_stream,
-                                                     cancellable,
-                                                     &local_error))) {
+   if (!(request_id = mongo_input_stream_read_int32(data_stream,
+                                                    cancellable,
+                                                    &local_error))) {
       if (local_error) {
          g_propagate_error(error, local_error);
          RETURN(NULL);
@@ -103,9 +184,9 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
    /*
     * Read the response_to field.
     */
-   if (!(response_to = g_data_input_stream_read_int32(data_stream,
-                                                      cancellable,
-                                                      &local_error))) {
+   if (!(response_to = mongo_input_stream_read_int32(data_stream,
+                                                     cancellable,
+                                                     &local_error))) {
       if (local_error) {
          g_propagate_error(error, local_error);
          RETURN(NULL);
@@ -115,9 +196,9 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
    /*
     * Read the op_code field.
     */
-   if (!(op_code = g_data_input_stream_read_int32(data_stream,
-                                                  cancellable,
-                                                  &local_error))) {
+   if (!(op_code = mongo_input_stream_read_int32(data_stream,
+                                                 cancellable,
+                                                 &local_error))) {
       if (local_error) {
          g_propagate_error(error, local_error);
          RETURN(NULL);
@@ -190,17 +271,92 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
 
    RETURN(message);
 }
+#endif
+
+static void
+mongo_input_stream_finalize (GObject *object)
+{
+   MongoInputStreamPrivate *priv;
+
+   ENTRY;
+
+   priv = MONGO_INPUT_STREAM(object)->priv;
+
+   g_source_destroy((GSource *)priv->source);
+   priv->source = NULL;
+
+   G_OBJECT_CLASS(mongo_input_stream_parent_class)->finalize(object);
+
+   EXIT;
+}
+
+static void
+mongo_input_stream_get_property (GObject    *object,
+                                 guint       prop_id,
+                                 GValue     *value,
+                                 GParamSpec *pspec)
+{
+   MongoInputStream *stream = MONGO_INPUT_STREAM(object);
+
+   switch (prop_id) {
+   case PROP_ASYNC_CONTEXT:
+      g_value_set_boxed(value, mongo_input_stream_get_async_context(stream));
+      break;
+   default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+   }
+}
+
+static void
+mongo_input_stream_set_property (GObject      *object,
+                                 guint         prop_id,
+                                 const GValue *value,
+                                 GParamSpec   *pspec)
+{
+   MongoInputStream *stream = MONGO_INPUT_STREAM(object);
+
+   switch (prop_id) {
+   case PROP_ASYNC_CONTEXT:
+      mongo_input_stream_set_async_context(stream, g_value_get_boxed(value));
+      break;
+   default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+   }
+}
 
 static void
 mongo_input_stream_class_init (MongoInputStreamClass *klass)
 {
+   GObjectClass *object_class;
+
+   ENTRY;
+
+   object_class = G_OBJECT_CLASS(klass);
+   object_class->finalize = mongo_input_stream_finalize;
+   object_class->get_property = mongo_input_stream_get_property;
+   object_class->set_property = mongo_input_stream_set_property;
+   g_type_class_add_private(object_class, sizeof(MongoInputStreamPrivate));
+
+   gParamSpecs[PROP_ASYNC_CONTEXT] =
+      g_param_spec_boxed("async-context",
+                          _("Async Context"),
+                          _("The main context to perform callbacks within."),
+                          G_TYPE_MAIN_CONTEXT,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+   g_object_class_install_property(object_class, PROP_ASYNC_CONTEXT,
+                                   gParamSpecs[PROP_ASYNC_CONTEXT]);
+
+   EXIT;
 }
 
 static void
 mongo_input_stream_init (MongoInputStream *stream)
 {
-   g_data_input_stream_set_byte_order(G_DATA_INPUT_STREAM(stream),
-                                      G_DATA_STREAM_BYTE_ORDER_LITTLE_ENDIAN);
+   ENTRY;
+   stream->priv = G_TYPE_INSTANCE_GET_PRIVATE(stream,
+                                              MONGO_TYPE_INPUT_STREAM,
+                                              MongoInputStreamPrivate);
+   EXIT;
 }
 
 GQuark

@@ -48,7 +48,7 @@ enum _MongoInputStreamError
 
 struct _MongoInputStream
 {
-   GDataInputStream parent;
+   GFilterInputStream parent;
 
    /*< private >*/
    MongoInputStreamPrivate *priv;
@@ -56,7 +56,7 @@ struct _MongoInputStream
 
 struct _MongoInputStreamClass
 {
-   GDataInputStreamClass parent_class;
+   GFilterInputStreamClass parent_class;
 };
 
 GQuark            mongo_input_stream_error_quark        (void) G_GNUC_CONST;
