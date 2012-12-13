@@ -59,6 +59,7 @@ struct _MongoClientPrivate
    GHashTable        *async_results;
    GMainContext      *async_context;
    MongoSource       *source;
+   GCancellable      *shutdown;
 };
 
 enum
@@ -136,7 +137,6 @@ mongo_client_read_message_cb (GObject      *object,
                                                           &error))) {
       g_warning("Failed to read message: %s", error->message);
       g_input_stream_close(G_INPUT_STREAM(input), NULL, NULL);
-      g_object_unref(client);
       g_error_free(error);
       EXIT;
    }
@@ -156,12 +156,11 @@ mongo_client_read_message_cb (GObject      *object,
    }
 
    mongo_input_stream_read_message_async(input,
-                                         NULL, // priv->shutdown,
+                                         priv->shutdown,
                                          mongo_client_read_message_cb,
-                                         g_object_ref(client));
+                                         client);
 
    g_object_unref(message);
-   g_object_unref(client);
 
    EXIT;
 }
@@ -197,9 +196,9 @@ mongo_client_set_stream (MongoClient *client,
                                NULL);
 
    mongo_input_stream_read_message_async(priv->input,
-                                         NULL, // priv->shutdown,
+                                         priv->shutdown,
                                          mongo_client_read_message_cb,
-                                         g_object_ref(client));
+                                         client);
 
    g_object_notify_by_pspec(G_OBJECT(client), gParamSpecs[PROP_STREAM]);
 
@@ -408,6 +407,14 @@ mongo_client_send (MongoClient        *client,
 }
 
 static void
+mongo_client_dispose (GObject *object)
+{
+   ENTRY;
+   G_OBJECT_CLASS(mongo_client_parent_class)->dispose(object);
+   EXIT;
+}
+
+static void
 mongo_client_finalize (GObject *object)
 {
    MongoClientPrivate *priv;
@@ -428,6 +435,8 @@ mongo_client_finalize (GObject *object)
       g_main_context_unref(priv->async_context);
       priv->async_context = NULL;
    }
+
+   g_clear_object(&priv->shutdown);
 
    G_OBJECT_CLASS(mongo_client_parent_class)->finalize(object);
 
@@ -480,6 +489,7 @@ mongo_client_class_init (MongoClientClass *klass)
 
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = mongo_client_finalize;
+   object_class->dispose = mongo_client_dispose;
    object_class->get_property = mongo_client_get_property;
    object_class->set_property = mongo_client_set_property;
    g_type_class_add_private(object_class, sizeof(MongoClientPrivate));
@@ -522,6 +532,7 @@ mongo_client_init (MongoClient *client)
    client->priv->concern = mongo_write_concern_new();
    client->priv->async_results = g_hash_table_new(g_direct_hash,
                                                   g_direct_equal);
+   client->priv->shutdown = g_cancellable_new();
 
    EXIT;
 }

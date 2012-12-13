@@ -1,5 +1,6 @@
 noinst_PROGRAMS =
 noinst_PROGRAMS += test-mongo-bson
+noinst_PROGRAMS += test-mongo-client
 noinst_PROGRAMS += test-mongo-connection
 noinst_PROGRAMS += test-mongo-collection
 noinst_PROGRAMS += test-mongo-cursor
@@ -12,6 +13,7 @@ noinst_PROGRAMS += test-mongo-output-stream
 noinst_PROGRAMS += test-mongo-protocol
 
 TEST_PROGS += test-mongo-bson
+TEST_PROGS += test-mongo-client
 TEST_PROGS += test-mongo-connection
 TEST_PROGS += test-mongo-collection
 TEST_PROGS += test-mongo-cursor
@@ -26,6 +28,10 @@ TEST_PROGS += test-mongo-protocol
 test_mongo_bson_SOURCES = $(top_srcdir)/tests/test-mongo-bson.c
 test_mongo_bson_CPPFLAGS = $(GIO_CFLAGS) $(GOBJECT_CFLAGS) '-DSRC_DIR="$(top_srcdir)"'
 test_mongo_bson_LDADD = $(GIO_LIBS) $(GOBJECT_LIBS) $(top_builddir)/libmongo-glib-1.0.la
+
+test_mongo_client_SOURCES = $(top_srcdir)/tests/test-mongo-client.c
+test_mongo_client_CPPFLAGS = $(GIO_CFLAGS) $(GOBJECT_CFLAGS)
+test_mongo_client_LDADD = $(GIO_LIBS) $(GOBJECT_LIBS) $(top_builddir)/libmongo-glib-1.0.la
 
 test_mongo_connection_SOURCES = $(top_srcdir)/tests/test-mongo-connection.c
 test_mongo_connection_CPPFLAGS = $(GIO_CFLAGS) $(GOBJECT_CFLAGS)
