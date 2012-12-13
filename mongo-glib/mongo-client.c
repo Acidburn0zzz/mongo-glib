@@ -102,6 +102,14 @@ mongo_client_get_async_context (MongoClient *client)
    return client->priv->async_context;
 }
 
+MongoClient *
+mongo_client_new_from_stream (GIOStream *stream)
+{
+   return g_object_new(MONGO_TYPE_CLIENT,
+                       "stream", stream,
+                       NULL);
+}
+
 static void
 mongo_client_read_message_cb (GObject      *object,
                               GAsyncResult *result,
