@@ -28,6 +28,9 @@ G_DEFINE_TYPE(MongoInputStream, mongo_input_stream, G_TYPE_FILTER_INPUT_STREAM)
 struct _MongoInputStreamPrivate
 {
    MongoSource *source;
+   GCancellable *shutdown;
+   gint32 msg_len;
+   guint8 *buffer;
 };
 
 enum
@@ -60,6 +63,8 @@ mongo_input_stream_set_async_context (MongoInputStream *stream,
 {
    MongoInputStreamPrivate *priv;
 
+   ENTRY;
+
    g_return_if_fail(MONGO_IS_INPUT_STREAM(stream));
    g_return_if_fail(!stream->priv->source);
 
@@ -74,6 +79,140 @@ mongo_input_stream_set_async_context (MongoInputStream *stream,
    g_source_attach((GSource *)priv->source, async_context);
 
    g_object_notify_by_pspec(G_OBJECT(stream), gParamSpecs[PROP_ASYNC_CONTEXT]);
+
+   EXIT;
+}
+
+static void
+mongo_input_stream_read_message_body_cb (GObject      *object,
+                                         GAsyncResult *result,
+                                         gpointer      user_data)
+{
+   MongoInputStreamPrivate *priv;
+   GSimpleAsyncResult *simple = user_data;
+   MongoInputStream *input = (MongoInputStream *)object;
+   MongoMessage *message = NULL;
+   GError *error = NULL;
+   gssize ret;
+   GType type_id;
+#pragma pack(push, 1)
+   struct {
+      gint32 msg_len;
+      gint32 request_id;
+      gint32 response_to;
+      gint32 op_code;
+   } header;
+#pragma pack(pop)
+
+   ENTRY;
+
+   g_assert(MONGO_IS_INPUT_STREAM(input));
+   g_assert(G_IS_ASYNC_RESULT(result));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   priv = input->priv;
+
+   ret = g_input_stream_read_finish(G_INPUT_STREAM(input), result, &error);
+   if (ret != (priv->msg_len - 4)) {
+      g_simple_async_result_take_error(simple, error);
+      GOTO(failure);
+   }
+
+   memcpy(&header, priv->buffer, sizeof header);
+   if (!(type_id = mongo_operation_get_message_type(header.op_code))) {
+      GOTO(failure);
+   }
+
+   message = g_object_new(type_id,
+                          "request-id", header.request_id,
+                          "response-to", header.response_to,
+                          NULL);
+   if (!mongo_message_load_from_data(message,
+                                     priv->buffer + 16, // FIXME: load all data.
+                                     priv->msg_len - 16)) {
+      GOTO(failure);
+   }
+
+   g_simple_async_result_set_op_res_gpointer(simple, message, g_object_unref);
+   mongo_source_complete_in_idle(priv->source, simple);
+   g_object_unref(simple);
+   g_free(priv->buffer);
+   priv->buffer = NULL;
+
+   EXIT;
+
+failure:
+   g_input_stream_close(G_INPUT_STREAM(input), NULL, NULL);
+   mongo_source_complete_in_idle(input->priv->source, simple);
+   g_object_unref(simple);
+   g_free(priv->buffer);
+   priv->buffer = NULL;
+   g_clear_object(&message);
+
+   EXIT;
+}
+
+static void
+mongo_input_stream_read_message_header_cb (GObject      *object,
+                                           GAsyncResult *result,
+                                           gpointer      user_data)
+{
+   MongoInputStreamPrivate *priv;
+   GSimpleAsyncResult *simple = user_data;
+   MongoInputStream *input = (MongoInputStream *)object;
+   gint32 msg_len_le;
+   GError *error = NULL;
+   gssize ret;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_INPUT_STREAM(input));
+   g_assert(G_IS_ASYNC_RESULT(result));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+
+   priv = input->priv;
+
+   ret = g_input_stream_read_finish(G_INPUT_STREAM(input), result, &error);
+   if (ret != sizeof priv->msg_len) {
+      g_input_stream_close(G_INPUT_STREAM(input), NULL, NULL);
+      if (error) {
+         g_simple_async_result_take_error(simple, error);
+      } else {
+         g_simple_async_result_set_error(simple,
+                                         G_IO_ERROR,
+                                         G_IO_ERROR_CLOSED,
+                                         _("The stream is closed."));
+      }
+      mongo_source_complete_in_idle(input->priv->source, simple);
+      g_object_unref(simple);
+      EXIT;
+   }
+
+   msg_len_le = priv->msg_len;
+   priv->msg_len = GINT32_FROM_LE(priv->msg_len);
+
+   if (priv->msg_len <= 16) {
+      g_simple_async_result_set_error(simple,
+                                      MONGO_INPUT_STREAM_ERROR,
+                                      MONGO_INPUT_STREAM_ERROR_INSUFFICIENT_DATA,
+                                      _("Insufficient data for message."));
+      mongo_source_complete_in_idle(input->priv->source, simple);
+      g_object_unref(simple);
+      EXIT;
+   }
+
+   priv->buffer = g_malloc(priv->msg_len);
+   memcpy(priv->buffer, &msg_len_le, sizeof msg_len_le);
+
+   g_input_stream_read_async(G_INPUT_STREAM(input),
+                             priv->buffer + 4,
+                             priv->msg_len - 4,
+                             G_PRIORITY_DEFAULT,
+                             priv->shutdown,
+                             mongo_input_stream_read_message_body_cb,
+                             simple);
+
+   EXIT;
 }
 
 /**
@@ -91,6 +230,29 @@ mongo_input_stream_read_message_async (MongoInputStream    *stream,
                                        GAsyncReadyCallback  callback,
                                        gpointer             user_data)
 {
+   MongoInputStreamPrivate *priv;
+   GSimpleAsyncResult *simple;
+
+   ENTRY;
+
+   g_return_if_fail(MONGO_IS_INPUT_STREAM(stream));
+   g_return_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable));
+
+   priv = stream->priv;
+
+   simple = g_simple_async_result_new(G_OBJECT(stream), callback, user_data,
+                                      mongo_input_stream_read_message_async);
+   g_simple_async_result_set_check_cancellable(simple, cancellable);
+
+   g_input_stream_read_async(G_INPUT_STREAM(stream),
+                             &priv->msg_len,
+                             sizeof priv->msg_len,
+                             G_PRIORITY_DEFAULT,
+                             priv->shutdown,
+                             mongo_input_stream_read_message_header_cb,
+                             simple);
+
+   EXIT;
 }
 
 /**
@@ -110,10 +272,43 @@ mongo_input_stream_read_message_finish (MongoInputStream  *stream,
                                         GAsyncResult      *result,
                                         GError           **error)
 {
-   return NULL;
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   MongoMessage *ret;
+
+   ENTRY;
+
+   g_return_val_if_fail(MONGO_IS_INPUT_STREAM(stream), NULL);
+   g_return_val_if_fail(G_IS_SIMPLE_ASYNC_RESULT(simple), NULL);
+
+   if (!(ret = g_simple_async_result_get_op_res_gpointer(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   } else {
+      g_object_ref(ret);
+   }
+
+   RETURN(ret);
 }
 
-#if 0
+static void
+mongo_input_stream_read_message_cb (GObject      *object,
+                                    GAsyncResult *result,
+                                    gpointer      user_data)
+{
+   MongoInputStream *stream = (MongoInputStream *)object;
+   GSimpleAsyncResult *simple = (GSimpleAsyncResult *)result;
+   GSimpleAsyncResult **waiter = user_data;
+
+   ENTRY;
+
+   g_assert(MONGO_IS_INPUT_STREAM(stream));
+   g_assert(G_IS_SIMPLE_ASYNC_RESULT(simple));
+   g_assert(waiter);
+
+   *waiter = g_object_ref(simple);
+
+   EXIT;
+}
+
 /**
  * mongo_input_stream_read_message:
  * @stream: A #MongoInputStream.
@@ -133,145 +328,36 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
                                  GCancellable      *cancellable,
                                  GError           **error)
 {
-   GDataInputStream *data_stream = (GDataInputStream *)stream;
-   MongoOperation op_code;
-   MongoMessage *message;
-   gint32 msg_len;
-   gint32 request_id;
-   gint32 response_to;
-   GError *local_error = NULL;
-   guint8 *buffer;
-   gsize bytes_read;
-   GType gtype;
+   GSimpleAsyncResult *simple = NULL;
+   GMainContext *main_context;
+   MongoMessage *ret;
 
    ENTRY;
 
    g_return_val_if_fail(MONGO_IS_INPUT_STREAM(stream), NULL);
-   g_return_val_if_fail(G_IS_DATA_INPUT_STREAM(data_stream), NULL);
+   g_return_val_if_fail(!cancellable || G_IS_CANCELLABLE(cancellable), NULL);
 
-   /*
-    * Read the message length.
-    */
-   if (!(msg_len = mongo_input_stream_read_int32(data_stream,
-                                                 cancellable,
-                                                 error))) {
-      RETURN(NULL);
+   mongo_input_stream_read_message_async(stream,
+                                         cancellable,
+                                         mongo_input_stream_read_message_cb,
+                                         &simple);
+
+   main_context = mongo_input_stream_get_async_context(stream);
+
+   while (!simple) {
+      g_main_context_iteration(main_context, TRUE);
    }
 
-   /*
-    * Make sure the message length is valid.
-    */
-   if (msg_len <= 16) {
-      g_set_error(error,
-                  MONGO_INPUT_STREAM_ERROR,
-                  MONGO_INPUT_STREAM_ERROR_INVALID_MESSAGE,
-                  _("Received short message from server."));
-      RETURN(NULL);
+   if (!(ret = g_simple_async_result_get_op_res_gpointer(simple))) {
+      g_simple_async_result_propagate_error(simple, error);
+   } else {
+      g_object_ref(ret);
    }
 
-   /*
-    * Read the request_id field.
-    */
-   if (!(request_id = mongo_input_stream_read_int32(data_stream,
-                                                    cancellable,
-                                                    &local_error))) {
-      if (local_error) {
-         g_propagate_error(error, local_error);
-         RETURN(NULL);
-      }
-   }
+   g_object_unref(simple);
 
-   /*
-    * Read the response_to field.
-    */
-   if (!(response_to = mongo_input_stream_read_int32(data_stream,
-                                                     cancellable,
-                                                     &local_error))) {
-      if (local_error) {
-         g_propagate_error(error, local_error);
-         RETURN(NULL);
-      }
-   }
-
-   /*
-    * Read the op_code field.
-    */
-   if (!(op_code = mongo_input_stream_read_int32(data_stream,
-                                                 cancellable,
-                                                 &local_error))) {
-      if (local_error) {
-         g_propagate_error(error, local_error);
-         RETURN(NULL);
-      }
-   }
-
-   /*
-    * Make sure this is an op_code we know about.
-    */
-   if (!(gtype = mongo_operation_get_message_type(op_code))) {
-      g_set_error(error,
-                  MONGO_INPUT_STREAM_ERROR,
-                  MONGO_INPUT_STREAM_ERROR_UNKNOWN_OPERATION,
-                  _("Operation code %u is unknown."),
-                  op_code);
-      /*
-       * Try to skip this message gracefully.
-       */
-      if (!g_input_stream_skip(G_INPUT_STREAM(stream),
-                               msg_len,
-                               cancellable,
-                               NULL)) {
-         g_input_stream_close(G_INPUT_STREAM(stream), NULL, NULL);
-      }
-      RETURN(NULL);
-   }
-
-   /*
-    * Allocate memory for the incoming buffer.
-    */
-   buffer = g_malloc(msg_len);
-   if (!g_input_stream_read_all(G_INPUT_STREAM(stream),
-                                buffer,
-                                msg_len - 16,
-                                &bytes_read,
-                                cancellable,
-                                error)) {
-      g_free(buffer);
-      RETURN(NULL);
-   }
-
-   /*
-    * If we didn't read all of the data, then fail now.
-    */
-   if (bytes_read != (msg_len - 16)) {
-      g_set_error(error,
-                  MONGO_INPUT_STREAM_ERROR,
-                  MONGO_INPUT_STREAM_ERROR_INSUFFICIENT_DATA,
-                  _("Not enough data was read to complete the message."));
-      g_free(buffer);
-      RETURN(NULL);
-   }
-
-   /*
-    * Load the data into a new MongoMessage.
-    */
-   message = g_object_new(gtype,
-                          "request-id", request_id,
-                          "response-to", response_to,
-                          NULL);
-   if (!mongo_message_load_from_data(message, buffer, msg_len - 16)) {
-      g_set_error(error,
-                  MONGO_INPUT_STREAM_ERROR,
-                  MONGO_INPUT_STREAM_ERROR_INVALID_MESSAGE,
-                  _("Message contents were corrupted."));
-      g_object_unref(message);
-      g_free(buffer);
-      RETURN(NULL);
-   }
-
-   RETURN(message);
+   RETURN(ret);
 }
-#endif
 
 static void
 mongo_input_stream_finalize (GObject *object)
