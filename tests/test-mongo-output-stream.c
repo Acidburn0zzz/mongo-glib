@@ -11,9 +11,9 @@ compare_buffers (const gchar *a,
    guint i;
 
    for (i = 0; i < length; i++) {
-      if (a[i] != b[i]) {
-         c1 = a[i];
-         c2 = b[2];
+      c1 = a[i];
+      c2 = b[i];
+      if (c1 != c2) {
          g_error("Expected 0x%02x at offset %d got 0x%02x.", c1, i, c2);
       }
    }
