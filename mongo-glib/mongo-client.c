@@ -172,8 +172,8 @@ mongo_client_set_stream (MongoClient *client,
    g_clear_object(&priv->input);
    g_clear_object(&priv->output);
 
-   priv->input = g_object_ref(g_io_stream_get_input_stream(stream));
-   priv->output = g_object_ref(g_io_stream_get_output_stream(stream));
+   priv->input = mongo_input_stream_new(g_io_stream_get_input_stream(stream));
+   priv->output = mongo_output_stream_new(g_io_stream_get_output_stream(stream));
 
    if (priv->input) {
       mongo_input_stream_read_message_async(priv->input,
