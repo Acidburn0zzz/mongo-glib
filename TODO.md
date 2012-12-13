@@ -6,3 +6,10 @@
  * Sort support.
  * Index creation.
 
+MongoClient
+
+ * queue requests while we connect.
+ * handle auto connecting.
+ * reconnect on failure.
+ * tests for short reads/writes.
+
