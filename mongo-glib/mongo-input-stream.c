@@ -27,8 +27,10 @@ G_DEFINE_TYPE(MongoInputStream, mongo_input_stream, G_TYPE_FILTER_INPUT_STREAM)
 
 struct _MongoInputStreamPrivate
 {
+   GCancellable *shutdown;
    MongoSource *source;
    gint32 msg_len;
+   gint32 to_read;
    guint8 *buffer;
 };
 
@@ -40,7 +42,6 @@ enum
 };
 
 static GParamSpec *gParamSpecs[LAST_PROP];
-static GQuark      gQuarkCancellable;
 
 MongoInputStream *
 mongo_input_stream_new (GInputStream *base_stream)
@@ -113,9 +114,28 @@ mongo_input_stream_read_message_body_cb (GObject      *object,
    priv = input->priv;
 
    ret = g_input_stream_read_finish(G_INPUT_STREAM(input), result, &error);
-   if (ret != (priv->msg_len - 4)) {
-      g_simple_async_result_take_error(simple, error);
+   if (ret == -1) {
+      if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
+         g_simple_async_result_take_error(simple, error);
+      }
       GOTO(failure);
+   } else if (ret == 0) {
+      /* End of stream */
+      GOTO(failure);
+   } else if (ret != priv->to_read) {
+      /* Short read! */
+      priv->to_read -= ret;
+      g_assert_cmpint(priv->msg_len + priv->to_read, >, 0);
+      g_assert_cmpint(priv->msg_len, >, 0);
+      g_assert_cmpint(priv->to_read, >, 0);
+      g_input_stream_read_async(G_INPUT_STREAM(input),
+                                priv->buffer + (priv->msg_len - priv->to_read),
+                                priv->to_read,
+                                G_PRIORITY_DEFAULT,
+                                priv->shutdown,
+                                mongo_input_stream_read_message_body_cb,
+                                simple);
+      EXIT;
    }
 
    memcpy(&header, priv->buffer, sizeof header);
@@ -123,13 +143,20 @@ mongo_input_stream_read_message_body_cb (GObject      *object,
       GOTO(failure);
    }
 
+   header.msg_len = GINT32_FROM_LE(header.msg_len);
+   header.request_id = GINT32_FROM_LE(header.request_id);
+   header.response_to = GINT32_FROM_LE(header.response_to);
+   header.op_code = GINT32_FROM_LE(header.op_code);
+
+   DUMP_BYTES(buffer, priv->buffer, priv->msg_len);
+
    message = g_object_new(type_id,
                           "request-id", header.request_id,
                           "response-to", header.response_to,
                           NULL);
    if (!mongo_message_load_from_data(message,
-                                     priv->buffer + 16, // FIXME: load all data.
-                                     priv->msg_len - 16)) {
+                                     priv->buffer + sizeof header, // FIXME: load all data.
+                                     priv->msg_len - sizeof header)) {
       GOTO(failure);
    }
 
@@ -138,6 +165,8 @@ mongo_input_stream_read_message_body_cb (GObject      *object,
    g_object_unref(simple);
    g_free(priv->buffer);
    priv->buffer = NULL;
+   priv->to_read = 0;
+   priv->msg_len = 0;
 
    EXIT;
 
@@ -148,6 +177,8 @@ failure:
    g_free(priv->buffer);
    priv->buffer = NULL;
    g_clear_object(&message);
+   priv->to_read = 0;
+   priv->msg_len = 0;
 
    EXIT;
 }
@@ -203,13 +234,13 @@ mongo_input_stream_read_message_header_cb (GObject      *object,
 
    priv->buffer = g_malloc(priv->msg_len);
    memcpy(priv->buffer, &msg_len_le, sizeof msg_len_le);
+   priv->to_read = priv->msg_len - 4;
 
    g_input_stream_read_async(G_INPUT_STREAM(input),
-                             priv->buffer + 4,
-                             priv->msg_len - 4,
+                             priv->buffer + (priv->msg_len - priv->to_read),
+                             priv->to_read,
                              G_PRIORITY_DEFAULT,
-                             g_object_get_qdata(G_OBJECT(simple),
-                                                gQuarkCancellable),
+                             priv->shutdown,
                              mongo_input_stream_read_message_body_cb,
                              simple);
 
@@ -244,16 +275,12 @@ mongo_input_stream_read_message_async (MongoInputStream    *stream,
    simple = g_simple_async_result_new(G_OBJECT(stream), callback, user_data,
                                       mongo_input_stream_read_message_async);
    g_simple_async_result_set_check_cancellable(simple, cancellable);
-   g_object_set_qdata_full(G_OBJECT(simple),
-                           gQuarkCancellable,
-                           cancellable ? g_object_ref(cancellable) : NULL,
-                           cancellable ? g_object_unref : NULL);
 
    g_input_stream_read_async(G_INPUT_STREAM(stream),
                              &priv->msg_len,
                              sizeof priv->msg_len,
                              G_PRIORITY_DEFAULT,
-                             cancellable,
+                             priv->shutdown,
                              mongo_input_stream_read_message_header_cb,
                              simple);
 
@@ -365,6 +392,22 @@ mongo_input_stream_read_message (MongoInputStream  *stream,
 }
 
 static void
+mongo_input_stream_dispose (GObject *object)
+{
+   MongoInputStreamPrivate *priv;
+
+   ENTRY;
+
+   priv = MONGO_INPUT_STREAM(object)->priv;
+
+   g_cancellable_cancel(priv->shutdown);
+
+   G_OBJECT_CLASS(mongo_input_stream_parent_class)->dispose(object);
+
+   EXIT;
+}
+
+static void
 mongo_input_stream_finalize (GObject *object)
 {
    MongoInputStreamPrivate *priv;
@@ -424,6 +467,7 @@ mongo_input_stream_class_init (MongoInputStreamClass *klass)
 
    object_class = G_OBJECT_CLASS(klass);
    object_class->finalize = mongo_input_stream_finalize;
+   object_class->dispose = mongo_input_stream_dispose;
    object_class->get_property = mongo_input_stream_get_property;
    object_class->set_property = mongo_input_stream_set_property;
    g_type_class_add_private(object_class, sizeof(MongoInputStreamPrivate));
@@ -437,8 +481,6 @@ mongo_input_stream_class_init (MongoInputStreamClass *klass)
    g_object_class_install_property(object_class, PROP_ASYNC_CONTEXT,
                                    gParamSpecs[PROP_ASYNC_CONTEXT]);
 
-   gQuarkCancellable = g_quark_from_static_string("cancellable");
-
    EXIT;
 }
 
@@ -449,6 +491,7 @@ mongo_input_stream_init (MongoInputStream *stream)
    stream->priv = G_TYPE_INSTANCE_GET_PRIVATE(stream,
                                               MONGO_TYPE_INPUT_STREAM,
                                               MongoInputStreamPrivate);
+   stream->priv->shutdown = g_cancellable_new();
    EXIT;
 }
 
