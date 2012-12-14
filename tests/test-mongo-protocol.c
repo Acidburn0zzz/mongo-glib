@@ -111,6 +111,8 @@ test_MongoProtocol_replies (void)
       g_clear_object(&message);
    }
 
+   g_output_stream_flush(g_io_stream_get_output_stream(key), NULL, NULL);
+
    PUMP_MAIN_LOOP;
 
    for (i = 0; i < 10; i++) {
@@ -142,6 +144,8 @@ test_MongoProtocol_replies (void)
       g_free(buf);
       g_clear_object(&message);
    }
+
+   g_output_stream_flush(g_io_stream_get_output_stream(key), NULL, NULL);
 
    PUMP_MAIN_LOOP;
 
@@ -175,6 +179,8 @@ test_MongoProtocol_replies (void)
       g_assert_no_error(error);
       g_assert(r);
 
+      g_output_stream_flush(g_io_stream_get_output_stream(key), NULL, NULL);
+
       PUMP_MAIN_LOOP;
 
       orig = buf;
@@ -194,11 +200,18 @@ test_MongoProtocol_replies (void)
 
       g_free(orig);
       g_clear_object(&message);
+
+      g_output_stream_flush(g_io_stream_get_output_stream(key), NULL, NULL);
+
+      PUMP_MAIN_LOOP;
    }
 
-   PUMP_MAIN_LOOP;
-
    g_assert_cmpint(failed, !=, TRUE);
+
+   while (count < 30) {
+      PUMP_MAIN_LOOP;
+   }
+
    g_assert_cmpint(count, ==, 30);
 
    g_socket_service_stop(G_SOCKET_SERVICE(server));
