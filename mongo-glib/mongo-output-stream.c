@@ -177,10 +177,12 @@ mongo_output_stream_flush_cb (GObject      *object,
    MongoOutputStreamPrivate *priv;
    MongoOutputStream *stream = (MongoOutputStream *)object;
    GOutputStream *output = (GOutputStream *)object;
+   const guint8 *buf;
    Request *request = user_data;
    GError *error = NULL;
    gssize bytes_written;
    gsize expected;
+   gsize buflen;
 
    ENTRY;
 
@@ -192,7 +194,7 @@ mongo_output_stream_flush_cb (GObject      *object,
    priv = stream->priv;
 
    expected = g_bytes_get_size(request->bytes);
-   bytes_written = g_output_stream_write_bytes_finish(output, result, &error);
+   bytes_written = g_output_stream_write_finish(output, result, &error);
 
    if (bytes_written != expected) {
       g_output_stream_close(output, NULL, NULL);
@@ -222,12 +224,15 @@ mongo_output_stream_flush_cb (GObject      *object,
       EXIT;
    }
 
-   g_output_stream_write_bytes_async(G_OUTPUT_STREAM(stream),
-                                     request->bytes,
-                                     G_PRIORITY_DEFAULT,
-                                     priv->shutdown,
-                                     mongo_output_stream_flush_cb,
-                                     request);
+   buf = g_bytes_get_data(request->bytes, &buflen);
+
+   g_output_stream_write_async(G_OUTPUT_STREAM(stream),
+                               buf,
+                               buflen,
+                               G_PRIORITY_DEFAULT,
+                               priv->shutdown,
+                               mongo_output_stream_flush_cb,
+                               request);
 
    EXIT;
 }
@@ -236,7 +241,9 @@ static void
 mongo_output_stream_flush (MongoOutputStream *stream)
 {
    MongoOutputStreamPrivate *priv;
+   const guint8 *buf;
    Request *request;
+   gsize buflen;
 
    ENTRY;
 
@@ -254,12 +261,15 @@ mongo_output_stream_flush (MongoOutputStream *stream)
 
    priv->flushing = TRUE;
 
-   g_output_stream_write_bytes_async(G_OUTPUT_STREAM(stream),
-                                     request->bytes,
-                                     G_PRIORITY_DEFAULT,
-                                     priv->shutdown,
-                                     mongo_output_stream_flush_cb,
-                                     request);
+   buf = g_bytes_get_data(request->bytes, &buflen);
+
+   g_output_stream_write_async(G_OUTPUT_STREAM(stream),
+                               buf,
+                               buflen,
+                               G_PRIORITY_DEFAULT,
+                               priv->shutdown,
+                               mongo_output_stream_flush_cb,
+                               request);
 
    EXIT;
 }
