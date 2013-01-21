@@ -260,7 +260,7 @@ mongo_protocol_append_getlasterror (MongoProtocol *protocol,
    priv = protocol->priv;
 
    offset = array->len;
-   request_id = ++protocol->priv->last_request_id;
+   request_id = mongo_protocol_next_request_id(protocol);
 
    /*
     * Build getlasterror command spec.
